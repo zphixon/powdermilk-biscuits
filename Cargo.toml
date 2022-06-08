@@ -1,0 +1,29 @@
+[package]
+name = 'tablet-thing'
+version = '0.1.0'
+edition = '2021'
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+winit = { path = 'winit2' }
+rand = '0.8.5'
+hidapi = '1.4.1'
+pixels = '0.9.0'
+evc_derive = { path = 'evc_derive' }
+image = '0.24.2'
+
+#[target.'cfg(windows)'.dependencies.windows]
+#version = '0.37.0'
+#features = [
+#    'alloc',
+#    'implement',
+#    'Win32_Foundation',
+#    'Win32_System_Com',
+#    'Win32_UI_TabletPC',
+#    'Win32_Graphics_Gdi',
+#    'Win32_System_LibraryLoader',
+#    'Win32_UI_WindowsAndMessaging',
+#    'Win32_UI_Input_KeyboardAndMouse',
+#]
+

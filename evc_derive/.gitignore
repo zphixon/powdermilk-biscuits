@@ -1,0 +1,9 @@
+/target
+/img
+SDL2-devel-2.0.22-VC.zip
+SDL2-devel-2.0.22-mingw.zip
+SDL2.dll
+points.txt
+sdl2/
+tablet_registry.txt
+winit2/
