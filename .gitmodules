@@ -1,3 +1,4 @@
 [submodule "winit2"]
 	path = winit2
 	url = https://github.com/zphixon/winit.git
+	ignore = untracked
