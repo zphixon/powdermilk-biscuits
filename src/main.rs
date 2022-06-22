@@ -1,7 +1,7 @@
 use {
     pixels::{Pixels, SurfaceTexture},
     std::ffi::CString,
-    tablet_thing::{graphics, State},
+    tablet_thing::{graphics, State, StrokeStyle},
     winit::{
         dpi::PhysicalSize,
         event::{
@@ -114,13 +114,40 @@ fn main() {
                     window.request_redraw();
                 }
 
-                if state.just_pressed(R) && !state.shift() {
-                    state.rotate_style();
+                if state.just_pressed(Key1)
+                    || state.just_pressed(Key2)
+                    || state.just_pressed(Key3)
+                    || state.just_pressed(Key4)
+                    || state.just_pressed(Key5)
+                    || state.just_pressed(Key6)
+                    || state.just_pressed(Key7)
+                    || state.just_pressed(Key8)
+                    || state.just_pressed(Key9)
+                    || state.just_pressed(Key0)
+                {
+                    state.style = unsafe {
+                        std::mem::transmute(
+                            match key {
+                                Key1 => 0,
+                                Key2 => 1,
+                                Key3 => 2,
+                                Key4 => 3,
+                                Key5 => 4,
+                                Key6 => 5,
+                                Key7 => 6,
+                                Key8 => 7,
+                                Key9 => 8,
+                                Key0 => 9,
+                                _ => unreachable!(),
+                            } % StrokeStyle::NUM_VARIANTS,
+                        )
+                    };
                     window.request_redraw();
+
                     println!("stroke style {:?}", state.style);
                 }
 
-                if state.just_pressed(R) && state.shift() {
+                if state.just_pressed(R) {
                     state.use_individual_style = !state.use_individual_style;
                     window.request_redraw();
                 }

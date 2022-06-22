@@ -12,7 +12,7 @@ pub fn derive_enum_variant_count(input: proc_macro::TokenStream) -> proc_macro::
 
     let expanded = quote! {
         impl #name {
-            const NUM_VARIANTS: usize = #len;
+            pub const NUM_VARIANTS: usize = #len;
         }
     };
 
