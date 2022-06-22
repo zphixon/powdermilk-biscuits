@@ -374,25 +374,11 @@ pub fn points(stroke: &Stroke, frame: &mut [u8], width: usize, height: usize) {
 }
 
 pub fn spline(stroke: &Stroke, frame: &mut [u8], width: usize, height: usize) {
-    const DEGREE: usize = 3;
-
-    if stroke.points.len() <= DEGREE {
+    if stroke.spline.is_none() {
         return;
     }
 
-    let points = [stroke.points.first().cloned().unwrap(); DEGREE]
-        .into_iter()
-        .chain(stroke.points.iter().cloned())
-        .chain([stroke.points.last().cloned().unwrap(); DEGREE])
-        .collect::<Vec<_>>();
-
-    let knots = std::iter::repeat(())
-        .take(points.len() + DEGREE + 1)
-        .enumerate()
-        .map(|(i, ())| i as f64)
-        .collect::<Vec<_>>();
-
-    let spline = bspline::BSpline::new(DEGREE, points, knots);
+    let spline = stroke.spline.as_ref().expect("stroke should have spline");
 
     let (min, max) = spline.knot_domain();
     let dt = 0.001;

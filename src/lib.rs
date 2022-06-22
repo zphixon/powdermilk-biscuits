@@ -4,6 +4,7 @@ pub mod graphics;
 //pub mod myrts;
 
 use {
+    bspline::BSpline,
     std::{
         collections::HashMap,
         io::Write,
@@ -85,7 +86,30 @@ pub struct Stroke {
     pub color: Color,
     pub brush_size: f64,
     pub style: StrokeStyle,
+    pub spline: Option<BSpline<Point, f64>>,
     pub erased: bool,
+}
+
+impl Stroke {
+    pub const DEGREE: usize = 3;
+
+    pub fn calculate_spline(&mut self) {
+        if self.points.len() > Stroke::DEGREE {
+            let points = [self.points.first().cloned().unwrap(); Stroke::DEGREE]
+                .into_iter()
+                .chain(self.points.iter().cloned())
+                .chain([self.points.last().cloned().unwrap(); Stroke::DEGREE])
+                .collect::<Vec<_>>();
+
+            let knots = std::iter::repeat(())
+                .take(points.len() + Stroke::DEGREE + 1)
+                .enumerate()
+                .map(|(i, ())| i as f64)
+                .collect::<Vec<_>>();
+
+            self.spline = Some(BSpline::new(Stroke::DEGREE, points, knots));
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, evc_derive::EnumVariantCount)]
@@ -326,6 +350,7 @@ impl State {
                         brush_size: self.brush_size,
                         style: self.stroke_style,
                         erased: false,
+                        spline: None,
                     });
                 }
 
@@ -336,26 +361,23 @@ impl State {
                                 pos: self.stylus.pos,
                                 pressure: self.stylus.pressure,
                             });
+
+                            stroke.calculate_spline();
                         }
                     }
                 }
 
                 TouchPhase::Ended | TouchPhase::Cancelled => {
-                    //if let Some(stroke) = self.strokes.last_mut() {
-                    //    const DEGREE: usize = 3;
-                    //    let mut new_points = vec![stroke.points.first().cloned().unwrap(); DEGREE];
-                    //    new_points.extend(stroke.points.iter().cloned());
-                    //    new_points
-                    //        .extend_from_slice(&[stroke.points.last().cloned().unwrap(); DEGREE]);
-                    //    stroke.points = new_points;
-                    //}
+                    if let Some(stroke) = self.strokes.last_mut() {
+                        stroke.calculate_spline();
+                    }
                 }
             };
         }
     }
 
-    pub fn draw_strokes(&self, frame: &mut [u8], width: usize, height: usize) {
-        for stroke in self.strokes.iter() {
+    pub fn draw_strokes(&mut self, frame: &mut [u8], width: usize, height: usize) {
+        for stroke in self.strokes.iter_mut() {
             if !stroke.erased {
                 (match if self.use_individual_style {
                     stroke.style
