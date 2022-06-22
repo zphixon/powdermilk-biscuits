@@ -6,17 +6,12 @@ Uses [a fork](https://github.com/zphixon/winit) of [winit](https://github.com/ru
 
 ## Features:
 
-- Line <br> ![](eg/line.png)
-- Circle <br> ![](eg/circle.png)
-- Circle with pressure scaling <br> ![](eg/circle_pressure.png)
-- Points <br> ![](eg/points.png)
-- Strokes can be erased, undone, or cleared
+- Strokes can be drawn with a number of stroke styles, erased, undone, and cleared
 - The image can be saved
 
 ## Todo:
 
 - Better handling of the effects of pen pressure on stroke width
 - Antialiasing
-- Bezier/spline rendering
-- Geometry-based rather than pixel-based rendering
+- Geometry-based rather than pixel-based rendering, includes compositing
 - Any sort of GUI
