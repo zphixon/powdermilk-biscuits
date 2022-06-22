@@ -276,7 +276,11 @@ impl State {
         self.stylus.pressure = pressure;
         self.stylus.state = state;
 
-        if inverted {
+        self.handle_update(phase);
+    }
+
+    fn handle_update(&mut self, phase: TouchPhase) {
+        if self.stylus.inverted() {
             if phase == TouchPhase::Moved && self.stylus.down() {
                 for stroke in self.strokes.iter_mut() {
                     'inner: for point in stroke.points.iter() {
@@ -307,7 +311,7 @@ impl State {
                         if self.stylus.down() {
                             stroke.points.push(Point {
                                 pos: self.stylus.pos,
-                                pressure,
+                                pressure: self.stylus.pressure,
                             });
                         }
                     }
