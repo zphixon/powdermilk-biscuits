@@ -1,5 +1,14 @@
 use crate::{Color, Stroke};
 
+pub fn clear(frame: &mut [u8]) {
+    for pixel in frame.chunks_exact_mut(4) {
+        pixel[0] = 0x00;
+        pixel[1] = 0x00;
+        pixel[2] = 0x00;
+        pixel[3] = 0xff;
+    }
+}
+
 #[inline]
 pub fn put_pixel(frame: &mut [u8], width: usize, height: usize, x: usize, y: usize, color: Color) {
     if x < width && y < height {

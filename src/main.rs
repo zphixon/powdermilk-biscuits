@@ -59,15 +59,6 @@ fn new_pixels(window: &Window) -> Pixels {
     Pixels::new(size.width, size.height, tex).unwrap()
 }
 
-fn clear(frame: &mut [u8]) {
-    for pixel in frame.chunks_exact_mut(4) {
-        pixel[0] = 0x00;
-        pixel[1] = 0x00;
-        pixel[2] = 0x00;
-        pixel[3] = 0xff;
-    }
-}
-
 #[allow(unreachable_code)]
 fn main() {
     //windows::do_stuff().unwrap();
@@ -138,15 +129,19 @@ fn main() {
                     let num_string = std::fs::read_to_string("img/num.txt").expect("read num.txt");
                     let num = num_string.trim().parse::<usize>().expect("parse num.txt");
                     let filename = format!("img/strokes{num}.png");
+
                     let PhysicalSize { width, height } = window.inner_size();
                     let frame = pixels.get_frame();
-                    clear(frame);
+                    graphics::clear(frame);
                     state.draw_strokes(frame, width as usize, height as usize);
+
                     image::save_buffer(&filename, frame, width, height, image::ColorType::Rgba8)
                         .expect(&format!("save {filename}"));
+
                     let next_num = num + 1;
                     std::fs::write("img/num.txt", format!("{next_num}")).expect("write num.txt");
                     println!("wrote image as {filename}");
+
                     window.request_redraw();
                 }
             }
@@ -224,7 +219,7 @@ fn main() {
 
             Event::RedrawRequested(_) => {
                 let frame = pixels.get_frame();
-                clear(frame);
+                graphics::clear(frame);
 
                 let PhysicalSize { width, height } = window.inner_size();
                 let (width, height) = (width as usize, height as usize);
