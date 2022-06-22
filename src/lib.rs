@@ -232,12 +232,6 @@ impl State {
         self.is_down(LControl) || self.is_down(RControl)
     }
 
-    pub fn rotate_style(&mut self) {
-        let style_num = self.stroke_style as usize;
-        let next_num = (style_num + 1) % StrokeStyle::NUM_VARIANTS;
-        self.stroke_style = unsafe { std::mem::transmute(next_num) };
-    }
-
     pub fn increase_brush(&mut self) {
         let max_brush = 32.0;
         if self.brush_size + 1. > max_brush {
