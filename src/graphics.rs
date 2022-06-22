@@ -372,3 +372,46 @@ pub fn points(stroke: &Stroke, frame: &mut [u8], width: usize, height: usize) {
         );
     }
 }
+
+pub fn spline(stroke: &Stroke, frame: &mut [u8], width: usize, height: usize) {
+    const DEGREE: usize = 3;
+
+    if stroke.points.len() <= DEGREE {
+        return;
+    }
+
+    let points = [stroke.points.first().cloned().unwrap(); DEGREE]
+        .into_iter()
+        .chain(stroke.points.iter().cloned())
+        .chain([stroke.points.last().cloned().unwrap(); DEGREE])
+        .collect::<Vec<_>>();
+
+    let knots = std::iter::repeat(())
+        .take(points.len() + DEGREE + 1)
+        .enumerate()
+        .map(|(i, ())| i as f64)
+        .collect::<Vec<_>>();
+
+    let spline = bspline::BSpline::new(DEGREE, points, knots);
+
+    let (min, max) = spline.knot_domain();
+    let dt = 0.001;
+
+    let mut t = min;
+    let mut px = 0;
+    let mut py = 0;
+
+    while t < max {
+        let point = spline.point(t);
+        let x = point.pos.x as usize;
+        let y = point.pos.y as usize;
+
+        if x != px || y != py {
+            put_pixel(frame, width, height, x, y, stroke.color);
+        }
+
+        px = x;
+        py = y;
+        t += dt;
+    }
+}

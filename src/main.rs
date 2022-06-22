@@ -74,7 +74,7 @@ fn main() {
     let mut cursor_pos = Default::default();
     let mut state = State::default();
     state.init();
-    println!("stroke style {:?}", state.style);
+    println!("stroke style {:?}", state.stroke_style);
 
     ev.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
@@ -125,7 +125,7 @@ fn main() {
                     || state.just_pressed(Key9)
                     || state.just_pressed(Key0)
                 {
-                    state.style = unsafe {
+                    state.stroke_style = unsafe {
                         std::mem::transmute(
                             match key {
                                 Key1 => 0,
@@ -144,7 +144,7 @@ fn main() {
                     };
                     window.request_redraw();
 
-                    println!("stroke style {:?}", state.style);
+                    println!("stroke style {:?}", state.stroke_style);
                 }
 
                 if state.just_pressed(R) {

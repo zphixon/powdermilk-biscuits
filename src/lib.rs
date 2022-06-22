@@ -96,6 +96,7 @@ pub enum StrokeStyle {
     Circles,
     CirclesPressure,
     Points,
+    Spline,
 }
 
 impl Default for StrokeStyle {
@@ -168,7 +169,7 @@ pub struct State {
     pub fill_brush_head: bool,
     pub strokes: Vec<Stroke>,
     pub keys: HashMap<VirtualKeyCode, KeyState>,
-    pub style: StrokeStyle,
+    pub stroke_style: StrokeStyle,
     pub use_individual_style: bool,
 }
 
@@ -208,9 +209,9 @@ impl State {
     }
 
     pub fn rotate_style(&mut self) {
-        let style_num = self.style as usize;
+        let style_num = self.stroke_style as usize;
         let next_num = (style_num + 1) % StrokeStyle::NUM_VARIANTS;
-        self.style = unsafe { std::mem::transmute(next_num) };
+        self.stroke_style = unsafe { std::mem::transmute(next_num) };
     }
 
     pub fn increase_brush(&mut self) {
@@ -250,7 +251,7 @@ impl State {
 
         let inverted_str = if inverted { " (inverted) " } else { " " };
         let location_str = format!("{:.02},{:.02}", location.x, location.y);
-        let stroke_str = format!("{location_str}{inverted_str}{:?}", self.style);
+        let stroke_str = format!("{location_str}{inverted_str}{:?}", self.stroke_style);
 
         let pressure = match force {
             Some(Force::Normalized(force)) => force,
@@ -323,7 +324,7 @@ impl State {
                         points: Vec::new(),
                         color: rand::random(),
                         brush_size: self.brush_size,
-                        style: self.style,
+                        style: self.stroke_style,
                         erased: false,
                     });
                 }
@@ -339,7 +340,16 @@ impl State {
                     }
                 }
 
-                TouchPhase::Ended | TouchPhase::Cancelled => {}
+                TouchPhase::Ended | TouchPhase::Cancelled => {
+                    //if let Some(stroke) = self.strokes.last_mut() {
+                    //    const DEGREE: usize = 3;
+                    //    let mut new_points = vec![stroke.points.first().cloned().unwrap(); DEGREE];
+                    //    new_points.extend(stroke.points.iter().cloned());
+                    //    new_points
+                    //        .extend_from_slice(&[stroke.points.last().cloned().unwrap(); DEGREE]);
+                    //    stroke.points = new_points;
+                    //}
+                }
             };
         }
     }
@@ -350,12 +360,13 @@ impl State {
                 (match if self.use_individual_style {
                     stroke.style
                 } else {
-                    self.style
+                    self.stroke_style
                 } {
                     StrokeStyle::Lines => graphics::lines,
                     StrokeStyle::Circles => graphics::circles,
                     StrokeStyle::CirclesPressure => graphics::circles_pressure,
                     StrokeStyle::Points => graphics::points,
+                    StrokeStyle::Spline => graphics::spline,
                 })(stroke, frame, width, height);
             }
         }
