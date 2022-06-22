@@ -7,7 +7,7 @@ use {
     std::{
         collections::HashMap,
         io::Write,
-        ops::{Add, Mul},
+        ops::{Add, Mul, Sub},
     },
     winit::{
         dpi::PhysicalPosition,
@@ -21,6 +21,20 @@ pub type Color = [u8; 3];
 pub struct Point {
     pub pos: PhysicalPosition<f64>,
     pub pressure: f64,
+}
+
+impl Mul<Point> for f64 {
+    type Output = Point;
+    fn mul(self, rhs: Point) -> Self::Output {
+        Point {
+            pos: PhysicalPosition {
+                x: rhs.pos.x * self,
+                y: rhs.pos.y * self,
+            },
+            // ?
+            pressure: rhs.pressure * self,
+        }
+    }
 }
 
 impl Mul<f64> for Point {
@@ -47,6 +61,20 @@ impl Add for Point {
             },
             // ????
             pressure: self.pressure + rhs.pressure,
+        }
+    }
+}
+
+impl Sub for Point {
+    type Output = Point;
+    fn sub(self, rhs: Self) -> Self::Output {
+        Point {
+            pos: PhysicalPosition {
+                x: self.pos.x - rhs.pos.x,
+                y: self.pos.y - rhs.pos.y,
+            },
+            // ??????
+            pressure: self.pressure - rhs.pressure,
         }
     }
 }
