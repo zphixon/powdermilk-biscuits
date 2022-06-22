@@ -73,7 +73,6 @@ fn main() {
     let mut cursor_visible = true;
     let mut cursor_pos = Default::default();
     let mut state = State::default();
-    state.init();
     println!("stroke style {:?}", state.stroke_style);
 
     ev.run(move |event, _, control_flow| {

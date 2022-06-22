@@ -186,7 +186,6 @@ impl Stylus {
     }
 }
 
-#[derive(Default)]
 pub struct State {
     pub stylus: Stylus,
     pub brush_size: f64,
@@ -197,11 +196,24 @@ pub struct State {
     pub use_individual_style: bool,
 }
 
-impl State {
-    pub fn init(&mut self) {
-        self.brush_size = 1.0;
+mod hide {
+    use super::*;
+    impl Default for State {
+        fn default() -> Self {
+            State {
+                stylus: Default::default(),
+                brush_size: 1.0,
+                fill_brush_head: false,
+                strokes: Default::default(),
+                keys: Default::default(),
+                stroke_style: Default::default(),
+                use_individual_style: false,
+            }
+        }
     }
+}
 
+impl State {
     pub fn key(&mut self, key: VirtualKeyCode, element_state: ElementState) {
         let key_state = self.keys.entry(key).or_insert(KeyState::Released);
 
