@@ -1,13 +1,13 @@
 pub mod graphics;
+pub mod input;
 
 use {
     bspline::BSpline,
     glutin::{
         dpi::PhysicalPosition,
-        event::{ElementState, Force, Touch, TouchPhase, VirtualKeyCode},
+        event::{Force, Touch, TouchPhase},
     },
     std::{
-        collections::HashMap,
         io::Write,
         ops::{Add, Mul, Sub},
     },
@@ -29,6 +29,15 @@ impl StrokePos {
     ) -> Self {
         let x = p.x / zoom;
         let y = p.y / zoom;
+        StrokePos {
+            x: screen_in_paper.x + x,
+            y: screen_in_paper.y - y,
+        }
+    }
+
+    pub fn from_screen_pos(p: graphics::ScreenPos, zoom: f64, screen_in_paper: StrokePos) -> Self {
+        let x = p.x as f64 / zoom;
+        let y = p.y as f64 / zoom;
         StrokePos {
             x: screen_in_paper.x + x,
             y: screen_in_paper.y - y,
@@ -139,25 +148,6 @@ impl Default for StrokeStyle {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum KeyState {
-    Downstroke,
-    Held,
-    Released,
-}
-
-impl KeyState {
-    pub fn is_down(&self) -> bool {
-        use KeyState::*;
-        matches!(self, Downstroke | Held)
-    }
-
-    pub fn just_pressed(&self) -> bool {
-        use KeyState::*;
-        matches!(self, Downstroke)
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
 pub enum StylusPosition {
     Down,
     Up,
@@ -200,7 +190,6 @@ pub struct State {
     pub brush_size: f64,
     pub fill_brush_head: bool,
     pub strokes: Vec<Stroke>,
-    pub keys: HashMap<VirtualKeyCode, KeyState>,
     pub stroke_style: StrokeStyle,
     pub use_individual_style: bool,
 }
@@ -214,7 +203,6 @@ mod hide {
                 brush_size: 1.0,
                 fill_brush_head: false,
                 strokes: Default::default(),
-                keys: Default::default(),
                 stroke_style: Default::default(),
                 use_individual_style: false,
             }
@@ -223,36 +211,6 @@ mod hide {
 }
 
 impl State {
-    pub fn key(&mut self, key: VirtualKeyCode, element_state: ElementState) {
-        let key_state = self.keys.entry(key).or_insert(KeyState::Released);
-
-        let next_key_state = match (*key_state, element_state) {
-            (KeyState::Released, ElementState::Pressed) => KeyState::Downstroke,
-            (_, ElementState::Released) => KeyState::Released,
-            (_, ElementState::Pressed) => KeyState::Held,
-        };
-
-        *key_state = next_key_state;
-    }
-
-    pub fn is_down(&self, key: VirtualKeyCode) -> bool {
-        self.keys.contains_key(&key) && self.keys[&key].is_down()
-    }
-
-    pub fn just_pressed(&self, key: VirtualKeyCode) -> bool {
-        self.keys.contains_key(&key) && self.keys[&key].just_pressed()
-    }
-
-    pub fn shift(&self) -> bool {
-        use VirtualKeyCode::{LShift, RShift};
-        self.is_down(LShift) || self.is_down(RShift)
-    }
-
-    pub fn control(&self) -> bool {
-        use VirtualKeyCode::{LControl, RControl};
-        self.is_down(LControl) || self.is_down(RControl)
-    }
-
     pub fn increase_brush(&mut self) {
         let max_brush = 32.0;
         if self.brush_size + 1. > max_brush {

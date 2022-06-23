@@ -3,8 +3,7 @@ use {
         dpi::PhysicalSize,
         event::{
             device::{GamepadHandle, HidId, KeyboardId, MouseId},
-            ElementState, Event, KeyboardInput, MouseButton, MouseScrollDelta, VirtualKeyCode,
-            WindowEvent,
+            Event, KeyboardInput, MouseButton, MouseScrollDelta, VirtualKeyCode, WindowEvent,
         },
         event_loop::{ControlFlow, EventLoop},
         platform::windows::DeviceExtWindows,
@@ -14,6 +13,7 @@ use {
     std::ffi::CString,
     tablet_thing::{
         graphics::{self, ScreenPos},
+        input::InputHandler,
         State, StrokePos, StrokeStyle,
     },
 };
@@ -71,9 +71,9 @@ fn main() {
 
     let mut pixels = new_pixels(&window);
 
-    let mut cursor_down = false;
     let mut cursor_visible = true;
-    let mut cursor_pos = Default::default();
+    let mut input_handler = InputHandler::default();
+
     let mut state = State::default();
     println!("stroke style {:?}", state.stroke_style);
 
@@ -93,43 +93,43 @@ fn main() {
                 ..
             } => {
                 use VirtualKeyCode::*;
-                state.key(key, key_state);
+                input_handler.handle_key(key, key_state);
 
-                if state.just_pressed(Escape) {
+                if input_handler.just_pressed(Escape) {
                     *control_flow = ControlFlow::Exit;
                 }
 
-                if state.just_pressed(C) {
+                if input_handler.just_pressed(C) {
                     state.clear_strokes();
                     window.request_redraw();
                 }
 
-                if state.just_pressed(D) {
+                if input_handler.just_pressed(D) {
                     println!("{device_str}");
                     println!("zoom={zoom:.02}");
                     println!("screen_in_paper={screen_in_paper:?}");
                 }
 
-                if state.just_pressed(F) {
+                if input_handler.just_pressed(F) {
                     state.fill_brush_head = !state.fill_brush_head;
                     window.request_redraw();
                 }
 
-                if state.control() && state.just_pressed(Z) {
+                if input_handler.control() && input_handler.just_pressed(Z) {
                     state.undo_stroke();
                     window.request_redraw();
                 }
 
-                if state.just_pressed(Key1)
-                    || state.just_pressed(Key2)
-                    || state.just_pressed(Key3)
-                    || state.just_pressed(Key4)
-                    || state.just_pressed(Key5)
-                    || state.just_pressed(Key6)
-                    || state.just_pressed(Key7)
-                    || state.just_pressed(Key8)
-                    || state.just_pressed(Key9)
-                    || state.just_pressed(Key0)
+                if input_handler.just_pressed(Key1)
+                    || input_handler.just_pressed(Key2)
+                    || input_handler.just_pressed(Key3)
+                    || input_handler.just_pressed(Key4)
+                    || input_handler.just_pressed(Key5)
+                    || input_handler.just_pressed(Key6)
+                    || input_handler.just_pressed(Key7)
+                    || input_handler.just_pressed(Key8)
+                    || input_handler.just_pressed(Key9)
+                    || input_handler.just_pressed(Key0)
                 {
                     state.stroke_style = unsafe {
                         std::mem::transmute(
@@ -153,12 +153,12 @@ fn main() {
                     println!("stroke style {:?}", state.stroke_style);
                 }
 
-                if state.just_pressed(R) {
+                if input_handler.just_pressed(R) {
                     state.use_individual_style = !state.use_individual_style;
                     window.request_redraw();
                 }
 
-                if state.just_pressed(S) {
+                if input_handler.just_pressed(S) {
                     let num_string = std::fs::read_to_string("img/num.txt").expect("read num.txt");
                     let num = num_string.trim().parse::<usize>().expect("parse num.txt");
                     let filename = format!("img/strokes{num}.png");
@@ -251,22 +251,21 @@ fn main() {
             Event::WindowEvent {
                 event: WindowEvent::MouseInput { state, button, .. },
                 ..
-            } if button == MouseButton::Left => match state {
-                ElementState::Pressed => cursor_down = true,
-                ElementState::Released => cursor_down = false,
-            },
+            } => {
+                input_handler.handle_mouse_button(button, state);
+            }
 
             Event::WindowEvent {
                 event: WindowEvent::CursorMoved { position, .. },
                 ..
             } => {
-                let prev_pos = cursor_pos;
-                cursor_pos = position;
+                let prev = input_handler.cursor_pos();
+                input_handler.handle_mouse_move(position);
 
-                if cursor_down {
-                    let prev = StrokePos::from_physical_position(prev_pos, zoom, screen_in_paper);
-                    let next = StrokePos::from_physical_position(cursor_pos, zoom, screen_in_paper);
-                    let diff = prev - next;
+                if input_handler.button_down(MouseButton::Left) {
+                    let next = input_handler.cursor_pos();
+                    let diff = StrokePos::from_screen_pos(prev, zoom, screen_in_paper)
+                        - StrokePos::from_screen_pos(next, zoom, screen_in_paper);
                     screen_in_paper = screen_in_paper + diff;
                     window.request_redraw();
                 }
