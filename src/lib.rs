@@ -49,7 +49,7 @@ impl Stroke {
     }
 }
 
-#[derive(Debug, Clone, Copy, evc_derive::EnumVariantCount)]
+#[derive(Debug, Clone, Copy, PartialEq, evc_derive::EnumVariantCount)]
 #[repr(usize)]
 #[allow(dead_code)]
 pub enum StrokeStyle {

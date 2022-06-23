@@ -166,19 +166,89 @@ fn main() {
                     let num = num_string.trim().parse::<usize>().expect("parse num.txt");
                     let filename = format!("img/strokes{num}.png");
 
-                    let PhysicalSize { width, height } = window.inner_size();
-                    let frame = pixels.get_frame();
-                    graphics::clear(frame);
-                    state.draw_strokes(
-                        frame,
-                        width as usize,
-                        height as usize,
-                        zoom,
-                        screen_in_paper,
-                    );
+                    // when we render with a real graphics library, we'll compute the geometry of
+                    // each stroke and just render it like a normal person. when we want the full
+                    // overview like what we're trying to do here we'll render into an image
+                    // target, mapping each sample so that the far bounds of the stroke space
+                    // correspond to 1/-1.
 
-                    image::save_buffer(&filename, frame, width, height, image::ColorType::Rgba8)
+                    if input_handler.shift() {
+                        let mut min_x = f64::INFINITY;
+                        let mut max_x = -f64::INFINITY;
+                        let mut min_y = f64::INFINITY;
+                        let mut max_y = -f64::INFINITY;
+                        let mut max_rad = -f64::INFINITY;
+                        for stroke in state.strokes.iter() {
+                            if stroke.style == StrokeStyle::Circles && stroke.brush_size > max_rad {
+                                max_rad = stroke.brush_size;
+                            }
+
+                            for point in stroke.points.iter() {
+                                if point.pos.x > max_x {
+                                    max_x = point.pos.x;
+                                }
+                                if point.pos.x < min_x {
+                                    min_x = point.pos.x;
+                                }
+                                if point.pos.y > max_y {
+                                    max_y = point.pos.y;
+                                }
+                                if point.pos.y < min_y {
+                                    min_y = point.pos.y;
+                                }
+                            }
+                        }
+
+                        let margin = 20. + max_rad;
+
+                        let top_left_stroke = StrokePos { x: min_x, y: max_y };
+                        let bottom_right_stroke = StrokePos { x: max_x, y: min_y };
+                        let bottom_right_screen =
+                            ScreenPos::from_stroke(bottom_right_stroke, 150., top_left_stroke);
+                        let width = bottom_right_screen.x + 2 * margin as isize;
+                        let height = bottom_right_screen.y + 2 * margin as isize;
+                        let diff = bottom_right_stroke - top_left_stroke;
+                        let zoom_overview = width as f64 / diff.x;
+                        let width = width.try_into().unwrap();
+                        let height = height.try_into().unwrap();
+
+                        let image = image::RgbaImage::new(width, height);
+
+                        let mut container = image.into_raw();
+
+                        graphics::clear(container.as_mut_slice());
+                        state.draw_strokes(
+                            container.as_mut_slice(),
+                            width as usize,
+                            height as usize,
+                            zoom_overview,
+                            top_left_stroke,
+                        );
+
+                        let image = image::RgbaImage::from_raw(width, height, container)
+                            .expect("image from raw");
+                        image.save(&filename).expect(&format!("save {filename}"));
+                    } else {
+                        let PhysicalSize { width, height } = window.inner_size();
+                        let frame = pixels.get_frame();
+                        graphics::clear(frame);
+                        state.draw_strokes(
+                            frame,
+                            width as usize,
+                            height as usize,
+                            zoom,
+                            screen_in_paper,
+                        );
+
+                        image::save_buffer(
+                            &filename,
+                            frame,
+                            width,
+                            height,
+                            image::ColorType::Rgba8,
+                        )
                         .expect(&format!("save {filename}"));
+                    }
 
                     let next_num = num + 1;
                     std::fs::write("img/num.txt", format!("{next_num}")).expect("write num.txt");

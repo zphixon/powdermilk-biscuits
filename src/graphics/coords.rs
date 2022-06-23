@@ -3,6 +3,7 @@ use {
     std::ops::{Add, Mul, Sub},
 };
 
+#[derive(Default, Debug, Clone, Copy)]
 pub struct ScreenPos {
     pub x: isize,
     pub y: isize,
