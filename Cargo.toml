@@ -6,13 +6,15 @@ edition = '2021'
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-winit = { path = 'winit2' }
+# winit = { path = 'winit2' }
+glutin = { path = 'glutin/glutin', default-features = false }
 rand = '0.8.5'
 hidapi = '1.4.1'
 pixels = '0.9.0'
 evc_derive = { path = 'evc_derive' }
 image = '0.24.2'
 bspline = '1.1.0'
+gl = '*'
 
 #[target.'cfg(windows)'.dependencies.windows]
 #version = '0.37.0'

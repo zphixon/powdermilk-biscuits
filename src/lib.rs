@@ -16,57 +16,66 @@ use {
 pub type Color = [u8; 3];
 
 #[derive(Default, Debug, Clone, Copy)]
-pub struct Pos {
+pub struct StrokePos {
     pub x: f64,
     pub y: f64,
 }
 
-impl From<PhysicalPosition<f64>> for Pos {
-    fn from(p: PhysicalPosition<f64>) -> Self {
-        Pos { x: p.x, y: p.y }
+impl StrokePos {
+    pub fn from_physical_position(
+        p: PhysicalPosition<f64>,
+        zoom: f64,
+        screen_in_paper: StrokePos,
+    ) -> Self {
+        let x = p.x / zoom;
+        let y = p.y / zoom;
+        StrokePos {
+            x: screen_in_paper.x + x,
+            y: screen_in_paper.y - y,
+        }
     }
 }
 
-impl From<StrokePoint> for Pos {
+impl From<StrokePoint> for StrokePos {
     fn from(p: StrokePoint) -> Self {
         p.pos
     }
 }
 
-impl Mul<Pos> for f64 {
-    type Output = Pos;
-    fn mul(self, rhs: Pos) -> Self::Output {
-        Pos {
+impl Mul<StrokePos> for f64 {
+    type Output = StrokePos;
+    fn mul(self, rhs: StrokePos) -> Self::Output {
+        StrokePos {
             x: rhs.x * self,
             y: rhs.y * self,
         }
     }
 }
 
-impl Mul<f64> for Pos {
-    type Output = Pos;
+impl Mul<f64> for StrokePos {
+    type Output = StrokePos;
     fn mul(self, rhs: f64) -> Self::Output {
-        Pos {
+        StrokePos {
             x: self.x * rhs,
             y: self.y * rhs,
         }
     }
 }
 
-impl Add for Pos {
-    type Output = Pos;
+impl Add for StrokePos {
+    type Output = StrokePos;
     fn add(self, rhs: Self) -> Self::Output {
-        Pos {
+        StrokePos {
             x: self.x + rhs.x,
             y: self.y + rhs.y,
         }
     }
 }
 
-impl Sub for Pos {
-    type Output = Pos;
+impl Sub for StrokePos {
+    type Output = StrokePos;
     fn sub(self, rhs: Self) -> Self::Output {
-        Pos {
+        StrokePos {
             x: self.x - rhs.x,
             y: self.y - rhs.y,
         }
@@ -75,7 +84,7 @@ impl Sub for Pos {
 
 #[derive(Default, Debug, Clone, Copy)]
 pub struct StrokePoint {
-    pub pos: Pos,
+    pub pos: StrokePos,
     pub pressure: f64,
 }
 
@@ -85,7 +94,7 @@ pub struct Stroke {
     pub color: Color,
     pub brush_size: f64,
     pub style: StrokeStyle,
-    pub spline: Option<BSpline<Pos, f64>>,
+    pub spline: Option<BSpline<StrokePos, f64>>,
     pub erased: bool,
 }
 
@@ -173,7 +182,7 @@ impl Default for StylusState {
 pub struct Stylus {
     pub state: StylusState,
     pub pressure: f64,
-    pub pos: Pos,
+    pub pos: StrokePos,
 }
 
 impl Stylus {
@@ -270,7 +279,7 @@ impl State {
         self.strokes.pop();
     }
 
-    pub fn update(&mut self, touch: Touch) {
+    pub fn update(&mut self, touch: Touch, zoom: f64, screen_in_paper: StrokePos) {
         let Touch {
             force,
             phase,
@@ -279,9 +288,17 @@ impl State {
             ..
         } = touch;
 
+        let pos = StrokePos::from_physical_position(location, zoom, screen_in_paper);
+        let screen_pos = graphics::ScreenPos::from_stroke(pos, zoom, screen_in_paper);
+
         let inverted_str = if inverted { " (inverted) " } else { " " };
         let location_str = format!("{:.02},{:.02}", location.x, location.y);
-        let stroke_str = format!("{location_str}{inverted_str}{:?}", self.stroke_style);
+        let position_str = format!("{:.02},{:.02}", pos.x, pos.y);
+        let screen_str = format!("{:.02},{:.02}", screen_pos.x, screen_pos.y);
+        let stroke_str = format!(
+            "{location_str} ({position_str} -> {screen_str}){inverted_str}{:?}            ",
+            self.stroke_style
+        );
 
         let pressure = match force {
             Some(Force::Normalized(force)) => force,
@@ -325,7 +342,7 @@ impl State {
             }
         };
 
-        self.stylus.pos = location.into();
+        self.stylus.pos = pos;
         self.stylus.pressure = pressure;
         self.stylus.state = state;
 
@@ -382,7 +399,14 @@ impl State {
         }
     }
 
-    pub fn draw_strokes(&mut self, frame: &mut [u8], width: usize, height: usize) {
+    pub fn draw_strokes(
+        &mut self,
+        frame: &mut [u8],
+        width: usize,
+        height: usize,
+        zoom: f64,
+        screen_in_paper: StrokePos,
+    ) {
         for stroke in self.strokes.iter_mut() {
             if !stroke.erased {
                 (match if self.use_individual_style {
@@ -395,7 +419,7 @@ impl State {
                     StrokeStyle::CirclesPressure => graphics::circles_pressure,
                     StrokeStyle::Points => graphics::points,
                     StrokeStyle::Spline => graphics::spline,
-                })(stroke, frame, width, height);
+                })(stroke, frame, width, height, zoom, screen_in_paper);
             }
         }
     }

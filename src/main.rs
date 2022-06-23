@@ -1,7 +1,10 @@
 use {
     pixels::{Pixels, SurfaceTexture},
     std::ffi::CString,
-    tablet_thing::{graphics, Pos, State, StrokeStyle},
+    tablet_thing::{
+        graphics::{self, ScreenPos},
+        State, StrokePos, StrokeStyle,
+    },
     winit::{
         dpi::PhysicalSize,
         event::{
@@ -62,9 +65,6 @@ fn new_pixels(window: &Window) -> Pixels {
 
 #[allow(unreachable_code)]
 fn main() {
-    //windows::do_stuff().unwrap();
-    //todo!();
-
     let ev = EventLoop::new();
     let window = WindowBuilder::new().build(&ev).unwrap();
     let device_str = enumerate_devices(&ev);
@@ -77,8 +77,8 @@ fn main() {
     let mut state = State::default();
     println!("stroke style {:?}", state.stroke_style);
 
-    let magic_point = Pos { x: 2.0, y: 4.0 };
-    let mut screen_in_paper = Pos { x: -2.0, y: 5.33 };
+    let magic_point = StrokePos { x: 2.0, y: 4.0 };
+    let mut screen_in_paper = StrokePos { x: -2.0, y: 5.33 };
     let mut zoom = 150.;
 
     ev.run(move |event, _, control_flow| {
@@ -165,7 +165,13 @@ fn main() {
                     let PhysicalSize { width, height } = window.inner_size();
                     let frame = pixels.get_frame();
                     graphics::clear(frame);
-                    state.draw_strokes(frame, width as usize, height as usize);
+                    state.draw_strokes(
+                        frame,
+                        width as usize,
+                        height as usize,
+                        zoom,
+                        screen_in_paper,
+                    );
 
                     image::save_buffer(&filename, frame, width, height, image::ColorType::Rgba8)
                         .expect(&format!("save {filename}"));
@@ -191,7 +197,7 @@ fn main() {
             } => {
                 cursor_visible = false;
                 window.set_cursor_visible(cursor_visible);
-                state.update(touch);
+                state.update(touch, zoom, screen_in_paper);
                 window.request_redraw();
             }
 
@@ -245,11 +251,10 @@ fn main() {
                 cursor_pos = position;
 
                 if cursor_down {
-                    let (dx, dy) = (prev_pos.x - cursor_pos.x, prev_pos.y - cursor_pos.y);
-                    let scale_dx = dx / zoom;
-                    let scale_dy = dy / zoom;
-                    screen_in_paper.x += scale_dx;
-                    screen_in_paper.y += -scale_dy;
+                    let prev = StrokePos::from_physical_position(prev_pos, zoom, screen_in_paper);
+                    let next = StrokePos::from_physical_position(cursor_pos, zoom, screen_in_paper);
+                    let diff = prev - next;
+                    screen_in_paper = screen_in_paper + diff;
                     window.request_redraw();
                 }
 
@@ -267,19 +272,14 @@ fn main() {
                 let PhysicalSize { width, height } = window.inner_size();
                 let (width, height) = (width as usize, height as usize);
 
-                state.draw_strokes(frame, width, height);
+                state.draw_strokes(frame, width, height, zoom, screen_in_paper);
 
                 if !cursor_visible {
-                    (if state.fill_brush_head {
-                        graphics::fill_circle
-                    } else {
-                        graphics::put_circle
-                    })(
+                    graphics::put_circle_absolute(
                         frame,
                         width,
                         height,
-                        state.stylus.pos.x as usize,
-                        state.stylus.pos.y as usize,
+                        ScreenPos::from_stroke(state.stylus.pos, zoom, screen_in_paper),
                         match (state.stylus.inverted(), state.stylus.down()) {
                             (true, true) => [0xfa, 0x34, 0x33],
                             (true, false) => [0x53, 0x11, 0x11],
@@ -290,15 +290,11 @@ fn main() {
                     );
                 }
 
-                let diff = magic_point - screen_in_paper;
-                let magic_x = zoom * diff.x;
-                let magic_y = zoom * -diff.y;
-                graphics::put_pixel(
+                graphics::put_pixel_absolute(
                     frame,
                     width,
                     height,
-                    magic_x as usize,
-                    magic_y as usize,
+                    ScreenPos::from_stroke(magic_point, zoom, screen_in_paper),
                     [0xff, 0x00, 0xff],
                 );
 
