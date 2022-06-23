@@ -2,3 +2,7 @@
 	path = winit2
 	url = https://github.com/zphixon/winit.git
 	ignore = untracked
+[submodule "glutin"]
+	path = glutin
+	url = https://github.com/rust-windowing/glutin.git
+	ignore = all
