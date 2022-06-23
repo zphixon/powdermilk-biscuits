@@ -6,7 +6,8 @@ use {
         dpi::PhysicalSize,
         event::{
             device::{GamepadHandle, HidId, KeyboardId, MouseEvent, MouseId},
-            Event, KeyboardInput, MouseScrollDelta, VirtualKeyCode, WindowEvent,
+            ElementState, Event, KeyboardInput, MouseButton, MouseScrollDelta, VirtualKeyCode,
+            WindowEvent,
         },
         event_loop::{ControlFlow, EventLoop},
         platform::windows::DeviceExtWindows,
@@ -70,10 +71,41 @@ fn main() {
 
     let mut pixels = new_pixels(&window);
 
+    let mut cursor_down = false;
     let mut cursor_visible = true;
     let mut cursor_pos = Default::default();
     let mut state = State::default();
     println!("stroke style {:?}", state.stroke_style);
+
+    #[derive(Clone, Copy, Debug, Default)]
+    struct P {
+        x: f64,
+        y: f64,
+    }
+
+    impl std::ops::Sub for P {
+        type Output = P;
+        fn sub(self, rhs: Self) -> Self::Output {
+            P {
+                x: self.x - rhs.x,
+                y: self.y - rhs.y,
+            }
+        }
+    }
+
+    impl std::ops::Mul<f64> for P {
+        type Output = P;
+        fn mul(self, rhs: f64) -> Self::Output {
+            P {
+                x: self.x * rhs,
+                y: self.y * rhs,
+            }
+        }
+    }
+
+    let magic_point = P { x: 2.0, y: 4.0 };
+    let mut screen_in_paper = P { x: -2.0, y: 5.33 };
+    let mut zoom = 150.;
 
     ev.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
@@ -195,16 +227,16 @@ fn main() {
             } => {
                 match delta {
                     MouseScrollDelta::LineDelta(_, y) if y.is_sign_positive() => {
-                        state.increase_brush()
+                        zoom += 1.;
                     }
                     MouseScrollDelta::PixelDelta(pos) if pos.y.is_sign_positive() => {
-                        state.increase_brush()
+                        zoom += 1.;
                     }
                     MouseScrollDelta::LineDelta(_, y) if y.is_sign_negative() => {
-                        state.decrease_brush()
+                        zoom -= 1.;
                     }
                     MouseScrollDelta::PixelDelta(pos) if pos.y.is_sign_negative() => {
-                        state.decrease_brush()
+                        zoom -= 1.;
                     }
                     _ => unreachable!(),
                 };
@@ -223,17 +255,28 @@ fn main() {
                 window.request_redraw();
             }
 
-            Event::MouseEvent(
-                _,
-                event @ (MouseEvent::MovedRelative(_, _) | MouseEvent::MovedAbsolute(_)),
-            ) => {
-                match event {
-                    MouseEvent::MovedAbsolute(new_pos) => cursor_pos = new_pos,
-                    MouseEvent::MovedRelative(x, y) => {
-                        cursor_pos.x += x;
-                        cursor_pos.y += y;
-                    }
-                    _ => unreachable!(),
+            Event::WindowEvent {
+                event: WindowEvent::MouseInput { state, button, .. },
+                ..
+            } if button == MouseButton::Left => match state {
+                ElementState::Pressed => cursor_down = true,
+                ElementState::Released => cursor_down = false,
+            },
+
+            Event::WindowEvent {
+                event: WindowEvent::CursorMoved { position, .. },
+                ..
+            } => {
+                let prev_pos = cursor_pos;
+                cursor_pos = position;
+
+                if cursor_down {
+                    let (dx, dy) = (prev_pos.x - cursor_pos.x, prev_pos.y - cursor_pos.y);
+                    let scale_dx = dx / zoom;
+                    let scale_dy = dy / zoom;
+                    screen_in_paper.x += scale_dx;
+                    screen_in_paper.y += -scale_dy;
+                    window.request_redraw();
                 }
 
                 if !cursor_visible {
@@ -272,6 +315,18 @@ fn main() {
                         state.brush_size,
                     );
                 }
+
+                let diff = magic_point - screen_in_paper;
+                let magic_x = zoom * diff.x;
+                let magic_y = zoom * -diff.y;
+                graphics::put_pixel(
+                    frame,
+                    width,
+                    height,
+                    magic_x as usize,
+                    magic_y as usize,
+                    [0xff, 0x00, 0xff],
+                );
 
                 pixels.render().unwrap();
             }

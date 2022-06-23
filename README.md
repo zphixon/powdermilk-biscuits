@@ -15,3 +15,13 @@ Uses [a fork](https://github.com/zphixon/winit) of [winit](https://github.com/ru
 - Antialiasing
 - Geometry-based rather than pixel-based rendering, includes compositing
 - Any sort of GUI
+
+## Notes
+
+Coordinate systems:
+- Screen space: Top left is (0,0), bottom right is (width,height). Includes the positions of UI elements like the pen tip.
+- Paper space: Center is (0,0). No set edges since I want an infinite canvas. Includes stroke positions, which must be translated from screen space taking into account zoom and whatnot.
+- GL(Vulkan/WGPU/?) space: Center is (0,0), absolute value of corners is (1,1).
+
+Screen space -> paper space:
+
