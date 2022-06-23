@@ -1,11 +1,11 @@
 use {
     pixels::{Pixels, SurfaceTexture},
     std::ffi::CString,
-    tablet_thing::{graphics, State, StrokeStyle},
+    tablet_thing::{graphics, Pos, State, StrokeStyle},
     winit::{
         dpi::PhysicalSize,
         event::{
-            device::{GamepadHandle, HidId, KeyboardId, MouseEvent, MouseId},
+            device::{GamepadHandle, HidId, KeyboardId, MouseId},
             ElementState, Event, KeyboardInput, MouseButton, MouseScrollDelta, VirtualKeyCode,
             WindowEvent,
         },
@@ -77,34 +77,8 @@ fn main() {
     let mut state = State::default();
     println!("stroke style {:?}", state.stroke_style);
 
-    #[derive(Clone, Copy, Debug, Default)]
-    struct P {
-        x: f64,
-        y: f64,
-    }
-
-    impl std::ops::Sub for P {
-        type Output = P;
-        fn sub(self, rhs: Self) -> Self::Output {
-            P {
-                x: self.x - rhs.x,
-                y: self.y - rhs.y,
-            }
-        }
-    }
-
-    impl std::ops::Mul<f64> for P {
-        type Output = P;
-        fn mul(self, rhs: f64) -> Self::Output {
-            P {
-                x: self.x * rhs,
-                y: self.y * rhs,
-            }
-        }
-    }
-
-    let magic_point = P { x: 2.0, y: 4.0 };
-    let mut screen_in_paper = P { x: -2.0, y: 5.33 };
+    let magic_point = Pos { x: 2.0, y: 4.0 };
+    let mut screen_in_paper = Pos { x: -2.0, y: 5.33 };
     let mut zoom = 150.;
 
     ev.run(move |event, _, control_flow| {

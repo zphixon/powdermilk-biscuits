@@ -389,8 +389,8 @@ pub fn spline(stroke: &Stroke, frame: &mut [u8], width: usize, height: usize) {
 
     while t < max {
         let point = spline.point(t);
-        let x = point.pos.x as usize;
-        let y = point.pos.y as usize;
+        let x = point.x as usize;
+        let y = point.y as usize;
 
         if x != px || y != py {
             put_pixel(frame, width, height, x, y, stroke.color);

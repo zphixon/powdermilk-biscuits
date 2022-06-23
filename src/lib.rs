@@ -1,8 +1,5 @@
 pub mod graphics;
 
-//#[cfg(windows)]
-//pub mod myrts;
-
 use {
     bspline::BSpline,
     std::{
@@ -19,74 +16,76 @@ use {
 pub type Color = [u8; 3];
 
 #[derive(Default, Debug, Clone, Copy)]
-pub struct Point {
-    pub pos: PhysicalPosition<f64>,
-    pub pressure: f64,
+pub struct Pos {
+    pub x: f64,
+    pub y: f64,
 }
 
-impl Mul<Point> for f64 {
-    type Output = Point;
-    fn mul(self, rhs: Point) -> Self::Output {
-        Point {
-            pos: PhysicalPosition {
-                x: rhs.pos.x * self,
-                y: rhs.pos.y * self,
-            },
-            // ?
-            pressure: rhs.pressure * self,
+impl From<PhysicalPosition<f64>> for Pos {
+    fn from(p: PhysicalPosition<f64>) -> Self {
+        Pos { x: p.x, y: p.y }
+    }
+}
+
+impl From<StrokePoint> for Pos {
+    fn from(p: StrokePoint) -> Self {
+        p.pos
+    }
+}
+
+impl Mul<Pos> for f64 {
+    type Output = Pos;
+    fn mul(self, rhs: Pos) -> Self::Output {
+        Pos {
+            x: rhs.x * self,
+            y: rhs.y * self,
         }
     }
 }
 
-impl Mul<f64> for Point {
-    type Output = Point;
+impl Mul<f64> for Pos {
+    type Output = Pos;
     fn mul(self, rhs: f64) -> Self::Output {
-        Point {
-            pos: PhysicalPosition {
-                x: self.pos.x * rhs,
-                y: self.pos.y * rhs,
-            },
-            // ??
-            pressure: self.pressure * rhs,
+        Pos {
+            x: self.x * rhs,
+            y: self.y * rhs,
         }
     }
 }
 
-impl Add for Point {
-    type Output = Point;
+impl Add for Pos {
+    type Output = Pos;
     fn add(self, rhs: Self) -> Self::Output {
-        Point {
-            pos: PhysicalPosition {
-                x: self.pos.x + rhs.pos.x,
-                y: self.pos.y + rhs.pos.y,
-            },
-            // ????
-            pressure: self.pressure + rhs.pressure,
+        Pos {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
         }
     }
 }
 
-impl Sub for Point {
-    type Output = Point;
+impl Sub for Pos {
+    type Output = Pos;
     fn sub(self, rhs: Self) -> Self::Output {
-        Point {
-            pos: PhysicalPosition {
-                x: self.pos.x - rhs.pos.x,
-                y: self.pos.y - rhs.pos.y,
-            },
-            // ??????
-            pressure: self.pressure - rhs.pressure,
+        Pos {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
         }
     }
+}
+
+#[derive(Default, Debug, Clone, Copy)]
+pub struct StrokePoint {
+    pub pos: Pos,
+    pub pressure: f64,
 }
 
 #[derive(Default, Debug)]
 pub struct Stroke {
-    pub points: Vec<Point>,
+    pub points: Vec<StrokePoint>,
     pub color: Color,
     pub brush_size: f64,
     pub style: StrokeStyle,
-    pub spline: Option<BSpline<Point, f64>>,
+    pub spline: Option<BSpline<Pos, f64>>,
     pub erased: bool,
 }
 
@@ -99,6 +98,7 @@ impl Stroke {
                 .into_iter()
                 .chain(self.points.iter().cloned())
                 .chain([self.points.last().cloned().unwrap(); Stroke::DEGREE])
+                .map(|point| point.into())
                 .collect::<Vec<_>>();
 
             let knots = std::iter::repeat(())
@@ -173,7 +173,7 @@ impl Default for StylusState {
 pub struct Stylus {
     pub state: StylusState,
     pub pressure: f64,
-    pub pos: PhysicalPosition<f64>,
+    pub pos: Pos,
 }
 
 impl Stylus {
@@ -325,7 +325,7 @@ impl State {
             }
         };
 
-        self.stylus.pos = location;
+        self.stylus.pos = location.into();
         self.stylus.pressure = pressure;
         self.stylus.state = state;
 
@@ -363,7 +363,7 @@ impl State {
                 TouchPhase::Moved => {
                     if let Some(stroke) = self.strokes.last_mut() {
                         if self.stylus.down() {
-                            stroke.points.push(Point {
+                            stroke.points.push(StrokePoint {
                                 pos: self.stylus.pos,
                                 pressure: self.stylus.pressure,
                             });
