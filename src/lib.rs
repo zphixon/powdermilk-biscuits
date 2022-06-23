@@ -2,14 +2,14 @@ pub mod graphics;
 
 use {
     bspline::BSpline,
+    glutin::{
+        dpi::PhysicalPosition,
+        event::{ElementState, Force, Touch, TouchPhase, VirtualKeyCode},
+    },
     std::{
         collections::HashMap,
         io::Write,
         ops::{Add, Mul, Sub},
-    },
-    winit::{
-        dpi::PhysicalPosition,
-        event::{ElementState, Force, Touch, TouchPhase, VirtualKeyCode},
     },
 };
 

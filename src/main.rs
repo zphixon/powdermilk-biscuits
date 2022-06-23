@@ -1,11 +1,5 @@
 use {
-    pixels::{Pixels, SurfaceTexture},
-    std::ffi::CString,
-    tablet_thing::{
-        graphics::{self, ScreenPos},
-        State, StrokePos, StrokeStyle,
-    },
-    winit::{
+    glutin::{
         dpi::PhysicalSize,
         event::{
             device::{GamepadHandle, HidId, KeyboardId, MouseId},
@@ -15,6 +9,12 @@ use {
         event_loop::{ControlFlow, EventLoop},
         platform::windows::DeviceExtWindows,
         window::{Window, WindowBuilder},
+    },
+    pixels::{Pixels, SurfaceTexture},
+    std::ffi::CString,
+    tablet_thing::{
+        graphics::{self, ScreenPos},
+        State, StrokePos, StrokeStyle,
     },
 };
 
