@@ -2,94 +2,13 @@ pub mod graphics;
 pub mod input;
 
 use {
+    crate::graphics::coords::{ScreenPos, StrokePos},
     bspline::BSpline,
-    glutin::{
-        dpi::PhysicalPosition,
-        event::{Force, Touch, TouchPhase},
-    },
-    std::{
-        io::Write,
-        ops::{Add, Mul, Sub},
-    },
+    glutin::event::{Force, Touch, TouchPhase},
+    std::io::Write,
 };
 
 pub type Color = [u8; 3];
-
-#[derive(Default, Debug, Clone, Copy)]
-pub struct StrokePos {
-    pub x: f64,
-    pub y: f64,
-}
-
-impl StrokePos {
-    pub fn from_physical_position(
-        p: PhysicalPosition<f64>,
-        zoom: f64,
-        screen_in_paper: StrokePos,
-    ) -> Self {
-        let x = p.x / zoom;
-        let y = p.y / zoom;
-        StrokePos {
-            x: screen_in_paper.x + x,
-            y: screen_in_paper.y - y,
-        }
-    }
-
-    pub fn from_screen_pos(p: graphics::ScreenPos, zoom: f64, screen_in_paper: StrokePos) -> Self {
-        let x = p.x as f64 / zoom;
-        let y = p.y as f64 / zoom;
-        StrokePos {
-            x: screen_in_paper.x + x,
-            y: screen_in_paper.y - y,
-        }
-    }
-}
-
-impl From<StrokePoint> for StrokePos {
-    fn from(p: StrokePoint) -> Self {
-        p.pos
-    }
-}
-
-impl Mul<StrokePos> for f64 {
-    type Output = StrokePos;
-    fn mul(self, rhs: StrokePos) -> Self::Output {
-        StrokePos {
-            x: rhs.x * self,
-            y: rhs.y * self,
-        }
-    }
-}
-
-impl Mul<f64> for StrokePos {
-    type Output = StrokePos;
-    fn mul(self, rhs: f64) -> Self::Output {
-        StrokePos {
-            x: self.x * rhs,
-            y: self.y * rhs,
-        }
-    }
-}
-
-impl Add for StrokePos {
-    type Output = StrokePos;
-    fn add(self, rhs: Self) -> Self::Output {
-        StrokePos {
-            x: self.x + rhs.x,
-            y: self.y + rhs.y,
-        }
-    }
-}
-
-impl Sub for StrokePos {
-    type Output = StrokePos;
-    fn sub(self, rhs: Self) -> Self::Output {
-        StrokePos {
-            x: self.x - rhs.x,
-            y: self.y - rhs.y,
-        }
-    }
-}
 
 #[derive(Default, Debug, Clone, Copy)]
 pub struct StrokePoint {
@@ -247,7 +166,7 @@ impl State {
         } = touch;
 
         let pos = StrokePos::from_physical_position(location, zoom, screen_in_paper);
-        let screen_pos = graphics::ScreenPos::from_stroke(pos, zoom, screen_in_paper);
+        let screen_pos = ScreenPos::from_stroke(pos, zoom, screen_in_paper);
 
         let inverted_str = if inverted { " (inverted) " } else { " " };
         let location_str = format!("{:.02},{:.02}", location.x, location.y);

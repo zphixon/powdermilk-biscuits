@@ -1,5 +1,5 @@
 use {
-    crate::graphics::ScreenPos,
+    crate::graphics::coords::ScreenPos,
     glutin::{
         dpi::PhysicalPosition,
         event::{ElementState, MouseButton, VirtualKeyCode},

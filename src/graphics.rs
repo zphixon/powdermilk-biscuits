@@ -1,43 +1,9 @@
-use {
-    crate::{Color, Stroke, StrokePos},
-    glutin::dpi::PhysicalPosition,
+pub mod coords;
+
+use crate::{
+    graphics::coords::{ScreenPos, StrokePos},
+    Color, Stroke,
 };
-
-pub struct ScreenPos {
-    pub x: isize,
-    pub y: isize,
-}
-
-impl ScreenPos {
-    #[inline]
-    pub fn from_stroke(pos: StrokePos, zoom: f64, screen_in_paper: StrokePos) -> Self {
-        let diff = pos - screen_in_paper;
-        let screen_x = zoom * diff.x;
-        let screen_y = zoom * -diff.y;
-        ScreenPos {
-            x: screen_x as isize,
-            y: screen_y as isize,
-        }
-    }
-
-    #[inline]
-    pub fn from_physical_position(pos: PhysicalPosition<f64>) -> Self {
-        ScreenPos {
-            x: pos.x as isize,
-            y: pos.y as isize,
-        }
-    }
-}
-
-impl std::ops::Sub for ScreenPos {
-    type Output = Self;
-    fn sub(self, rhs: Self) -> Self::Output {
-        ScreenPos {
-            x: self.x - rhs.x,
-            y: self.y - rhs.y,
-        }
-    }
-}
 
 #[inline]
 pub fn clear(frame: &mut [u8]) {

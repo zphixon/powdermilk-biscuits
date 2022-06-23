@@ -12,9 +12,12 @@ use {
     pixels::{Pixels, SurfaceTexture},
     std::ffi::CString,
     tablet_thing::{
-        graphics::{self, ScreenPos},
+        graphics::{
+            self,
+            coords::{ScreenPos, StrokePos},
+        },
         input::InputHandler,
-        State, StrokePos, StrokeStyle,
+        State, StrokeStyle,
     },
 };
 
