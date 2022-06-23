@@ -77,7 +77,6 @@ fn main() {
     let mut state = State::default();
     println!("stroke style {:?}", state.stroke_style);
 
-    let magic_point = StrokePos { x: 2.0, y: 4.0 };
     let mut screen_in_paper = StrokePos { x: -2.0, y: 5.33 };
     let mut zoom = 150.;
 
@@ -107,6 +106,8 @@ fn main() {
 
                 if state.just_pressed(D) {
                     println!("{device_str}");
+                    println!("zoom={zoom:.02}");
+                    println!("screen_in_paper={screen_in_paper:?}");
                 }
 
                 if state.just_pressed(F) {
@@ -205,21 +206,33 @@ fn main() {
                 event: WindowEvent::MouseWheel { delta, .. },
                 ..
             } => {
-                match delta {
-                    MouseScrollDelta::LineDelta(_, y) if y.is_sign_positive() => {
-                        zoom += 1.;
-                    }
-                    MouseScrollDelta::PixelDelta(pos) if pos.y.is_sign_positive() => {
-                        zoom += 1.;
-                    }
-                    MouseScrollDelta::LineDelta(_, y) if y.is_sign_negative() => {
-                        zoom -= 1.;
-                    }
-                    MouseScrollDelta::PixelDelta(pos) if pos.y.is_sign_negative() => {
-                        zoom -= 1.;
-                    }
+                let zoom_in = match delta {
+                    MouseScrollDelta::LineDelta(_, y) if y.is_sign_positive() => true,
+                    MouseScrollDelta::PixelDelta(pos) if pos.y.is_sign_positive() => true,
+                    MouseScrollDelta::LineDelta(_, y) if y.is_sign_negative() => false,
+                    MouseScrollDelta::PixelDelta(pos) if pos.y.is_sign_negative() => false,
                     _ => unreachable!(),
                 };
+                const ZOOM_SPEED: f64 = 3.;
+
+                let PhysicalSize { width, height } = window.inner_size();
+                let dzoom = if zoom_in { ZOOM_SPEED } else { -ZOOM_SPEED };
+                let dscreen_in_paper = if zoom_in {
+                    let x = (width as f64 / 2.) / zoom;
+                    let y = -(height as f64 / 2.) / zoom;
+                    StrokePos { x, y }
+                } else {
+                    let x = -(width as f64 / 2.) / zoom;
+                    let y = (height as f64 / 2.) / zoom;
+                    StrokePos { x, y }
+                };
+
+                zoom += dzoom;
+                let next_sip = screen_in_paper + (dscreen_in_paper * (1. / zoom));
+                if next_sip.x.is_finite() && next_sip.y.is_finite() {
+                    screen_in_paper = next_sip;
+                }
+
                 window.request_redraw();
             }
 
@@ -289,14 +302,6 @@ fn main() {
                         state.brush_size,
                     );
                 }
-
-                graphics::put_pixel_absolute(
-                    frame,
-                    width,
-                    height,
-                    ScreenPos::from_stroke(magic_point, zoom, screen_in_paper),
-                    [0xff, 0x00, 0xff],
-                );
 
                 pixels.render().unwrap();
             }
