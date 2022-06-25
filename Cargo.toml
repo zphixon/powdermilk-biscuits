@@ -13,6 +13,7 @@ bspline = '1.1.0'
 winit = { path = 'winit2' }
 vulkano = { path = 'vulkano/vulkano' }
 vulkano-win = { path = 'vulkano/vulkano-win' }
+vulkano-shaders = { path = 'vulkano/vulkano-shaders' }
 
 #[target.'cfg(windows)'.dependencies.windows]
 #version = '0.37.0'

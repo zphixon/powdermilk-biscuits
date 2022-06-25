@@ -1,5 +1,4 @@
 //use pixels::{Pixels, SurfaceTexture},
-use std::ffi::CString;
 use tablet_thing::{
     graphics::{
         self,
@@ -14,17 +13,14 @@ use vulkano::{
         Device, DeviceCreateInfo, DeviceExtensions, QueueCreateInfo,
     },
     instance::{Instance, InstanceCreateInfo},
+    swapchain::Swapchain,
 };
 use vulkano_win::VkSurfaceBuild;
 use winit::{
     dpi::PhysicalSize,
-    event::{
-        device::{GamepadHandle, HidId, KeyboardId, MouseId},
-        Event, KeyboardInput, MouseButton, MouseScrollDelta, VirtualKeyCode, WindowEvent,
-    },
+    event::{Event, KeyboardInput, MouseButton, MouseScrollDelta, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
-    platform::windows::DeviceExtWindows,
-    window::{Window, WindowBuilder},
+    window::WindowBuilder,
 };
 
 //fn new_pixels(window: &Window) -> Pixels {
@@ -72,6 +68,48 @@ fn main() {
         phy_device.properties().device_name,
         phy_device.properties().device_type,
     );
+
+    let (device, mut queues) = Device::new(
+        phy_device,
+        DeviceCreateInfo {
+            enabled_extensions: phy_device.required_extensions().union(&device_extensions),
+            queue_create_infos: vec![QueueCreateInfo::family(queue_family)],
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let queue = queues.next().unwrap();
+
+    let (mut swapchain, images) = {
+        let surface_caps = phy_device
+            .surface_capabilities(&surface, Default::default())
+            .unwrap();
+
+        let image_format = Some(
+            phy_device
+                .surface_formats(&surface, Default::default())
+                .unwrap()[0]
+                .0,
+        );
+
+        Swapchain::new(
+            device.clone(),
+            surface.clone(),
+            vulkano::swapchain::SwapchainCreateInfo {
+                min_image_count: surface_caps.min_image_count,
+                image_format,
+                image_extent: surface.window().inner_size().into(),
+                image_usage: vulkano::image::ImageUsage::color_attachment(),
+                composite_alpha: surface_caps
+                    .supported_composite_alpha
+                    .iter()
+                    .next()
+                    .unwrap(),
+                ..Default::default()
+            },
+        )
+        .unwrap()
+    };
 
     //let mut pixels = new_pixels(&window);
 
