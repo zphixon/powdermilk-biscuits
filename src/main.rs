@@ -29,45 +29,6 @@ use {
     },
 };
 
-fn print_human_info(identifier: &str) -> String {
-    let identifier_cstr = CString::new(&identifier[..identifier.len() - 1]).expect("cstr");
-    let api = hidapi::HidApi::new().unwrap();
-    let device = api.open_path(&identifier_cstr).expect("open_path");
-    let get_product_string = device.get_product_string();
-    let get_manufacturer_string = device.get_manufacturer_string();
-    let get_serial_number_string = device.get_serial_number_string();
-    format!("product: {get_product_string:?}\nmanufacturer: {get_manufacturer_string:?}\nserial number: {get_serial_number_string:?}\n")
-}
-
-fn enumerate_hid_devices<T>(ev: &EventLoop<T>) -> String {
-    let mut devices = String::new();
-    HidId::enumerate(ev).for_each(|id| {
-        let identifier = id.persistent_identifier().unwrap();
-        devices += &format!("{id:?} {identifier:?}\n");
-        devices += &print_human_info(&identifier);
-        devices += "\n";
-    });
-    KeyboardId::enumerate(ev).for_each(|id| {
-        let identifier = id.persistent_identifier().unwrap();
-        devices += &format!("{id:?} {identifier:?}\n");
-        devices += &print_human_info(&identifier);
-        devices += "\n";
-    });
-    MouseId::enumerate(ev).for_each(|id| {
-        let identifier = id.persistent_identifier().unwrap();
-        devices += &format!("{id:?} {identifier:?}\n");
-        devices += &print_human_info(&identifier);
-        devices += "\n";
-    });
-    GamepadHandle::enumerate(ev).for_each(|id| {
-        let identifier = id.persistent_identifier().unwrap();
-        devices += &format!("{id:?} {identifier:?}\n");
-        devices += &print_human_info(&identifier);
-        devices += "\n";
-    });
-    devices
-}
-
 //fn new_pixels(window: &Window) -> Pixels {
 //    let size = window.inner_size();
 //    let tex = SurfaceTexture::new(size.width, size.height, &window);
@@ -88,7 +49,6 @@ fn main() {
         .build_vk_surface(&ev, instance.clone())
         .unwrap();
 
-    let hid_device_str = enumerate_hid_devices(&ev);
     let device_extensions = DeviceExtensions {
         khr_swapchain: true,
         ..DeviceExtensions::none()
@@ -151,7 +111,6 @@ fn main() {
                 }
 
                 if input_handler.just_pressed(D) {
-                    println!("{device_str}");
                     println!("zoom={zoom:.02}");
                     println!("screen_in_paper={screen_in_paper:?}");
                 }

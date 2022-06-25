@@ -7,7 +7,6 @@ edition = '2021'
 
 [dependencies]
 rand = '0.8.5'
-hidapi = '1.4.1'
 evc_derive = { path = 'evc_derive' }
 image = '0.24.2'
 bspline = '1.1.0'
