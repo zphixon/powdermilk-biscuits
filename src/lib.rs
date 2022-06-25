@@ -168,6 +168,15 @@ impl State {
         let pos = StrokePos::from_physical_position(location, zoom, screen_in_paper);
         let screen_pos = ScreenPos::from_stroke(pos, zoom, screen_in_paper);
 
+        let pressure_str = if let Some(force) = force {
+            if phase == TouchPhase::Moved && self.stylus.down() {
+                format!("{:.02}", force.normalized())
+            } else {
+                String::from("    ")
+            }
+        } else {
+            String::from("    ")
+        };
         let inverted_str = if inverted { " (inverted) " } else { " " };
         let location_str = format!("{:.02},{:.02}", location.x, location.y);
         let position_str = format!("{:.02},{:.02}", pos.x, pos.y);
@@ -201,7 +210,7 @@ impl State {
 
             TouchPhase::Moved => {
                 if self.stylus.down() {
-                    print!("\r             {stroke_str}");
+                    print!("\r{pressure_str}         {stroke_str}");
                     std::io::stdout().flush().unwrap();
                 }
 
