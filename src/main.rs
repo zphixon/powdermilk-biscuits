@@ -1,15 +1,5 @@
 use {
-    glutin::{
-        dpi::PhysicalSize,
-        event::{
-            device::{GamepadHandle, HidId, KeyboardId, MouseId},
-            Event, KeyboardInput, MouseButton, MouseScrollDelta, VirtualKeyCode, WindowEvent,
-        },
-        event_loop::{ControlFlow, EventLoop},
-        platform::windows::DeviceExtWindows,
-        window::{Window, WindowBuilder},
-    },
-    pixels::{Pixels, SurfaceTexture},
+    //pixels::{Pixels, SurfaceTexture},
     std::ffi::CString,
     tablet_thing::{
         graphics::{
@@ -18,6 +8,24 @@ use {
         },
         input::InputHandler,
         State, StrokeStyle,
+    },
+    vulkano::{
+        device::{
+            physical::{PhysicalDevice, PhysicalDeviceType},
+            Device, DeviceCreateInfo, DeviceExtensions, QueueCreateInfo,
+        },
+        instance::{Instance, InstanceCreateInfo},
+    },
+    vulkano_win::VkSurfaceBuild,
+    winit::{
+        dpi::PhysicalSize,
+        event::{
+            device::{GamepadHandle, HidId, KeyboardId, MouseId},
+            Event, KeyboardInput, MouseButton, MouseScrollDelta, VirtualKeyCode, WindowEvent,
+        },
+        event_loop::{ControlFlow, EventLoop},
+        platform::windows::DeviceExtWindows,
+        window::{Window, WindowBuilder},
     },
 };
 
@@ -31,7 +39,7 @@ fn print_human_info(identifier: &str) -> String {
     format!("product: {get_product_string:?}\nmanufacturer: {get_manufacturer_string:?}\nserial number: {get_serial_number_string:?}\n")
 }
 
-fn enumerate_devices<T>(ev: &EventLoop<T>) -> String {
+fn enumerate_hid_devices<T>(ev: &EventLoop<T>) -> String {
     let mut devices = String::new();
     HidId::enumerate(ev).for_each(|id| {
         let identifier = id.persistent_identifier().unwrap();
@@ -60,19 +68,54 @@ fn enumerate_devices<T>(ev: &EventLoop<T>) -> String {
     devices
 }
 
-fn new_pixels(window: &Window) -> Pixels {
-    let size = window.inner_size();
-    let tex = SurfaceTexture::new(size.width, size.height, &window);
-    Pixels::new(size.width, size.height, tex).unwrap()
-}
+//fn new_pixels(window: &Window) -> Pixels {
+//    let size = window.inner_size();
+//    let tex = SurfaceTexture::new(size.width, size.height, &window);
+//    Pixels::new(size.width, size.height, tex).unwrap()
+//}
 
 #[allow(unreachable_code)]
 fn main() {
-    let ev = EventLoop::new();
-    let window = WindowBuilder::new().build(&ev).unwrap();
-    let device_str = enumerate_devices(&ev);
+    let required_extensions = vulkano_win::required_extensions();
+    let instance = Instance::new(InstanceCreateInfo {
+        enabled_extensions: required_extensions,
+        ..Default::default()
+    })
+    .unwrap();
 
-    let mut pixels = new_pixels(&window);
+    let ev = EventLoop::new();
+    let surface = WindowBuilder::new()
+        .build_vk_surface(&ev, instance.clone())
+        .unwrap();
+
+    let hid_device_str = enumerate_hid_devices(&ev);
+    let device_extensions = DeviceExtensions {
+        khr_swapchain: true,
+        ..DeviceExtensions::none()
+    };
+    let (phy_device, queue_family) = PhysicalDevice::enumerate(&instance)
+        .filter(|&d| d.supported_extensions().is_superset_of(&device_extensions))
+        .filter_map(|d| {
+            d.queue_families()
+                .find(|&q| q.supports_graphics() && q.supports_surface(&surface).unwrap_or(false))
+                .map(|q| (d, q))
+        })
+        .min_by_key(|(d, _)| match d.properties().device_type {
+            PhysicalDeviceType::DiscreteGpu => 0,
+            PhysicalDeviceType::IntegratedGpu => 1,
+            PhysicalDeviceType::VirtualGpu => 2,
+            PhysicalDeviceType::Cpu => 3,
+            PhysicalDeviceType::Other => 4,
+        })
+        .expect("no device found :(");
+
+    println!(
+        "device {} ({:?})",
+        phy_device.properties().device_name,
+        phy_device.properties().device_type,
+    );
+
+    //let mut pixels = new_pixels(&window);
 
     let mut cursor_visible = true;
     let mut input_handler = InputHandler::default();
@@ -104,7 +147,7 @@ fn main() {
 
                 if input_handler.just_pressed(C) {
                     state.clear_strokes();
-                    window.request_redraw();
+                    surface.window().request_redraw();
                 }
 
                 if input_handler.just_pressed(D) {
@@ -115,12 +158,12 @@ fn main() {
 
                 if input_handler.just_pressed(F) {
                     state.fill_brush_head = !state.fill_brush_head;
-                    window.request_redraw();
+                    surface.window().request_redraw();
                 }
 
                 if input_handler.control() && input_handler.just_pressed(Z) {
                     state.undo_stroke();
-                    window.request_redraw();
+                    surface.window().request_redraw();
                 }
 
                 if input_handler.just_pressed(Key1)
@@ -151,14 +194,14 @@ fn main() {
                             } % StrokeStyle::NUM_VARIANTS,
                         )
                     };
-                    window.request_redraw();
+                    surface.window().request_redraw();
 
                     println!("stroke style {:?}", state.stroke_style);
                 }
 
                 if input_handler.just_pressed(R) {
                     state.use_individual_style = !state.use_individual_style;
-                    window.request_redraw();
+                    surface.window().request_redraw();
                 }
 
                 if input_handler.just_pressed(S) {
@@ -229,32 +272,32 @@ fn main() {
                             .expect("image from raw");
                         image.save(&filename).expect(&format!("save {filename}"));
                     } else {
-                        let PhysicalSize { width, height } = window.inner_size();
-                        let frame = pixels.get_frame();
-                        graphics::clear(frame);
-                        state.draw_strokes(
-                            frame,
-                            width as usize,
-                            height as usize,
-                            zoom,
-                            screen_in_paper,
-                        );
+                        let PhysicalSize { width, height } = surface.window().inner_size();
+                        //let frame = pixels.get_frame();
+                        //graphics::clear(frame);
+                        //state.draw_strokes(
+                        //    frame,
+                        //    width as usize,
+                        //    height as usize,
+                        //    zoom,
+                        //    screen_in_paper,
+                        //);
 
-                        image::save_buffer(
-                            &filename,
-                            frame,
-                            width,
-                            height,
-                            image::ColorType::Rgba8,
-                        )
-                        .expect(&format!("save {filename}"));
+                        //image::save_buffer(
+                        //    &filename,
+                        //    frame,
+                        //    width,
+                        //    height,
+                        //    image::ColorType::Rgba8,
+                        //)
+                        //.expect(&format!("save {filename}"));
                     }
 
                     let next_num = num + 1;
                     std::fs::write("img/num.txt", format!("{next_num}")).expect("write num.txt");
                     println!("wrote image as {filename}");
 
-                    window.request_redraw();
+                    surface.window().request_redraw();
                 }
             }
 
@@ -270,9 +313,9 @@ fn main() {
                 ..
             } => {
                 cursor_visible = false;
-                window.set_cursor_visible(cursor_visible);
+                surface.window().set_cursor_visible(cursor_visible);
                 state.update(touch, zoom, screen_in_paper);
-                window.request_redraw();
+                surface.window().request_redraw();
             }
 
             Event::WindowEvent {
@@ -288,7 +331,7 @@ fn main() {
                 };
                 const ZOOM_SPEED: f64 = 3.;
 
-                let PhysicalSize { width, height } = window.inner_size();
+                let PhysicalSize { width, height } = surface.window().inner_size();
                 let dzoom = if zoom_in { ZOOM_SPEED } else { -ZOOM_SPEED };
                 let dscreen_in_paper = if zoom_in {
                     let x = (width as f64 / 2.) / zoom;
@@ -306,7 +349,7 @@ fn main() {
                     screen_in_paper = next_sip;
                 }
 
-                window.request_redraw();
+                surface.window().request_redraw();
             }
 
             Event::WindowEvent {
@@ -318,7 +361,7 @@ fn main() {
                     ']' => state.increase_brush(),
                     _ => unreachable!(),
                 };
-                window.request_redraw();
+                surface.window().request_redraw();
             }
 
             Event::WindowEvent {
@@ -340,50 +383,50 @@ fn main() {
                     let diff = StrokePos::from_screen_pos(prev, zoom, screen_in_paper)
                         - StrokePos::from_screen_pos(next, zoom, screen_in_paper);
                     screen_in_paper = screen_in_paper + diff;
-                    window.request_redraw();
+                    surface.window().request_redraw();
                 }
 
                 if !cursor_visible {
                     cursor_visible = true;
-                    window.set_cursor_visible(cursor_visible);
-                    window.request_redraw();
+                    surface.window().set_cursor_visible(cursor_visible);
+                    surface.window().request_redraw();
                 }
             }
 
             Event::RedrawRequested(_) => {
-                let frame = pixels.get_frame();
-                graphics::clear(frame);
+                //let frame = pixels.get_frame();
+                //graphics::clear(frame);
 
-                let PhysicalSize { width, height } = window.inner_size();
-                let (width, height) = (width as usize, height as usize);
+                //let PhysicalSize { width, height } = window.inner_size();
+                //let (width, height) = (width as usize, height as usize);
 
-                state.draw_strokes(frame, width, height, zoom, screen_in_paper);
+                //state.draw_strokes(frame, width, height, zoom, screen_in_paper);
 
-                if !cursor_visible {
-                    graphics::put_circle_absolute(
-                        frame,
-                        width,
-                        height,
-                        ScreenPos::from_stroke(state.stylus.pos, zoom, screen_in_paper),
-                        match (state.stylus.inverted(), state.stylus.down()) {
-                            (true, true) => [0xfa, 0x34, 0x33],
-                            (true, false) => [0x53, 0x11, 0x11],
-                            (false, true) => [0xff, 0xff, 0xff],
-                            (false, false) => [0x55, 0x55, 0x55],
-                        },
-                        state.brush_size,
-                    );
-                }
+                //if !cursor_visible {
+                //    graphics::put_circle_absolute(
+                //        frame,
+                //        width,
+                //        height,
+                //        ScreenPos::from_stroke(state.stylus.pos, zoom, screen_in_paper),
+                //        match (state.stylus.inverted(), state.stylus.down()) {
+                //            (true, true) => [0xfa, 0x34, 0x33],
+                //            (true, false) => [0x53, 0x11, 0x11],
+                //            (false, true) => [0xff, 0xff, 0xff],
+                //            (false, false) => [0x55, 0x55, 0x55],
+                //        },
+                //        state.brush_size,
+                //    );
+                //}
 
-                pixels.render().unwrap();
+                //pixels.render().unwrap();
             }
 
             Event::WindowEvent {
                 event: WindowEvent::Resized(_),
                 ..
             } => {
-                pixels = new_pixels(&window);
-                window.request_redraw();
+                //pixels = new_pixels(&surface.window());
+                surface.window().request_redraw();
             }
 
             _ => {}

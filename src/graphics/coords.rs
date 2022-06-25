@@ -1,6 +1,6 @@
 use {
-    glutin::dpi::PhysicalPosition,
     std::ops::{Add, Mul, Sub},
+    winit::dpi::PhysicalPosition,
 };
 
 #[derive(Default, Debug, Clone, Copy)]

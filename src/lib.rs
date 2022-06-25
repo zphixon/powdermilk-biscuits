@@ -4,8 +4,8 @@ pub mod input;
 use {
     crate::graphics::coords::{ScreenPos, StrokePos},
     bspline::BSpline,
-    glutin::event::{Force, Touch, TouchPhase},
     std::io::Write,
+    winit::event::{Force, Touch, TouchPhase},
 };
 
 pub type Color = [u8; 3];

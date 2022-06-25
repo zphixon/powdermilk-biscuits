@@ -1,10 +1,10 @@
 use {
     crate::graphics::coords::ScreenPos,
-    glutin::{
+    std::collections::HashMap,
+    winit::{
         dpi::PhysicalPosition,
         event::{ElementState, MouseButton, VirtualKeyCode},
     },
-    std::collections::HashMap,
 };
 
 #[derive(Debug, Clone, Copy)]
