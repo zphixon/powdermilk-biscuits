@@ -1,32 +1,30 @@
-use {
-    //pixels::{Pixels, SurfaceTexture},
-    std::ffi::CString,
-    tablet_thing::{
-        graphics::{
-            self,
-            coords::{ScreenPos, StrokePos},
-        },
-        input::InputHandler,
-        State, StrokeStyle,
+//use pixels::{Pixels, SurfaceTexture},
+use std::ffi::CString;
+use tablet_thing::{
+    graphics::{
+        self,
+        coords::{ScreenPos, StrokePos},
     },
-    vulkano::{
-        device::{
-            physical::{PhysicalDevice, PhysicalDeviceType},
-            Device, DeviceCreateInfo, DeviceExtensions, QueueCreateInfo,
-        },
-        instance::{Instance, InstanceCreateInfo},
+    input::InputHandler,
+    State, StrokeStyle,
+};
+use vulkano::{
+    device::{
+        physical::{PhysicalDevice, PhysicalDeviceType},
+        Device, DeviceCreateInfo, DeviceExtensions, QueueCreateInfo,
     },
-    vulkano_win::VkSurfaceBuild,
-    winit::{
-        dpi::PhysicalSize,
-        event::{
-            device::{GamepadHandle, HidId, KeyboardId, MouseId},
-            Event, KeyboardInput, MouseButton, MouseScrollDelta, VirtualKeyCode, WindowEvent,
-        },
-        event_loop::{ControlFlow, EventLoop},
-        platform::windows::DeviceExtWindows,
-        window::{Window, WindowBuilder},
+    instance::{Instance, InstanceCreateInfo},
+};
+use vulkano_win::VkSurfaceBuild;
+use winit::{
+    dpi::PhysicalSize,
+    event::{
+        device::{GamepadHandle, HidId, KeyboardId, MouseId},
+        Event, KeyboardInput, MouseButton, MouseScrollDelta, VirtualKeyCode, WindowEvent,
     },
+    event_loop::{ControlFlow, EventLoop},
+    platform::windows::DeviceExtWindows,
+    window::{Window, WindowBuilder},
 };
 
 //fn new_pixels(window: &Window) -> Pixels {

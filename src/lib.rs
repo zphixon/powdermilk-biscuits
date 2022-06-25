@@ -1,12 +1,10 @@
 pub mod graphics;
 pub mod input;
 
-use {
-    crate::graphics::coords::{ScreenPos, StrokePos},
-    bspline::BSpline,
-    std::io::Write,
-    winit::event::{Force, Touch, TouchPhase},
-};
+use crate::graphics::coords::{ScreenPos, StrokePos};
+use bspline::BSpline;
+use std::io::Write;
+use winit::event::{Force, Touch, TouchPhase};
 
 pub type Color = [u8; 3];
 
