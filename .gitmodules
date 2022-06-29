@@ -5,3 +5,4 @@
 [submodule "glutin"]
 	path = glutin
 	url = https://github.com/rust-windowing/glutin
+	ignore = all
