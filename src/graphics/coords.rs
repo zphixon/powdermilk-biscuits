@@ -9,7 +9,7 @@ pub struct ScreenPos {
 
 impl ScreenPos {
     #[inline]
-    pub fn from_stroke(pos: StrokePos, zoom: f64, screen_in_paper: StrokePos) -> Self {
+    pub fn from_stroke(pos: StrokePos, zoom: f32, screen_in_paper: StrokePos) -> Self {
         let diff = pos - screen_in_paper;
         let screen_x = zoom * diff.x;
         let screen_y = zoom * -diff.y;
@@ -40,27 +40,27 @@ impl std::ops::Sub for ScreenPos {
 
 #[derive(Default, Debug, Clone, Copy)]
 pub struct StrokePos {
-    pub x: f64,
-    pub y: f64,
+    pub x: f32,
+    pub y: f32,
 }
 
 impl StrokePos {
     pub fn from_physical_position(
         p: PhysicalPosition<f64>,
-        zoom: f64,
+        zoom: f32,
         screen_in_paper: StrokePos,
     ) -> Self {
-        let x = p.x / zoom;
-        let y = p.y / zoom;
+        let x = p.x as f32 / zoom;
+        let y = p.y as f32 / zoom;
         StrokePos {
             x: screen_in_paper.x + x,
             y: screen_in_paper.y - y,
         }
     }
 
-    pub fn from_screen_pos(p: ScreenPos, zoom: f64, screen_in_paper: StrokePos) -> Self {
-        let x = p.x as f64 / zoom;
-        let y = p.y as f64 / zoom;
+    pub fn from_screen_pos(p: ScreenPos, zoom: f32, screen_in_paper: StrokePos) -> Self {
+        let x = p.x as f32 / zoom;
+        let y = p.y as f32 / zoom;
         StrokePos {
             x: screen_in_paper.x + x,
             y: screen_in_paper.y - y,
@@ -74,7 +74,7 @@ impl From<crate::StrokePoint> for StrokePos {
     }
 }
 
-impl Mul<StrokePos> for f64 {
+impl Mul<StrokePos> for f32 {
     type Output = StrokePos;
     fn mul(self, rhs: StrokePos) -> Self::Output {
         StrokePos {
@@ -84,9 +84,9 @@ impl Mul<StrokePos> for f64 {
     }
 }
 
-impl Mul<f64> for StrokePos {
+impl Mul<f32> for StrokePos {
     type Output = StrokePos;
-    fn mul(self, rhs: f64) -> Self::Output {
+    fn mul(self, rhs: f32) -> Self::Output {
         StrokePos {
             x: self.x * rhs,
             y: self.y * rhs,

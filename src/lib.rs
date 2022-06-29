@@ -11,16 +11,16 @@ pub type Color = [u8; 3];
 #[derive(Default, Debug, Clone, Copy)]
 pub struct StrokePoint {
     pub pos: StrokePos,
-    pub pressure: f64,
+    pub pressure: f32,
 }
 
 #[derive(Default, Debug)]
 pub struct Stroke {
     pub points: Vec<StrokePoint>,
     pub color: Color,
-    pub brush_size: f64,
+    pub brush_size: f32,
     pub style: StrokeStyle,
-    pub spline: Option<BSpline<StrokePos, f64>>,
+    pub spline: Option<BSpline<StrokePos, f32>>,
     pub erased: bool,
 }
 
@@ -39,7 +39,7 @@ impl Stroke {
             let knots = std::iter::repeat(())
                 .take(points.len() + Stroke::DEGREE + 1)
                 .enumerate()
-                .map(|(i, ())| i as f64)
+                .map(|(i, ())| i as f32)
                 .collect::<Vec<_>>();
 
             self.spline = Some(BSpline::new(Stroke::DEGREE, points, knots));
@@ -88,7 +88,7 @@ impl Default for StylusState {
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Stylus {
     pub state: StylusState,
-    pub pressure: f64,
+    pub pressure: f32,
     pub pos: StrokePos,
 }
 
@@ -104,7 +104,7 @@ impl Stylus {
 
 pub struct State {
     pub stylus: Stylus,
-    pub brush_size: f64,
+    pub brush_size: f32,
     pub fill_brush_head: bool,
     pub strokes: Vec<Stroke>,
     pub stroke_style: StrokeStyle,
@@ -154,7 +154,7 @@ impl State {
         self.strokes.pop();
     }
 
-    pub fn update(&mut self, touch: Touch, zoom: f64, screen_in_paper: StrokePos) {
+    pub fn update(&mut self, touch: Touch, zoom: f32, screen_in_paper: StrokePos) {
         let Touch {
             force,
             phase,
@@ -227,7 +227,7 @@ impl State {
         };
 
         self.stylus.pos = pos;
-        self.stylus.pressure = pressure;
+        self.stylus.pressure = pressure as f32;
         self.stylus.state = state;
 
         self.handle_update(phase);
@@ -288,7 +288,7 @@ impl State {
         frame: &mut [u8],
         width: usize,
         height: usize,
-        zoom: f64,
+        zoom: f32,
         screen_in_paper: StrokePos,
     ) {
         for stroke in self.strokes.iter_mut() {

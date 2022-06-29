@@ -87,7 +87,7 @@ fn main() {
     let mut state = State::default();
     println!("stroke style {:?}", state.stroke_style);
 
-    let mut screen_in_paper = StrokePos { x: -2.0, y: 5.33 };
+    let mut screen_in_paper = StrokePos { x: 0.0, y: 0.0 };
     let mut zoom = 150.;
 
     ev.run(move |event, _, control_flow| {
@@ -179,11 +179,11 @@ fn main() {
                     // correspond to 1/-1.
 
                     if input_handler.shift() {
-                        let mut min_x = f64::INFINITY;
-                        let mut max_x = -f64::INFINITY;
-                        let mut min_y = f64::INFINITY;
-                        let mut max_y = -f64::INFINITY;
-                        let mut max_rad = -f64::INFINITY;
+                        let mut min_x = f32::INFINITY;
+                        let mut max_x = -f32::INFINITY;
+                        let mut min_y = f32::INFINITY;
+                        let mut max_y = -f32::INFINITY;
+                        let mut max_rad = -f32::INFINITY;
                         for stroke in state.strokes.iter() {
                             if stroke.style == StrokeStyle::Circles && stroke.brush_size > max_rad {
                                 max_rad = stroke.brush_size;
@@ -214,7 +214,7 @@ fn main() {
                         let width = bottom_right_screen.x + 2 * margin as isize;
                         let height = bottom_right_screen.y + 2 * margin as isize;
                         let diff = bottom_right_stroke - top_left_stroke;
-                        let zoom_overview = width as f64 / diff.x;
+                        let zoom_overview = width as f32 / diff.x;
                         let width = width.try_into().unwrap();
                         let height = height.try_into().unwrap();
 
@@ -274,17 +274,17 @@ fn main() {
                     MouseScrollDelta::PixelDelta(pos) if pos.y.is_sign_negative() => false,
                     _ => unreachable!(),
                 };
-                const ZOOM_SPEED: f64 = 3.;
+                const ZOOM_SPEED: f32 = 3.;
 
                 let PhysicalSize { width, height } = context.window().inner_size();
                 let dzoom = if zoom_in { ZOOM_SPEED } else { -ZOOM_SPEED };
                 let dscreen_in_paper = if zoom_in {
-                    let x = (width as f64 / 2.) / zoom;
-                    let y = -(height as f64 / 2.) / zoom;
+                    let x = (width as f32 / 2.) / zoom;
+                    let y = -(height as f32 / 2.) / zoom;
                     StrokePos { x, y }
                 } else {
-                    let x = -(width as f64 / 2.) / zoom;
-                    let y = (height as f64 / 2.) / zoom;
+                    let x = -(width as f32 / 2.) / zoom;
+                    let y = (height as f32 / 2.) / zoom;
                     StrokePos { x, y }
                 };
 

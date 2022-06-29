@@ -22,7 +22,7 @@ pub fn put_pixel_stroke(
     height: usize,
     pos: StrokePos,
     color: Color,
-    zoom: f64,
+    zoom: f32,
     screen_in_paper: StrokePos,
 ) {
     put_pixel_absolute(
@@ -67,8 +67,8 @@ pub fn fill_circle(
     height: usize,
     pos: StrokePos,
     color: Color,
-    radius: f64,
-    zoom: f64,
+    radius: f32,
+    zoom: f32,
     screen_in_paper: StrokePos,
 ) {
     let ScreenPos { x, y } = ScreenPos::from_stroke(pos, zoom, screen_in_paper);
@@ -146,7 +146,7 @@ pub fn fill_circle_absolute(
     height: usize,
     pos: ScreenPos,
     color: Color,
-    radius: f64,
+    radius: f32,
 ) {
     let ScreenPos { x, y } = pos;
     let x = x as isize;
@@ -223,7 +223,7 @@ pub fn put_circle_absolute(
     height: usize,
     pos: ScreenPos,
     color: Color,
-    radius: f64,
+    radius: f32,
 ) {
     let ScreenPos { x, y } = pos;
     let x = x as isize;
@@ -327,7 +327,7 @@ pub fn circles(
     frame: &mut [u8],
     width: usize,
     height: usize,
-    zoom: f64,
+    zoom: f32,
     screen_in_paper: StrokePos,
 ) {
     let mut iter = stroke.points.windows(2);
@@ -384,7 +384,7 @@ pub fn circles_pressure(
     frame: &mut [u8],
     width: usize,
     height: usize,
-    zoom: f64,
+    zoom: f32,
     screen_in_paper: StrokePos,
 ) {
     let mut iter = stroke.points.windows(2);
@@ -430,7 +430,7 @@ pub fn circles_pressure(
         ax = ax as isize;
         ay = ay as isize;
         error = dx + dy;
-        let dp = (a.pressure - b.pressure) / num_loops as f64;
+        let dp = (a.pressure - b.pressure) / num_loops as f32;
         let mut pressure = a.pressure;
         loop {
             fill_circle_absolute(
@@ -471,7 +471,7 @@ pub fn lines(
     frame: &mut [u8],
     width: usize,
     height: usize,
-    zoom: f64,
+    zoom: f32,
     screen_in_paper: StrokePos,
 ) {
     let mut iter = stroke.points.windows(2);
@@ -530,7 +530,7 @@ pub fn points(
     frame: &mut [u8],
     width: usize,
     height: usize,
-    zoom: f64,
+    zoom: f32,
     screen_in_paper: StrokePos,
 ) {
     for point in stroke.points.iter() {
@@ -551,7 +551,7 @@ pub fn spline(
     frame: &mut [u8],
     width: usize,
     height: usize,
-    zoom: f64,
+    zoom: f32,
     screen_in_paper: StrokePos,
 ) {
     if stroke.spline.is_none() {
