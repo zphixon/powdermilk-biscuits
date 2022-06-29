@@ -3,8 +3,8 @@ pub mod input;
 
 use crate::graphics::coords::{ScreenPos, StrokePos};
 use bspline::BSpline;
+use glutin::event::{Force, Touch, TouchPhase};
 use std::io::Write;
-use winit::event::{Force, Touch, TouchPhase};
 
 pub type Color = [u8; 3];
 

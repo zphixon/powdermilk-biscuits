@@ -10,10 +10,13 @@ rand = '0.8.5'
 evc_derive = { path = 'evc_derive' }
 image = '0.24.2'
 bspline = '1.1.0'
-winit = { path = 'winit2' }
-vulkano = { path = 'vulkano/vulkano' }
-vulkano-win = { path = 'vulkano/vulkano-win' }
-vulkano-shaders = { path = 'vulkano/vulkano-shaders' }
+glutin = { path = 'glutin/glutin', default-features = false }
+glow = { version = '0.11.2' }
+
+#winit = { path = 'winit2' }
+#vulkano = { path = 'vulkano/vulkano' }
+#vulkano-win = { path = 'vulkano/vulkano-win' }
+#vulkano-shaders = { path = 'vulkano/vulkano-shaders' }
 
 #[target.'cfg(windows)'.dependencies.windows]
 #version = '0.37.0'

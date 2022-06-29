@@ -1,5 +1,5 @@
+use glutin::dpi::PhysicalPosition;
 use std::ops::{Add, Mul, Sub};
-use winit::dpi::PhysicalPosition;
 
 #[derive(Default, Debug, Clone, Copy)]
 pub struct ScreenPos {
