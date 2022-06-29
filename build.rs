@@ -1,5 +1,30 @@
 use std::{io, path::PathBuf, process::Command, str};
 
+enum ShaderKind {
+    Vertex,
+    Fragment,
+}
+
+impl TryFrom<&str> for ShaderKind {
+    type Error = ();
+    fn try_from(s: &str) -> Result<Self, ()> {
+        match s {
+            "frag" | "fs" => Ok(ShaderKind::Fragment),
+            "vert" | "vs" => Ok(ShaderKind::Vertex),
+            _ => Err(()),
+        }
+    }
+}
+
+impl Into<&'static str> for ShaderKind {
+    fn into(self) -> &'static str {
+        match self {
+            ShaderKind::Vertex => "vert",
+            ShaderKind::Fragment => "frag",
+        }
+    }
+}
+
 #[derive(Debug)]
 enum BuildError {
     Io(io::Error),
@@ -20,24 +45,49 @@ impl From<str::Utf8Error> for BuildError {
 
 fn main() -> Result<(), BuildError> {
     let manifest_path = env!("CARGO_MANIFEST_DIR");
+
+    let mut target_dir = PathBuf::from(manifest_path);
+    target_dir.push("target");
+
     let mut src_shaders_path = PathBuf::from(manifest_path);
     src_shaders_path.push("src");
     src_shaders_path.push("shaders");
 
     for entry in src_shaders_path.read_dir()? {
         let entry = entry?;
-        let path = entry.path();
-        let path_as_str = path.to_str().unwrap();
-        if let Some(extension) = path.extension().map(|os_str| os_str.to_str().unwrap()) {
-            if matches!(extension, "vert" | "frag" | "vs" | "fs") {
-                let validator_output =
-                    Command::new("glslangValidator").arg(path_as_str).output()?;
-                if !validator_output.status.success() {
-                    let mut message = String::from("stdout:\n");
-                    message.push_str(str::from_utf8(&validator_output.stdout)?);
-                    if !validator_output.stderr.is_empty() {
+        let source_path = entry.path();
+        let source_path_str = source_path.to_str().unwrap();
+        if let Some(extension) = source_path
+            .extension()
+            .map(|os_str| os_str.to_str().unwrap())
+        {
+            if let Ok(kind) = ShaderKind::try_from(extension) {
+                let binary_filename = format!(
+                    "{}_{}.spv",
+                    source_path.file_stem().unwrap().to_str().unwrap(),
+                    <ShaderKind as Into<&'static str>>::into(kind),
+                );
+                let mut binary_path = target_dir.clone();
+                binary_path.push(binary_filename);
+
+                let output = Command::new("glslangValidator")
+                    .arg("-G")
+                    .arg("--target-env")
+                    .arg("opengl")
+                    .arg(source_path_str)
+                    .arg("-o")
+                    .arg(binary_path.to_str().unwrap())
+                    .output()?;
+
+                if !output.status.success() {
+                    let mut message = String::new();
+                    if !output.stdout.is_empty() {
+                        message.push_str("stdout:\n");
+                        message.push_str(str::from_utf8(&output.stdout)?);
+                    }
+                    if !output.stderr.is_empty() {
                         message.push_str("stderr:\n");
-                        message.push_str(str::from_utf8(&validator_output.stderr)?);
+                        message.push_str(str::from_utf8(&output.stderr)?);
                     }
                     panic!("{message}");
                 }

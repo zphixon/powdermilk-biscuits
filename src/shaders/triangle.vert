@@ -1,4 +1,4 @@
-#version 410
+#version 430
 
 const vec2 verts[3] = vec2[3](
   vec2(0.0f, 0.5f),
@@ -6,11 +6,11 @@ const vec2 verts[3] = vec2[3](
   vec2(0.5f, -0.5f)
 );
 
-uniform vec2 screenPos;
-uniform float zoomX;
-uniform float zoomY;
+layout (location=0) uniform vec2 screenPos;
+layout (location=1) uniform float zoomX;
+layout (location=2) uniform float zoomY;
 
-out vec2 vertex;
+layout (location=0) out vec2 vertex;
 
 void main() {
   vertex = verts[gl_VertexID];

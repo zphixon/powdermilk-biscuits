@@ -23,6 +23,7 @@ fn main() {
         let context = unsafe {
             ContextBuilder::new()
                 .with_vsync(true)
+                .with_gl(glutin::GlRequest::Latest)
                 .build_windowed(builder, &event_loop)
                 .unwrap()
                 .make_current()
