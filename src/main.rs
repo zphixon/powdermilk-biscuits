@@ -65,9 +65,18 @@ fn main() {
 
         gl.detach_shader(program, vs);
         gl.delete_shader(vs);
+        gl.detach_shader(program, fs);
         gl.delete_shader(fs);
 
         gl.use_program(Some(program));
+
+        let screen_pos_uniform = gl.get_uniform_location(program, "screenPos").unwrap();
+        let zoom_x_uniform = gl.get_uniform_location(program, "zoomX").unwrap();
+        let zoom_y_uniform = gl.get_uniform_location(program, "zoomY").unwrap();
+        gl.uniform_2_f32(Some(&screen_pos_uniform), 0.0, 0.0);
+        gl.uniform_1_f32(Some(&zoom_x_uniform), 1.0);
+        gl.uniform_1_f32(Some(&zoom_y_uniform), -1.0);
+
         gl.clear_color(0.1, 0.2, 0.3, 1.0);
     };
 
