@@ -1,8 +1,10 @@
+use glow::{Context, HasContext};
 use glutin::{
     dpi::PhysicalSize,
     event::{Event, KeyboardInput, MouseButton, MouseScrollDelta, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
+    ContextBuilder,
 };
 use tablet_thing::{
     graphics::{
@@ -15,8 +17,59 @@ use tablet_thing::{
 
 #[allow(unreachable_code)]
 fn main() {
-    let ev = EventLoop::new();
-    let window = WindowBuilder::new().build(&ev).unwrap();
+    let (gl, context, ev) = {
+        let event_loop = EventLoop::new();
+        let builder = WindowBuilder::new().with_title("hi! <3");
+        let context = unsafe {
+            ContextBuilder::new()
+                .with_vsync(true)
+                .build_windowed(builder, &event_loop)
+                .unwrap()
+                .make_current()
+                .unwrap()
+        };
+        let gl = unsafe {
+            Context::from_loader_function(|name| context.get_proc_address(name) as *const _)
+        };
+
+        (gl, context, event_loop)
+    };
+
+    unsafe {
+        let va = gl.create_vertex_array().expect("create vertex array");
+        gl.bind_vertex_array(Some(va));
+        let program = gl.create_program().expect("create program");
+        let (vs_source, fs_source) = (
+            include_str!("shaders/triangle.vert"),
+            include_str!("shaders/triangle.frag"),
+        );
+
+        let vs = gl
+            .create_shader(glow::VERTEX_SHADER)
+            .expect("create shader");
+        gl.shader_source(vs, vs_source);
+        gl.compile_shader(vs);
+        assert!(gl.get_shader_compile_status(vs));
+        gl.attach_shader(program, vs);
+
+        let fs = gl
+            .create_shader(glow::FRAGMENT_SHADER)
+            .expect("create shader");
+        gl.shader_source(fs, fs_source);
+        gl.compile_shader(fs);
+        assert!(gl.get_shader_compile_status(fs));
+
+        gl.attach_shader(program, fs);
+        gl.link_program(program);
+        assert!(gl.get_program_link_status(program));
+
+        gl.detach_shader(program, vs);
+        gl.delete_shader(vs);
+        gl.delete_shader(fs);
+
+        gl.use_program(Some(program));
+        gl.clear_color(0.1, 0.2, 0.3, 1.0);
+    };
 
     let mut cursor_visible = true;
     let mut input_handler = InputHandler::default();
@@ -48,7 +101,7 @@ fn main() {
 
                 if input_handler.just_pressed(C) {
                     state.clear_strokes();
-                    window.request_redraw();
+                    context.window().request_redraw();
                 }
 
                 if input_handler.just_pressed(D) {
@@ -58,12 +111,12 @@ fn main() {
 
                 if input_handler.just_pressed(F) {
                     state.fill_brush_head = !state.fill_brush_head;
-                    window.request_redraw();
+                    context.window().request_redraw();
                 }
 
                 if input_handler.control() && input_handler.just_pressed(Z) {
                     state.undo_stroke();
-                    window.request_redraw();
+                    context.window().request_redraw();
                 }
 
                 if input_handler.just_pressed(Key1)
@@ -94,14 +147,14 @@ fn main() {
                             } % StrokeStyle::NUM_VARIANTS,
                         )
                     };
-                    window.request_redraw();
+                    context.window().request_redraw();
 
                     println!("stroke style {:?}", state.stroke_style);
                 }
 
                 if input_handler.just_pressed(R) {
                     state.use_individual_style = !state.use_individual_style;
-                    window.request_redraw();
+                    context.window().request_redraw();
                 }
 
                 if input_handler.just_pressed(S) {
@@ -179,7 +232,7 @@ fn main() {
                     std::fs::write("img/num.txt", format!("{next_num}")).expect("write num.txt");
                     println!("wrote image as {filename}");
 
-                    window.request_redraw();
+                    context.window().request_redraw();
                 }
             }
 
@@ -195,9 +248,9 @@ fn main() {
                 ..
             } => {
                 cursor_visible = false;
-                window.set_cursor_visible(cursor_visible);
+                context.window().set_cursor_visible(cursor_visible);
                 state.update(touch, zoom, screen_in_paper);
-                window.request_redraw();
+                context.window().request_redraw();
             }
 
             Event::WindowEvent {
@@ -213,7 +266,7 @@ fn main() {
                 };
                 const ZOOM_SPEED: f64 = 3.;
 
-                let PhysicalSize { width, height } = window.inner_size();
+                let PhysicalSize { width, height } = context.window().inner_size();
                 let dzoom = if zoom_in { ZOOM_SPEED } else { -ZOOM_SPEED };
                 let dscreen_in_paper = if zoom_in {
                     let x = (width as f64 / 2.) / zoom;
@@ -231,7 +284,7 @@ fn main() {
                     screen_in_paper = next_sip;
                 }
 
-                window.request_redraw();
+                context.window().request_redraw();
             }
 
             Event::WindowEvent {
@@ -243,7 +296,7 @@ fn main() {
                     ']' => state.increase_brush(),
                     _ => unreachable!(),
                 };
-                window.request_redraw();
+                context.window().request_redraw();
             }
 
             Event::WindowEvent {
@@ -265,25 +318,29 @@ fn main() {
                     let diff = StrokePos::from_screen_pos(prev, zoom, screen_in_paper)
                         - StrokePos::from_screen_pos(next, zoom, screen_in_paper);
                     screen_in_paper = screen_in_paper + diff;
-                    window.request_redraw();
+                    context.window().request_redraw();
                 }
 
                 if !cursor_visible {
                     cursor_visible = true;
-                    window.set_cursor_visible(cursor_visible);
-                    window.request_redraw();
+                    context.window().set_cursor_visible(cursor_visible);
+                    context.window().request_redraw();
                 }
             }
 
             Event::RedrawRequested(_) => {
-                // TODO
+                unsafe {
+                    gl.clear(glow::COLOR_BUFFER_BIT);
+                    gl.draw_arrays(glow::TRIANGLES, 0, 3);
+                }
+                context.swap_buffers().unwrap();
             }
 
             Event::WindowEvent {
-                event: WindowEvent::Resized(_),
+                event: WindowEvent::Resized(size),
                 ..
             } => {
-                window.request_redraw();
+                context.resize(size);
             }
 
             _ => {}
