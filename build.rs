@@ -1,4 +1,9 @@
-use std::{io, path::PathBuf, process::Command, str};
+use std::{
+    io,
+    path::PathBuf,
+    process::{Command, Output},
+    str,
+};
 
 enum ShaderKind {
     Vertex,
@@ -43,6 +48,19 @@ impl From<str::Utf8Error> for BuildError {
     }
 }
 
+fn print_message(output: Output) -> Result<(), BuildError> {
+    let mut message = String::new();
+    if !output.stdout.is_empty() {
+        message.push_str("stdout:\n");
+        message.push_str(str::from_utf8(&output.stdout)?);
+    }
+    if !output.stderr.is_empty() {
+        message.push_str("stderr:\n");
+        message.push_str(str::from_utf8(&output.stderr)?);
+    }
+    panic!("{message}");
+}
+
 fn main() -> Result<(), BuildError> {
     let manifest_path = env!("CARGO_MANIFEST_DIR");
 
@@ -62,34 +80,35 @@ fn main() -> Result<(), BuildError> {
             .map(|os_str| os_str.to_str().unwrap())
         {
             if let Ok(kind) = ShaderKind::try_from(extension) {
-                let binary_filename = format!(
-                    "{}_{}.spv",
-                    source_path.file_stem().unwrap().to_str().unwrap(),
-                    <ShaderKind as Into<&'static str>>::into(kind),
-                );
-                let mut binary_path = target_dir.clone();
-                binary_path.push(binary_filename);
+                if cfg!(feature = "output-spirv") {
+                    let binary_filename = format!(
+                        "{}_{}.spv",
+                        source_path.file_stem().unwrap().to_str().unwrap(),
+                        <ShaderKind as Into<&'static str>>::into(kind),
+                    );
+                    let mut binary_path = target_dir.clone();
+                    binary_path.push(binary_filename);
 
-                let output = Command::new("glslangValidator")
-                    .arg("-G")
-                    .arg("--target-env")
-                    .arg("opengl")
-                    .arg(source_path_str)
-                    .arg("-o")
-                    .arg(binary_path.to_str().unwrap())
-                    .output()?;
+                    let output = Command::new("glslangValidator")
+                        .arg("-G")
+                        .arg("--target-env")
+                        .arg("opengl")
+                        .arg(source_path_str)
+                        .arg("-o")
+                        .arg(binary_path.to_str().unwrap())
+                        .output()?;
 
-                if !output.status.success() {
-                    let mut message = String::new();
-                    if !output.stdout.is_empty() {
-                        message.push_str("stdout:\n");
-                        message.push_str(str::from_utf8(&output.stdout)?);
+                    if !output.status.success() {
+                        print_message(output)?;
                     }
-                    if !output.stderr.is_empty() {
-                        message.push_str("stderr:\n");
-                        message.push_str(str::from_utf8(&output.stderr)?);
+                } else {
+                    let output = Command::new("glslangValidator")
+                        .arg(source_path_str)
+                        .output()?;
+
+                    if !output.status.success() {
+                        print_message(output)?;
                     }
-                    panic!("{message}");
                 }
             }
         }
