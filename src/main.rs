@@ -1,3 +1,5 @@
+use std::mem::size_of;
+
 use glow::{Context, HasContext};
 use glutin::{
     dpi::PhysicalSize,
@@ -36,13 +38,15 @@ fn main() {
         (gl, context, event_loop)
     };
 
+    let (screen_pos_uniform, zoom_x_uniform, zoom_y_uniform);
+
     unsafe {
         let va = gl.create_vertex_array().expect("create vertex array");
         gl.bind_vertex_array(Some(va));
         let program = gl.create_program().expect("create program");
         let (vs_source, fs_source) = (
-            include_str!("shaders/triangle.vert"),
-            include_str!("shaders/triangle.frag"),
+            include_str!("shaders/points.vert"),
+            include_str!("shaders/points.frag"),
         );
 
         let vs = gl
@@ -71,14 +75,27 @@ fn main() {
 
         gl.use_program(Some(program));
 
-        let screen_pos_uniform = gl.get_uniform_location(program, "screenPos").unwrap();
-        let zoom_x_uniform = gl.get_uniform_location(program, "zoomX").unwrap();
-        let zoom_y_uniform = gl.get_uniform_location(program, "zoomY").unwrap();
+        screen_pos_uniform = gl.get_uniform_location(program, "screenPos").unwrap();
+        zoom_x_uniform = gl.get_uniform_location(program, "zoomX").unwrap();
+        zoom_y_uniform = gl.get_uniform_location(program, "zoomY").unwrap();
         gl.uniform_2_f32(Some(&screen_pos_uniform), 0.0, 0.0);
-        gl.uniform_1_f32(Some(&zoom_x_uniform), 1.0);
-        gl.uniform_1_f32(Some(&zoom_y_uniform), -1.0);
+        gl.uniform_1_f32(Some(&zoom_x_uniform), 150.0);
+        gl.uniform_1_f32(Some(&zoom_y_uniform), -150.0);
 
-        gl.clear_color(0.1, 0.2, 0.3, 1.0);
+        //let verts: [f32; 6] = [0.0, 0.5, -0.5, -0.5, 0.5, -0.5];
+        //let bytes =
+        //    std::slice::from_raw_parts(verts.as_ptr() as *const u8, verts.len() * size_of::<f32>());
+
+        //let vbo = gl.create_buffer().unwrap();
+        //gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
+        //gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, bytes, glow::STATIC_DRAW);
+
+        //let vao = gl.create_vertex_array().unwrap();
+        //gl.bind_vertex_array(Some(vao));
+        //gl.enable_vertex_attrib_array(0);
+        //gl.vertex_attrib_pointer_f32(0, 2, glow::FLOAT, false, size_of::<f32>() as i32, 0);
+
+        //gl.clear_color(0.1, 0.2, 0.3, 1.0);
     };
 
     let mut cursor_visible = true;
@@ -292,6 +309,10 @@ fn main() {
                 let next_sip = screen_in_paper + (dscreen_in_paper * (1. / zoom));
                 if next_sip.x.is_finite() && next_sip.y.is_finite() {
                     screen_in_paper = next_sip;
+                    unsafe {
+                        gl.uniform_1_f32(Some(&zoom_x_uniform), dscreen_in_paper.x * (1. / zoom));
+                        gl.uniform_1_f32(Some(&zoom_y_uniform), dscreen_in_paper.y * (1. / zoom));
+                    }
                 }
 
                 context.window().request_redraw();
@@ -328,6 +349,14 @@ fn main() {
                     let diff = StrokePos::from_screen_pos(prev, zoom, screen_in_paper)
                         - StrokePos::from_screen_pos(next, zoom, screen_in_paper);
                     screen_in_paper = screen_in_paper + diff;
+
+                    unsafe {
+                        gl.uniform_2_f32(
+                            Some(&screen_pos_uniform),
+                            screen_in_paper.x,
+                            screen_in_paper.y,
+                        );
+                    }
                     context.window().request_redraw();
                 }
 
@@ -340,8 +369,57 @@ fn main() {
 
             Event::RedrawRequested(_) => {
                 unsafe {
+                    let vbo = gl.create_buffer().unwrap();
+                    gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
+
+                    let points = state
+                        .strokes
+                        .iter()
+                        .map(|stroke| {
+                            stroke
+                                .points
+                                .iter()
+                                .map(|point| [point.pos.x, point.pos.y, point.pressure])
+                                .flatten()
+                        })
+                        .flatten()
+                        .collect::<Vec<f32>>();
+
+                    let bytes = std::slice::from_raw_parts(
+                        points.as_ptr() as *const u8,
+                        points.len() * size_of::<f32>(),
+                    );
+
+                    gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, &bytes, glow::STATIC_DRAW);
+
+                    let vao = gl.create_vertex_array().unwrap();
+                    gl.bind_vertex_array(Some(vao));
+                    gl.enable_vertex_attrib_array(0);
+                    gl.vertex_attrib_pointer_f32(
+                        0,
+                        2,
+                        glow::FLOAT,
+                        false,
+                        size_of::<f32>() as i32 * 3,
+                        0,
+                    );
+                    gl.vertex_attrib_pointer_f32(
+                        1,
+                        1,
+                        glow::FLOAT,
+                        false,
+                        size_of::<f32>() as i32 * 3,
+                        2,
+                    );
+
+                    if state.stylus.inverted() {
+                        gl.clear_color(1.0, 0.65, 0.65, 1.0);
+                    } else {
+                        gl.clear_color(0.65, 1.0, 0.75, 1.0);
+                    }
                     gl.clear(glow::COLOR_BUFFER_BIT);
-                    gl.draw_arrays(glow::TRIANGLES, 0, 3);
+
+                    gl.draw_arrays(glow::POINTS, 0, points.len() as i32);
                 }
                 context.swap_buffers().unwrap();
             }
