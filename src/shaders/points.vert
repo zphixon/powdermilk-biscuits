@@ -101,6 +101,7 @@ void main() {
     );
     fragPos = pos;
     gl_Position = vec4(pos, 0.0, 1.0);
+    gl_PointSize = verts[gl_VertexID].z * 20;
   }
   fragPressure = verts[gl_VertexID].z;
 }

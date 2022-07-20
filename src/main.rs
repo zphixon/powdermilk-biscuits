@@ -9,7 +9,7 @@ use glutin::{
     ContextBuilder,
 };
 use tablet_thing::{
-    graphics::coords::{GlPos, PixelPos, StrokePos},
+    graphics::coords::{GlPos, StrokePos},
     input::InputHandler,
     State, StrokeStyle,
 };
@@ -86,6 +86,7 @@ fn main() {
             height as f32 / width as f32,
         );
         gl.uniform_1_f32(Some(&draw_origin_uniform), 0.0);
+        gl.enable(glow::VERTEX_PROGRAM_POINT_SIZE);
 
         //gl.clear_color(0.1, 0.2, 0.3, 1.0);
     };
@@ -212,11 +213,17 @@ fn main() {
                     MouseScrollDelta::PixelDelta(pos) if pos.y.is_sign_negative() => false,
                     _ => unreachable!(),
                 };
-                const ZOOM_SPEED: f32 = 3.;
+                const ZOOM_SPEED: f32 = 0.25;
 
-                let PhysicalSize { width, height } = context.window().inner_size();
+                //let PhysicalSize { width, height } = context.window().inner_size();
                 let dzoom = if zoom_in { ZOOM_SPEED } else { -ZOOM_SPEED };
-                println!("{dzoom}");
+
+                zoom += dzoom;
+                zoom = zoom.clamp(0.01, 5.0);
+
+                unsafe {
+                    gl.uniform_1_f32(Some(&zoom_uniform), zoom);
+                }
 
                 //zoom += dzoom;
                 //let next_sip = sip + (dsip * (1. / zoom));
