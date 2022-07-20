@@ -155,7 +155,7 @@ impl State {
         self.strokes.pop();
     }
 
-    pub fn update(&mut self, sip: StrokePos, zoom: f32, width: u32, height: u32, touch: Touch) {
+    pub fn update(&mut self, gis: StrokePos, zoom: f32, width: u32, height: u32, touch: Touch) {
         let Touch {
             force,
             phase,
@@ -166,7 +166,7 @@ impl State {
 
         let pixel_pos = PixelPos::from_physical_position(location);
         let gl_pos = GlPos::from_pixel(width, height, pixel_pos);
-        let pos = StrokePos::from_gl(sip, zoom, gl_pos);
+        let pos = StrokePos::from_gl(gis, zoom, gl_pos);
 
         let pressure_str = if let Some(force) = force {
             if phase == TouchPhase::Moved && self.stylus.down() {
@@ -291,7 +291,7 @@ impl State {
         width: usize,
         height: usize,
         zoom: f32,
-        sip: StrokePos,
+        gis: StrokePos,
     ) {
         for stroke in self.strokes.iter_mut() {
             if !stroke.erased {
@@ -305,7 +305,7 @@ impl State {
                     StrokeStyle::CirclesPressure => graphics::circles_pressure,
                     StrokeStyle::Points => graphics::points,
                     StrokeStyle::Spline => graphics::spline,
-                })(stroke, frame, width, height, zoom, sip);
+                })(stroke, frame, width, height, zoom, gis);
             }
         }
     }

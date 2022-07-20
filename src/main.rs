@@ -220,7 +220,7 @@ fn main() {
 
                 let dzoom = if zoom_in { ZOOM_SPEED } else { -ZOOM_SPEED };
                 zoom += dzoom;
-                zoom = zoom.clamp(1.0, 500.0);
+                zoom = zoom.clamp(0.01, 500.0);
 
                 context.window().request_redraw();
             }
@@ -283,29 +283,29 @@ fn main() {
 
             Event::RedrawRequested(_) => {
                 unsafe {
-                    //let points = state
-                    //    .strokes
-                    //    .iter()
-                    //    .map(|stroke| {
-                    //        stroke
-                    //            .points
-                    //            .iter()
-                    //            .map(|point| [point.pos.x, point.pos.y, point.pressure])
-                    //            .flatten()
-                    //    })
-                    //    .flatten()
-                    //    .collect::<Vec<f32>>();
+                    let points = state
+                        .strokes
+                        .iter()
+                        .map(|stroke| {
+                            stroke
+                                .points
+                                .iter()
+                                .map(|point| [point.pos.x, point.pos.y, point.pressure])
+                                .flatten()
+                        })
+                        .flatten()
+                        .collect::<Vec<f32>>();
 
-                    //let bytes = std::slice::from_raw_parts(
-                    //    points.as_ptr() as *const u8,
-                    //    points.len() * size_of::<f32>(),
-                    //);
-
-                    let points: &[f32] = &[-2., -2., 1., 0., 2., 1., 2., -2., 1.];
                     let bytes = std::slice::from_raw_parts(
                         points.as_ptr() as *const u8,
                         points.len() * size_of::<f32>(),
                     );
+
+                    //let points: &[f32] = &[-2., -2., 1., 0., 2., 1., 2., -2., 1.];
+                    //let bytes = std::slice::from_raw_parts(
+                    //    points.as_ptr() as *const u8,
+                    //    points.len() * size_of::<f32>(),
+                    //);
 
                     let vbo = gl.create_buffer().unwrap();
                     gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
@@ -362,7 +362,7 @@ fn main() {
                         &proj.to_cols_array(),
                     );
 
-                    gl.draw_arrays(glow::TRIANGLES, 0, 3);
+                    gl.draw_arrays(glow::POINTS, 0, (points.len() / 3) as i32);
                 }
                 context.swap_buffers().unwrap();
             }
