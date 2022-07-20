@@ -9,10 +9,7 @@ use glutin::{
     ContextBuilder,
 };
 use tablet_thing::{
-    graphics::{
-        self,
-        coords::{ScreenPos, StrokePos},
-    },
+    graphics::coords::{GlPos, PixelPos, StrokePos},
     input::InputHandler,
     State, StrokeStyle,
 };
@@ -38,7 +35,7 @@ fn main() {
         (gl, context, event_loop)
     };
 
-    let (screen_pos_uniform, zoom_x_uniform, zoom_y_uniform);
+    let (sip_uniform, zoom_uniform, height_over_width_uniform, draw_origin_uniform);
 
     unsafe {
         let va = gl.create_vertex_array().expect("create vertex array");
@@ -66,7 +63,9 @@ fn main() {
 
         gl.attach_shader(program, fs);
         gl.link_program(program);
-        assert!(gl.get_program_link_status(program));
+        if !gl.get_program_link_status(program) {
+            panic!("{}", gl.get_program_info_log(program));
+        }
 
         gl.detach_shader(program, vs);
         gl.delete_shader(vs);
@@ -75,25 +74,18 @@ fn main() {
 
         gl.use_program(Some(program));
 
-        screen_pos_uniform = gl.get_uniform_location(program, "screenPos").unwrap();
-        zoom_x_uniform = gl.get_uniform_location(program, "zoomX").unwrap();
-        zoom_y_uniform = gl.get_uniform_location(program, "zoomY").unwrap();
-        gl.uniform_2_f32(Some(&screen_pos_uniform), 0.0, 0.0);
-        gl.uniform_1_f32(Some(&zoom_x_uniform), 150.0);
-        gl.uniform_1_f32(Some(&zoom_y_uniform), -150.0);
-
-        //let verts: [f32; 6] = [0.0, 0.5, -0.5, -0.5, 0.5, -0.5];
-        //let bytes =
-        //    std::slice::from_raw_parts(verts.as_ptr() as *const u8, verts.len() * size_of::<f32>());
-
-        //let vbo = gl.create_buffer().unwrap();
-        //gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
-        //gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, bytes, glow::STATIC_DRAW);
-
-        //let vao = gl.create_vertex_array().unwrap();
-        //gl.bind_vertex_array(Some(vao));
-        //gl.enable_vertex_attrib_array(0);
-        //gl.vertex_attrib_pointer_f32(0, 2, glow::FLOAT, false, size_of::<f32>() as i32, 0);
+        let PhysicalSize { width, height } = context.window().inner_size();
+        sip_uniform = gl.get_uniform_location(program, "sip").unwrap();
+        zoom_uniform = gl.get_uniform_location(program, "zoom").unwrap();
+        height_over_width_uniform = gl.get_uniform_location(program, "heightOverWidth").unwrap();
+        draw_origin_uniform = gl.get_uniform_location(program, "drawOrigin").unwrap();
+        gl.uniform_2_f32(Some(&sip_uniform), 0.0, 0.0);
+        gl.uniform_1_f32(Some(&zoom_uniform), 1.0);
+        gl.uniform_1_f32(
+            Some(&height_over_width_uniform),
+            height as f32 / width as f32,
+        );
+        gl.uniform_1_f32(Some(&draw_origin_uniform), 0.0);
 
         //gl.clear_color(0.1, 0.2, 0.3, 1.0);
     };
@@ -104,8 +96,8 @@ fn main() {
     let mut state = State::default();
     println!("stroke style {:?}", state.stroke_style);
 
-    let mut screen_in_paper = StrokePos { x: 0.0, y: 0.0 };
-    let mut zoom = 150.;
+    let mut sip = StrokePos { x: 0.0, y: 0.0 };
+    let mut zoom = 1.;
 
     ev.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
@@ -132,8 +124,14 @@ fn main() {
                 }
 
                 if input_handler.just_pressed(D) {
+                    for stroke in state.strokes.iter() {
+                        println!("stroke");
+                        for point in stroke.points.iter() {
+                            println!("{}, {}, {}", point.pos.x, point.pos.y, point.pressure);
+                        }
+                    }
                     println!("zoom={zoom:.02}");
-                    println!("screen_in_paper={screen_in_paper:?}");
+                    println!("sip={sip:?}");
                 }
 
                 if input_handler.just_pressed(F) {
@@ -183,84 +181,6 @@ fn main() {
                     state.use_individual_style = !state.use_individual_style;
                     context.window().request_redraw();
                 }
-
-                if input_handler.just_pressed(S) {
-                    let num_string = std::fs::read_to_string("img/num.txt").expect("read num.txt");
-                    let num = num_string.trim().parse::<usize>().expect("parse num.txt");
-                    let filename = format!("img/strokes{num}.png");
-
-                    // when we render with a real graphics library, we'll compute the geometry of
-                    // each stroke and just render it like a normal person. when we want the full
-                    // overview like what we're trying to do here we'll render into an image
-                    // target, mapping each sample so that the far bounds of the stroke space
-                    // correspond to 1/-1.
-
-                    if input_handler.shift() {
-                        let mut min_x = f32::INFINITY;
-                        let mut max_x = -f32::INFINITY;
-                        let mut min_y = f32::INFINITY;
-                        let mut max_y = -f32::INFINITY;
-                        let mut max_rad = -f32::INFINITY;
-                        for stroke in state.strokes.iter() {
-                            if stroke.style == StrokeStyle::Circles && stroke.brush_size > max_rad {
-                                max_rad = stroke.brush_size;
-                            }
-
-                            for point in stroke.points.iter() {
-                                if point.pos.x > max_x {
-                                    max_x = point.pos.x;
-                                }
-                                if point.pos.x < min_x {
-                                    min_x = point.pos.x;
-                                }
-                                if point.pos.y > max_y {
-                                    max_y = point.pos.y;
-                                }
-                                if point.pos.y < min_y {
-                                    min_y = point.pos.y;
-                                }
-                            }
-                        }
-
-                        let margin = 20. + max_rad;
-
-                        let top_left_stroke = StrokePos { x: min_x, y: max_y };
-                        let bottom_right_stroke = StrokePos { x: max_x, y: min_y };
-                        let bottom_right_screen =
-                            ScreenPos::from_stroke(bottom_right_stroke, 150., top_left_stroke);
-                        let width = bottom_right_screen.x + 2 * margin as isize;
-                        let height = bottom_right_screen.y + 2 * margin as isize;
-                        let diff = bottom_right_stroke - top_left_stroke;
-                        let zoom_overview = width as f32 / diff.x;
-                        let width = width.try_into().unwrap();
-                        let height = height.try_into().unwrap();
-
-                        let image = image::RgbaImage::new(width, height);
-
-                        let mut container = image.into_raw();
-
-                        graphics::clear(container.as_mut_slice());
-                        state.draw_strokes(
-                            container.as_mut_slice(),
-                            width as usize,
-                            height as usize,
-                            zoom_overview,
-                            top_left_stroke,
-                        );
-
-                        let image = image::RgbaImage::from_raw(width, height, container)
-                            .expect("image from raw");
-                        image.save(&filename).expect(&format!("save {filename}"));
-                    } else {
-                        // let PhysicalSize { width, height } = window.inner_size();
-                    }
-
-                    let next_num = num + 1;
-                    std::fs::write("img/num.txt", format!("{next_num}")).expect("write num.txt");
-                    println!("wrote image as {filename}");
-
-                    context.window().request_redraw();
-                }
             }
 
             Event::WindowEvent {
@@ -276,7 +196,8 @@ fn main() {
             } => {
                 cursor_visible = false;
                 context.window().set_cursor_visible(cursor_visible);
-                state.update(touch, zoom, screen_in_paper);
+                let PhysicalSize { width, height } = context.window().inner_size();
+                state.update(sip, zoom, width, height, touch);
                 context.window().request_redraw();
             }
 
@@ -295,25 +216,17 @@ fn main() {
 
                 let PhysicalSize { width, height } = context.window().inner_size();
                 let dzoom = if zoom_in { ZOOM_SPEED } else { -ZOOM_SPEED };
-                let dscreen_in_paper = if zoom_in {
-                    let x = (width as f32 / 2.) / zoom;
-                    let y = -(height as f32 / 2.) / zoom;
-                    StrokePos { x, y }
-                } else {
-                    let x = -(width as f32 / 2.) / zoom;
-                    let y = (height as f32 / 2.) / zoom;
-                    StrokePos { x, y }
-                };
+                println!("{dzoom}");
 
-                zoom += dzoom;
-                let next_sip = screen_in_paper + (dscreen_in_paper * (1. / zoom));
-                if next_sip.x.is_finite() && next_sip.y.is_finite() {
-                    screen_in_paper = next_sip;
-                    unsafe {
-                        gl.uniform_1_f32(Some(&zoom_x_uniform), dscreen_in_paper.x * (1. / zoom));
-                        gl.uniform_1_f32(Some(&zoom_y_uniform), dscreen_in_paper.y * (1. / zoom));
-                    }
-                }
+                //zoom += dzoom;
+                //let next_sip = sip + (dsip * (1. / zoom));
+                //if next_sip.x.is_finite() && next_sip.y.is_finite() {
+                //    sip = next_sip;
+                //    unsafe {
+                //        gl.uniform_1_f32(Some(&zoom_x_uniform), zoom);
+                //        gl.uniform_1_f32(Some(&zoom_y_uniform), zoom * (width / height) as f32);
+                //    }
+                //}
 
                 context.window().request_redraw();
             }
@@ -346,17 +259,20 @@ fn main() {
 
                 if input_handler.button_down(MouseButton::Left) {
                     let next = input_handler.cursor_pos();
-                    let diff = StrokePos::from_screen_pos(prev, zoom, screen_in_paper)
-                        - StrokePos::from_screen_pos(next, zoom, screen_in_paper);
-                    screen_in_paper = screen_in_paper + diff;
+                    let PhysicalSize { width, height } = context.window().inner_size();
 
+                    let prev_gl = GlPos::from_pixel(width, height, prev);
+                    let next_gl = GlPos::from_pixel(width, height, next);
+
+                    let prev_stroke = StrokePos::from_gl(sip, zoom, prev_gl);
+                    let next_stroke = StrokePos::from_gl(sip, zoom, next_gl);
+                    let diff_stroke = next_stroke - prev_stroke;
+
+                    sip = sip - diff_stroke;
                     unsafe {
-                        gl.uniform_2_f32(
-                            Some(&screen_pos_uniform),
-                            screen_in_paper.x,
-                            screen_in_paper.y,
-                        );
+                        gl.uniform_2_f32(Some(&sip_uniform), sip.x, sip.y);
                     }
+
                     context.window().request_redraw();
                 }
 
@@ -369,48 +285,48 @@ fn main() {
 
             Event::RedrawRequested(_) => {
                 unsafe {
-                    let vbo = gl.create_buffer().unwrap();
-                    gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
+                    //let vbo = gl.create_buffer().unwrap();
+                    //gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
 
-                    let points = state
-                        .strokes
-                        .iter()
-                        .map(|stroke| {
-                            stroke
-                                .points
-                                .iter()
-                                .map(|point| [point.pos.x, point.pos.y, point.pressure])
-                                .flatten()
-                        })
-                        .flatten()
-                        .collect::<Vec<f32>>();
+                    //let points = state
+                    //    .strokes
+                    //    .iter()
+                    //    .map(|stroke| {
+                    //        stroke
+                    //            .points
+                    //            .iter()
+                    //            .map(|point| [point.pos.x, point.pos.y, point.pressure])
+                    //            .flatten()
+                    //    })
+                    //    .flatten()
+                    //    .collect::<Vec<f32>>();
 
-                    let bytes = std::slice::from_raw_parts(
-                        points.as_ptr() as *const u8,
-                        points.len() * size_of::<f32>(),
-                    );
+                    //let bytes = std::slice::from_raw_parts(
+                    //    points.as_ptr() as *const u8,
+                    //    points.len() * size_of::<f32>(),
+                    //);
 
-                    gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, &bytes, glow::STATIC_DRAW);
+                    //gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, &bytes, glow::STATIC_DRAW);
 
-                    let vao = gl.create_vertex_array().unwrap();
-                    gl.bind_vertex_array(Some(vao));
-                    gl.enable_vertex_attrib_array(0);
-                    gl.vertex_attrib_pointer_f32(
-                        0,
-                        2,
-                        glow::FLOAT,
-                        false,
-                        size_of::<f32>() as i32 * 3,
-                        0,
-                    );
-                    gl.vertex_attrib_pointer_f32(
-                        1,
-                        1,
-                        glow::FLOAT,
-                        false,
-                        size_of::<f32>() as i32 * 3,
-                        2,
-                    );
+                    //let vao = gl.create_vertex_array().unwrap();
+                    //gl.bind_vertex_array(Some(vao));
+                    //gl.enable_vertex_attrib_array(0);
+                    //gl.vertex_attrib_pointer_f32(
+                    //    0,
+                    //    2,
+                    //    glow::FLOAT,
+                    //    false,
+                    //    size_of::<f32>() as i32 * 3,
+                    //    0,
+                    //);
+                    //gl.vertex_attrib_pointer_f32(
+                    //    1,
+                    //    1,
+                    //    glow::FLOAT,
+                    //    false,
+                    //    size_of::<f32>() as i32 * 3,
+                    //    2,
+                    //);
 
                     if state.stylus.inverted() {
                         gl.clear_color(1.0, 0.65, 0.65, 1.0);
@@ -419,7 +335,33 @@ fn main() {
                     }
                     gl.clear(glow::COLOR_BUFFER_BIT);
 
-                    gl.draw_arrays(glow::POINTS, 0, points.len() as i32);
+                    //gl.draw_arrays(glow::POINTS, 0, points.len() as i32);
+
+                    gl.bind_vertex_array(None);
+                    gl.draw_arrays(glow::POINTS, 0, 73);
+
+                    let verts: [f32; 2] = [sip.x, sip.y];
+                    let bytes = std::slice::from_raw_parts(
+                        verts.as_ptr() as *const u8,
+                        verts.len() * size_of::<f32>(),
+                    );
+                    let vbo = gl.create_buffer().unwrap();
+                    gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
+                    gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, bytes, glow::STATIC_DRAW);
+                    let vao = gl.create_vertex_array().unwrap();
+                    gl.bind_vertex_array(Some(vao));
+                    gl.enable_vertex_attrib_array(0);
+                    gl.vertex_attrib_pointer_f32(
+                        0,
+                        2,
+                        glow::FLOAT,
+                        false,
+                        size_of::<f32>() as i32,
+                        0,
+                    );
+                    gl.uniform_1_f32(Some(&draw_origin_uniform), 1.0);
+                    gl.draw_arrays(glow::POINTS, 0, 1);
+                    gl.uniform_1_f32(Some(&draw_origin_uniform), 0.0);
                 }
                 context.swap_buffers().unwrap();
             }
@@ -428,6 +370,12 @@ fn main() {
                 event: WindowEvent::Resized(size),
                 ..
             } => {
+                unsafe {
+                    gl.uniform_1_f32(
+                        Some(&height_over_width_uniform),
+                        size.height as f32 / size.width as f32,
+                    );
+                }
                 context.resize(size);
             }
 

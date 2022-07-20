@@ -1,9 +1,10 @@
 pub mod graphics;
 pub mod input;
 
-use crate::graphics::coords::{ScreenPos, StrokePos};
+use crate::graphics::coords::{PixelPos, StrokePos};
 use bspline::BSpline;
 use glutin::event::{Force, Touch, TouchPhase};
+use graphics::coords::GlPos;
 use std::io::Write;
 
 pub type Color = [u8; 3];
@@ -154,7 +155,7 @@ impl State {
         self.strokes.pop();
     }
 
-    pub fn update(&mut self, touch: Touch, zoom: f32, screen_in_paper: StrokePos) {
+    pub fn update(&mut self, sip: StrokePos, zoom: f32, width: u32, height: u32, touch: Touch) {
         let Touch {
             force,
             phase,
@@ -163,8 +164,9 @@ impl State {
             ..
         } = touch;
 
-        let pos = StrokePos::from_physical_position(location, zoom, screen_in_paper);
-        let screen_pos = ScreenPos::from_stroke(pos, zoom, screen_in_paper);
+        let pixel_pos = PixelPos::from_physical_position(location);
+        let gl_pos = GlPos::from_pixel(width, height, pixel_pos);
+        let pos = StrokePos::from_gl(sip, zoom, gl_pos);
 
         let pressure_str = if let Some(force) = force {
             if phase == TouchPhase::Moved && self.stylus.down() {
@@ -176,11 +178,11 @@ impl State {
             String::from("    ")
         };
         let inverted_str = if inverted { " (inverted) " } else { " " };
-        let location_str = format!("{:.02},{:.02}", location.x, location.y);
-        let position_str = format!("{:.02},{:.02}", pos.x, pos.y);
-        let screen_str = format!("{:.02},{:.02}", screen_pos.x, screen_pos.y);
+        let pixel_str = format!("{},{}", pixel_pos.x, pixel_pos.y);
+        let gl_str = format!("{:.02},{:.02}", gl_pos.x, gl_pos.y);
+        let stroke_str = format!("{:.02},{:.02}", pos.x, pos.y);
         let stroke_str = format!(
-            "{location_str} ({position_str} -> {screen_str}){inverted_str}{:?}            ",
+            "{pixel_str} -> {gl_str} -> {stroke_str}{inverted_str}{:?}            ",
             self.stroke_style
         );
 
@@ -289,7 +291,7 @@ impl State {
         width: usize,
         height: usize,
         zoom: f32,
-        screen_in_paper: StrokePos,
+        sip: StrokePos,
     ) {
         for stroke in self.strokes.iter_mut() {
             if !stroke.erased {
@@ -303,7 +305,7 @@ impl State {
                     StrokeStyle::CirclesPressure => graphics::circles_pressure,
                     StrokeStyle::Points => graphics::points,
                     StrokeStyle::Spline => graphics::spline,
-                })(stroke, frame, width, height, zoom, screen_in_paper);
+                })(stroke, frame, width, height, zoom, sip);
             }
         }
     }

@@ -1,7 +1,7 @@
 pub mod coords;
 
 use crate::{
-    graphics::coords::{ScreenPos, StrokePos},
+    graphics::coords::{PixelPos, StrokePos},
     Color, Stroke,
 };
 
@@ -29,7 +29,7 @@ pub fn put_pixel_stroke(
         frame,
         width,
         height,
-        ScreenPos::from_stroke(pos, zoom, screen_in_paper),
+        PixelPos::from_stroke(pos, zoom, screen_in_paper),
         color,
     );
 }
@@ -39,10 +39,10 @@ pub fn put_pixel_absolute(
     frame: &mut [u8],
     width: usize,
     height: usize,
-    pos: ScreenPos,
+    pos: PixelPos,
     color: Color,
 ) {
-    let ScreenPos { x, y } = pos;
+    let PixelPos { x, y } = pos;
     if x < width as isize && y < height as isize && y >= 0 && x >= 0 {
         let yw4 = y * width as isize * 4;
         let x4 = x * 4;
@@ -71,7 +71,7 @@ pub fn fill_circle(
     zoom: f32,
     screen_in_paper: StrokePos,
 ) {
-    let ScreenPos { x, y } = ScreenPos::from_stroke(pos, zoom, screen_in_paper);
+    let PixelPos { x, y } = PixelPos::from_stroke(pos, zoom, screen_in_paper);
     let x = x as isize;
     let y = y as isize;
     let mut dx = radius as isize;
@@ -83,7 +83,7 @@ pub fn fill_circle(
                 frame,
                 width,
                 height,
-                ScreenPos {
+                PixelPos {
                     x: scan_x,
                     y: (y - dx),
                 },
@@ -96,7 +96,7 @@ pub fn fill_circle(
                 frame,
                 width,
                 height,
-                ScreenPos {
+                PixelPos {
                     x: scan_x,
                     y: (y + dy),
                 },
@@ -109,7 +109,7 @@ pub fn fill_circle(
                 frame,
                 width,
                 height,
-                ScreenPos {
+                PixelPos {
                     x: scan_x,
                     y: (y - dy),
                 },
@@ -122,7 +122,7 @@ pub fn fill_circle(
                 frame,
                 width,
                 height,
-                ScreenPos {
+                PixelPos {
                     x: scan_x,
                     y: (y + dx),
                 },
@@ -144,11 +144,11 @@ pub fn fill_circle_absolute(
     frame: &mut [u8],
     width: usize,
     height: usize,
-    pos: ScreenPos,
+    pos: PixelPos,
     color: Color,
     radius: f32,
 ) {
-    let ScreenPos { x, y } = pos;
+    let PixelPos { x, y } = pos;
     let x = x as isize;
     let y = y as isize;
     let mut dx = radius as isize;
@@ -160,7 +160,7 @@ pub fn fill_circle_absolute(
                 frame,
                 width,
                 height,
-                ScreenPos {
+                PixelPos {
                     x: scan_x,
                     y: (y - dx),
                 },
@@ -173,7 +173,7 @@ pub fn fill_circle_absolute(
                 frame,
                 width,
                 height,
-                ScreenPos {
+                PixelPos {
                     x: scan_x,
                     y: (y + dy),
                 },
@@ -186,7 +186,7 @@ pub fn fill_circle_absolute(
                 frame,
                 width,
                 height,
-                ScreenPos {
+                PixelPos {
                     x: scan_x,
                     y: (y - dy),
                 },
@@ -199,7 +199,7 @@ pub fn fill_circle_absolute(
                 frame,
                 width,
                 height,
-                ScreenPos {
+                PixelPos {
                     x: scan_x,
                     y: (y + dx),
                 },
@@ -221,11 +221,11 @@ pub fn put_circle_absolute(
     frame: &mut [u8],
     width: usize,
     height: usize,
-    pos: ScreenPos,
+    pos: PixelPos,
     color: Color,
     radius: f32,
 ) {
-    let ScreenPos { x, y } = pos;
+    let PixelPos { x, y } = pos;
     let x = x as isize;
     let y = y as isize;
     let mut dx = radius as isize;
@@ -236,7 +236,7 @@ pub fn put_circle_absolute(
             frame,
             width,
             height,
-            ScreenPos {
+            PixelPos {
                 x: (x + dx),
                 y: (y + dy),
             },
@@ -246,7 +246,7 @@ pub fn put_circle_absolute(
             frame,
             width,
             height,
-            ScreenPos {
+            PixelPos {
                 x: (x - dx),
                 y: (y + dy),
             },
@@ -256,7 +256,7 @@ pub fn put_circle_absolute(
             frame,
             width,
             height,
-            ScreenPos {
+            PixelPos {
                 x: (x + dx),
                 y: (y - dy),
             },
@@ -266,7 +266,7 @@ pub fn put_circle_absolute(
             frame,
             width,
             height,
-            ScreenPos {
+            PixelPos {
                 x: (x - dx),
                 y: (y - dy),
             },
@@ -276,7 +276,7 @@ pub fn put_circle_absolute(
             frame,
             width,
             height,
-            ScreenPos {
+            PixelPos {
                 x: (x + dy),
                 y: (y + dx),
             },
@@ -286,7 +286,7 @@ pub fn put_circle_absolute(
             frame,
             width,
             height,
-            ScreenPos {
+            PixelPos {
                 x: (x - dy),
                 y: (y + dx),
             },
@@ -296,7 +296,7 @@ pub fn put_circle_absolute(
             frame,
             width,
             height,
-            ScreenPos {
+            PixelPos {
                 x: (x + dy),
                 y: (y - dx),
             },
@@ -306,7 +306,7 @@ pub fn put_circle_absolute(
             frame,
             width,
             height,
-            ScreenPos {
+            PixelPos {
                 x: (x - dy),
                 y: (y - dx),
             },
@@ -332,8 +332,8 @@ pub fn circles(
 ) {
     let mut iter = stroke.points.windows(2);
     while let Some([a, b]) = iter.next() {
-        let ScreenPos { x: ax, y: ay } = ScreenPos::from_stroke(a.pos, zoom, screen_in_paper);
-        let ScreenPos { x: bx, y: by } = ScreenPos::from_stroke(b.pos, zoom, screen_in_paper);
+        let PixelPos { x: ax, y: ay } = PixelPos::from_stroke(a.pos, zoom, screen_in_paper);
+        let PixelPos { x: bx, y: by } = PixelPos::from_stroke(b.pos, zoom, screen_in_paper);
 
         let mut ax = ax as isize;
         let bx = bx as isize;
@@ -351,7 +351,7 @@ pub fn circles(
                 frame,
                 width,
                 height,
-                ScreenPos { x: ax, y: ay },
+                PixelPos { x: ax, y: ay },
                 stroke.color,
                 stroke.brush_size,
             );
@@ -389,8 +389,8 @@ pub fn circles_pressure(
 ) {
     let mut iter = stroke.points.windows(2);
     while let Some([a, b]) = iter.next() {
-        let ScreenPos { x: ax, y: ay } = ScreenPos::from_stroke(a.pos, zoom, screen_in_paper);
-        let ScreenPos { x: bx, y: by } = ScreenPos::from_stroke(b.pos, zoom, screen_in_paper);
+        let PixelPos { x: ax, y: ay } = PixelPos::from_stroke(a.pos, zoom, screen_in_paper);
+        let PixelPos { x: bx, y: by } = PixelPos::from_stroke(b.pos, zoom, screen_in_paper);
 
         let mut ax = ax as isize;
         let bx = bx as isize;
@@ -437,7 +437,7 @@ pub fn circles_pressure(
                 frame,
                 width,
                 height,
-                ScreenPos { x: ax, y: ay },
+                PixelPos { x: ax, y: ay },
                 stroke.color,
                 (pressure * stroke.brush_size).max(1.0),
             );
@@ -476,8 +476,8 @@ pub fn lines(
 ) {
     let mut iter = stroke.points.windows(2);
     while let Some([a, b]) = iter.next() {
-        let ScreenPos { x: ax, y: ay } = ScreenPos::from_stroke(a.pos, zoom, screen_in_paper);
-        let ScreenPos { x: bx, y: by } = ScreenPos::from_stroke(b.pos, zoom, screen_in_paper);
+        let PixelPos { x: ax, y: ay } = PixelPos::from_stroke(a.pos, zoom, screen_in_paper);
+        let PixelPos { x: bx, y: by } = PixelPos::from_stroke(b.pos, zoom, screen_in_paper);
 
         let mut ax = ax as isize;
         let bx = bx as isize;
@@ -495,7 +495,7 @@ pub fn lines(
                 frame,
                 width,
                 height,
-                ScreenPos {
+                PixelPos {
                     x: ax.try_into().unwrap_or(0),
                     y: ay.try_into().unwrap_or(0),
                 },
@@ -570,7 +570,7 @@ pub fn spline(
     while t < max {
         let pos = spline.point(t);
 
-        let ScreenPos { x: sx, y: sy } = ScreenPos::from_stroke(pos, zoom, screen_in_paper);
+        let PixelPos { x: sx, y: sy } = PixelPos::from_stroke(pos, zoom, screen_in_paper);
 
         if sx as isize != px || sy as isize != py {
             put_pixel_stroke(

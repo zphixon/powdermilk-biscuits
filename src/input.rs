@@ -1,5 +1,5 @@
 use {
-    crate::graphics::coords::ScreenPos,
+    crate::graphics::coords::PixelPos,
     glutin::{
         dpi::PhysicalPosition,
         event::{ElementState, MouseButton, VirtualKeyCode},
@@ -52,8 +52,8 @@ impl InputHandler {
         *button_state = next_state;
     }
 
-    pub fn cursor_pos(&self) -> ScreenPos {
-        ScreenPos::from_physical_position(self.cursor_pos)
+    pub fn cursor_pos(&self) -> PixelPos {
+        PixelPos::from_physical_position(self.cursor_pos)
     }
 
     pub fn button_down(&mut self, button: MouseButton) -> bool {
