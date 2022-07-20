@@ -15,14 +15,14 @@ impl GlPos {
     }
 
     pub fn from_stroke(
-        sip: StrokePos,
+        gis: StrokePos,
         zoom: f32,
         width: u32,
         height: u32,
         stroke: StrokePos,
     ) -> GlPos {
-        let diff_x = stroke.x - sip.x;
-        let diff_y = stroke.y - sip.y;
+        let diff_x = stroke.x - gis.x;
+        let diff_y = stroke.y - gis.y;
         GlPos {
             x: diff_x * zoom,
             y: diff_y * zoom * (height as f32 / width as f32),
@@ -48,8 +48,8 @@ pub struct PixelPos {
 
 impl PixelPos {
     #[inline]
-    pub fn from_stroke(sip: StrokePos, zoom: f32, pos: StrokePos) -> Self {
-        let diff = pos - sip;
+    pub fn from_stroke(gis: StrokePos, zoom: f32, pos: StrokePos) -> Self {
+        let diff = pos - gis;
         let screen_x = zoom * diff.x;
         let screen_y = zoom * -diff.y;
         PixelPos {
@@ -84,29 +84,29 @@ pub struct StrokePos {
 }
 
 impl StrokePos {
-    pub fn from_physical_position(sip: StrokePos, zoom: f32, p: PhysicalPosition<f64>) -> Self {
+    pub fn from_physical_position(gis: StrokePos, zoom: f32, p: PhysicalPosition<f64>) -> Self {
         let x = p.x as f32 / zoom;
         let y = p.y as f32 / zoom;
         StrokePos {
-            x: sip.x + x,
-            y: sip.y - y,
+            x: gis.x + x,
+            y: gis.y - y,
         }
     }
 
-    pub fn from_pixel_pos(sip: StrokePos, zoom: f32, p: PixelPos) -> Self {
+    pub fn from_pixel_pos(gis: StrokePos, zoom: f32, p: PixelPos) -> Self {
         let x = p.x as f32 / zoom;
         let y = p.y as f32 / zoom;
         StrokePos {
-            x: sip.x + x,
-            y: sip.y - y,
+            x: gis.x + x,
+            y: gis.y - y,
         }
     }
 
-    pub fn from_gl(sip: StrokePos, zoom: f32, gl: GlPos) -> StrokePos {
+    pub fn from_gl(gis: StrokePos, zoom: f32, gl: GlPos) -> StrokePos {
         let diff_x = gl.x / zoom;
         let diff_y = gl.y / zoom;
-        let x = diff_x + sip.x;
-        let y = diff_y + sip.y;
+        let x = diff_x + gis.x;
+        let y = diff_y + gis.y;
         StrokePos { x, y }
     }
 }

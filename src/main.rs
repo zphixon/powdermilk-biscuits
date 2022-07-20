@@ -35,10 +35,13 @@ fn main() {
         (gl, context, event_loop)
     };
 
-    let (sip_uniform, zoom_uniform, width_uniform, height_uniform);
+    let view_uniform;
+    let proj_uniform;
 
     unsafe {
         gl.enable(glow::VERTEX_PROGRAM_POINT_SIZE);
+        gl.disable(glow::CULL_FACE);
+
         let va = gl.create_vertex_array().expect("create vertex array");
         gl.bind_vertex_array(Some(va));
         let program = gl.create_program().expect("create program");
@@ -75,15 +78,19 @@ fn main() {
 
         gl.use_program(Some(program));
 
-        sip_uniform = gl.get_uniform_location(program, "sip").unwrap();
-        zoom_uniform = gl.get_uniform_location(program, "zoom").unwrap();
-        width_uniform = gl.get_uniform_location(program, "width").unwrap();
-        height_uniform = gl.get_uniform_location(program, "height").unwrap();
+        proj_uniform = gl.get_uniform_location(program, "proj").unwrap();
+        view_uniform = gl.get_uniform_location(program, "view").unwrap();
 
-        gl.uniform_2_f32(Some(&sip_uniform), 0.0, 0.0);
-        gl.uniform_1_f32(Some(&zoom_uniform), 1.0);
-        gl.uniform_1_f32(Some(&width_uniform), 600.0);
-        gl.uniform_1_f32(Some(&height_uniform), 800.0);
+        gl.uniform_matrix_4_f32_slice(
+            Some(&proj_uniform),
+            false,
+            &glam::Mat4::IDENTITY.to_cols_array(),
+        );
+        gl.uniform_matrix_4_f32_slice(
+            Some(&view_uniform),
+            false,
+            &glam::Mat4::IDENTITY.to_cols_array(),
+        );
     };
 
     let mut cursor_visible = true;
@@ -92,8 +99,9 @@ fn main() {
     let mut state = State::default();
     println!("stroke style {:?}", state.stroke_style);
 
-    let mut sip = StrokePos { x: 0.0, y: 0.0 };
-    let mut zoom = 1.;
+    // gl origin in stroke space
+    let mut gis = StrokePos { x: 0.0, y: 0.0 };
+    let mut zoom = 50.;
 
     ev.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
@@ -127,7 +135,7 @@ fn main() {
                         }
                     }
                     println!("zoom={zoom:.02}");
-                    println!("sip={sip:?}");
+                    println!("gis={gis:?}");
                 }
 
                 if input_handler.just_pressed(F) {
@@ -193,7 +201,7 @@ fn main() {
                 cursor_visible = false;
                 context.window().set_cursor_visible(cursor_visible);
                 let PhysicalSize { width, height } = context.window().inner_size();
-                state.update(sip, zoom, width, height, touch);
+                state.update(gis, zoom, width, height, touch);
                 context.window().request_redraw();
             }
 
@@ -210,15 +218,9 @@ fn main() {
                 };
                 const ZOOM_SPEED: f32 = 0.25;
 
-                //let PhysicalSize { width, height } = context.window().inner_size();
                 let dzoom = if zoom_in { ZOOM_SPEED } else { -ZOOM_SPEED };
-
                 zoom += dzoom;
                 zoom = zoom.clamp(0.01, 5.0);
-
-                unsafe {
-                    gl.uniform_1_f32(Some(&zoom_uniform), zoom);
-                }
 
                 context.window().request_redraw();
             }
@@ -250,11 +252,11 @@ fn main() {
                 input_handler.handle_mouse_move(position);
 
                 let PhysicalSize { width, height } = context.window().inner_size();
-                //let gl_pos = GlPos::from_pixel(width, height, prev);
-                //let st_pos = StrokePos::from_gl(sip, zoom, gl_pos);
+                //let gl = GlPos::from_pixel(width, height, prev);
+                //let st = StrokePos::from_gl(gis, zoom, gl);
                 //println!(
-                //    "px={},{} gl={:.02},{:.02} st={:.02},{:.02}",
-                //    prev.x, prev.y, gl_pos.x, gl_pos.y, st_pos.x, st_pos.y
+                //    "{},{} -> {:.02},{:.02} -> {:.02},{:.02}",
+                //    prev.x, prev.y, gl.x, gl.y, st.x, st.y
                 //);
 
                 if input_handler.button_down(MouseButton::Left) {
@@ -263,14 +265,11 @@ fn main() {
                     let prev_gl = GlPos::from_pixel(width, height, prev);
                     let next_gl = GlPos::from_pixel(width, height, next);
 
-                    let prev_stroke = StrokePos::from_gl(sip, zoom, prev_gl);
-                    let next_stroke = StrokePos::from_gl(sip, zoom, next_gl);
+                    let prev_stroke = StrokePos::from_gl(gis, zoom, prev_gl);
+                    let next_stroke = StrokePos::from_gl(gis, zoom, next_gl);
                     let diff_stroke = next_stroke - prev_stroke;
 
-                    sip = sip - diff_stroke;
-                    unsafe {
-                        gl.uniform_2_f32(Some(&sip_uniform), sip.x, sip.y);
-                    }
+                    gis = gis - diff_stroke;
 
                     context.window().request_redraw();
                 }
@@ -284,19 +283,25 @@ fn main() {
 
             Event::RedrawRequested(_) => {
                 unsafe {
-                    let points = state
-                        .strokes
-                        .iter()
-                        .map(|stroke| {
-                            stroke
-                                .points
-                                .iter()
-                                .map(|point| [point.pos.x, point.pos.y, point.pressure])
-                                .flatten()
-                        })
-                        .flatten()
-                        .collect::<Vec<f32>>();
+                    //let points = state
+                    //    .strokes
+                    //    .iter()
+                    //    .map(|stroke| {
+                    //        stroke
+                    //            .points
+                    //            .iter()
+                    //            .map(|point| [point.pos.x, point.pos.y, point.pressure])
+                    //            .flatten()
+                    //    })
+                    //    .flatten()
+                    //    .collect::<Vec<f32>>();
 
+                    //let bytes = std::slice::from_raw_parts(
+                    //    points.as_ptr() as *const u8,
+                    //    points.len() * size_of::<f32>(),
+                    //);
+
+                    let points: &[f32] = &[-2., -2., 1., 0., 2., 1., 2., -2., 1.];
                     let bytes = std::slice::from_raw_parts(
                         points.as_ptr() as *const u8,
                         points.len() * size_of::<f32>(),
@@ -334,7 +339,26 @@ fn main() {
                     }
                     gl.clear(glow::COLOR_BUFFER_BIT);
 
-                    gl.draw_arrays(glow::POINTS, 0, points.len() as i32);
+                    let PhysicalSize { width, height } = context.window().inner_size();
+                    let (width, height) = (width as f32, height as f32);
+                    let view = glam::Mat4::from_scale_rotation_translation(
+                        glam::vec3(zoom, zoom, 0.0),
+                        glam::Quat::IDENTITY,
+                        glam::vec3(-gis.x, -gis.y, 0.0),
+                    );
+                    let proj = glam::Mat4::orthographic_rh_gl(0.0, width, 0.0, height, 0.01, 10.0);
+                    gl.uniform_matrix_4_f32_slice(
+                        Some(&view_uniform),
+                        false,
+                        &view.to_cols_array(),
+                    );
+                    gl.uniform_matrix_4_f32_slice(
+                        Some(&proj_uniform),
+                        false,
+                        &proj.to_cols_array(),
+                    );
+
+                    gl.draw_arrays(glow::TRIANGLES, 0, 3);
                 }
                 context.swap_buffers().unwrap();
             }
@@ -346,8 +370,6 @@ fn main() {
                 context.resize(size);
                 unsafe {
                     gl.viewport(0, 0, size.width as i32, size.height as i32);
-                    gl.uniform_1_f32(Some(&width_uniform), size.width as f32);
-                    gl.uniform_1_f32(Some(&height_uniform), size.height as f32);
                 };
             }
 
