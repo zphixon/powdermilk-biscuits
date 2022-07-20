@@ -35,9 +35,10 @@ fn main() {
         (gl, context, event_loop)
     };
 
-    let (sip_uniform, zoom_uniform);
+    let (sip_uniform, zoom_uniform, width_uniform, height_uniform);
 
     unsafe {
+        gl.enable(glow::VERTEX_PROGRAM_POINT_SIZE);
         let va = gl.create_vertex_array().expect("create vertex array");
         gl.bind_vertex_array(Some(va));
         let program = gl.create_program().expect("create program");
@@ -76,9 +77,13 @@ fn main() {
 
         sip_uniform = gl.get_uniform_location(program, "sip").unwrap();
         zoom_uniform = gl.get_uniform_location(program, "zoom").unwrap();
+        width_uniform = gl.get_uniform_location(program, "width").unwrap();
+        height_uniform = gl.get_uniform_location(program, "height").unwrap();
+
         gl.uniform_2_f32(Some(&sip_uniform), 0.0, 0.0);
         gl.uniform_1_f32(Some(&zoom_uniform), 1.0);
-        gl.enable(glow::VERTEX_PROGRAM_POINT_SIZE);
+        gl.uniform_1_f32(Some(&width_uniform), 600.0);
+        gl.uniform_1_f32(Some(&height_uniform), 800.0);
     };
 
     let mut cursor_visible = true;
@@ -245,12 +250,12 @@ fn main() {
                 input_handler.handle_mouse_move(position);
 
                 let PhysicalSize { width, height } = context.window().inner_size();
-                let gl_pos = GlPos::from_pixel(width, height, prev);
-                let st_pos = StrokePos::from_gl(sip, zoom, gl_pos);
-                println!(
-                    "px={},{} gl={:.02},{:.02} st={:.02},{:.02}",
-                    prev.x, prev.y, gl_pos.x, gl_pos.y, st_pos.x, st_pos.y
-                );
+                //let gl_pos = GlPos::from_pixel(width, height, prev);
+                //let st_pos = StrokePos::from_gl(sip, zoom, gl_pos);
+                //println!(
+                //    "px={},{} gl={:.02},{:.02} st={:.02},{:.02}",
+                //    prev.x, prev.y, gl_pos.x, gl_pos.y, st_pos.x, st_pos.y
+                //);
 
                 if input_handler.button_down(MouseButton::Left) {
                     let next = input_handler.cursor_pos();
@@ -339,7 +344,11 @@ fn main() {
                 ..
             } => {
                 context.resize(size);
-                unsafe { gl.viewport(0, 0, size.width as i32, size.height as i32) };
+                unsafe {
+                    gl.viewport(0, 0, size.width as i32, size.height as i32);
+                    gl.uniform_1_f32(Some(&width_uniform), size.width as f32);
+                    gl.uniform_1_f32(Some(&height_uniform), size.height as f32);
+                };
             }
 
             _ => {}
