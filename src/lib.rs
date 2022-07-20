@@ -167,6 +167,10 @@ impl State {
         let pixel_pos = PixelPos::from_physical_position(location);
         let gl_pos = GlPos::from_pixel(width, height, pixel_pos);
         let pos = StrokePos::from_gl(gis, zoom, gl_pos);
+        let pos = StrokePos {
+            x: pos.x * width as f32,
+            y: pos.y * height as f32,
+        };
 
         let pressure_str = if let Some(force) = force {
             if phase == TouchPhase::Moved && self.stylus.down() {
@@ -181,8 +185,9 @@ impl State {
         let pixel_str = format!("{},{}", pixel_pos.x, pixel_pos.y);
         let gl_str = format!("{:.02},{:.02}", gl_pos.x, gl_pos.y);
         let stroke_str = format!("{:.02},{:.02}", pos.x, pos.y);
+        let gis_str = format!("{:.02},{:.02}", gis.x, gis.y);
         let stroke_str = format!(
-            "{pixel_str} -> {gl_str} -> {stroke_str}{inverted_str}{:?}            ",
+            "{gis_str} {pixel_str} -> {gl_str} -> {stroke_str}{inverted_str}{:?}            ",
             self.stroke_style
         );
 

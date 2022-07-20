@@ -252,12 +252,6 @@ fn main() {
                 input_handler.handle_mouse_move(position);
 
                 let PhysicalSize { width, height } = context.window().inner_size();
-                //let gl = GlPos::from_pixel(width, height, prev);
-                //let st = StrokePos::from_gl(gis, zoom, gl);
-                //println!(
-                //    "{},{} -> {:.02},{:.02} -> {:.02},{:.02}",
-                //    prev.x, prev.y, gl.x, gl.y, st.x, st.y
-                //);
 
                 if input_handler.button_down(MouseButton::Left) {
                     let next = input_handler.cursor_pos();
@@ -301,12 +295,6 @@ fn main() {
                         points.len() * size_of::<f32>(),
                     );
 
-                    //let points: &[f32] = &[-2., -2., 1., 0., 2., 1., 2., -2., 1.];
-                    //let bytes = std::slice::from_raw_parts(
-                    //    points.as_ptr() as *const u8,
-                    //    points.len() * size_of::<f32>(),
-                    //);
-
                     let vbo = gl.create_buffer().unwrap();
                     gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
                     gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, &bytes, glow::STATIC_DRAW);
@@ -349,7 +337,6 @@ fn main() {
                         glam::vec3(-translate.x, -translate.y, 0.0),
                     );
                     let proj = glam::Mat4::IDENTITY;
-                    // uhhhhehehhghhuhuhuh
 
                     gl.uniform_matrix_4_f32_slice(
                         Some(&view_uniform),
