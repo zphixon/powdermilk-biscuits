@@ -35,7 +35,8 @@ fn main() {
         (gl, context, event_loop)
     };
 
-    let (sip_uniform, zoom_uniform, height_over_width_uniform, draw_origin_uniform);
+    let (sip_uniform, zoom_uniform, height_over_width_uniform);
+    //let draw_origin_uniform
 
     unsafe {
         let va = gl.create_vertex_array().expect("create vertex array");
@@ -78,14 +79,14 @@ fn main() {
         sip_uniform = gl.get_uniform_location(program, "sip").unwrap();
         zoom_uniform = gl.get_uniform_location(program, "zoom").unwrap();
         height_over_width_uniform = gl.get_uniform_location(program, "heightOverWidth").unwrap();
-        draw_origin_uniform = gl.get_uniform_location(program, "drawOrigin").unwrap();
+        //draw_origin_uniform = gl.get_uniform_location(program, "drawOrigin").unwrap();
         gl.uniform_2_f32(Some(&sip_uniform), 0.0, 0.0);
         gl.uniform_1_f32(Some(&zoom_uniform), 1.0);
         gl.uniform_1_f32(
             Some(&height_over_width_uniform),
             height as f32 / width as f32,
         );
-        gl.uniform_1_f32(Some(&draw_origin_uniform), 0.0);
+        //gl.uniform_1_f32(Some(&draw_origin_uniform), 0.0);
         gl.enable(glow::VERTEX_PROGRAM_POINT_SIZE);
 
         //gl.clear_color(0.1, 0.2, 0.3, 1.0);
@@ -292,69 +293,29 @@ fn main() {
 
             Event::RedrawRequested(_) => {
                 unsafe {
-                    //let vbo = gl.create_buffer().unwrap();
-                    //gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
-
-                    //let points = state
-                    //    .strokes
-                    //    .iter()
-                    //    .map(|stroke| {
-                    //        stroke
-                    //            .points
-                    //            .iter()
-                    //            .map(|point| [point.pos.x, point.pos.y, point.pressure])
-                    //            .flatten()
-                    //    })
-                    //    .flatten()
-                    //    .collect::<Vec<f32>>();
-
-                    //let bytes = std::slice::from_raw_parts(
-                    //    points.as_ptr() as *const u8,
-                    //    points.len() * size_of::<f32>(),
-                    //);
-
-                    //gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, &bytes, glow::STATIC_DRAW);
-
-                    //let vao = gl.create_vertex_array().unwrap();
-                    //gl.bind_vertex_array(Some(vao));
-                    //gl.enable_vertex_attrib_array(0);
-                    //gl.vertex_attrib_pointer_f32(
-                    //    0,
-                    //    2,
-                    //    glow::FLOAT,
-                    //    false,
-                    //    size_of::<f32>() as i32 * 3,
-                    //    0,
-                    //);
-                    //gl.vertex_attrib_pointer_f32(
-                    //    1,
-                    //    1,
-                    //    glow::FLOAT,
-                    //    false,
-                    //    size_of::<f32>() as i32 * 3,
-                    //    2,
-                    //);
-
-                    if state.stylus.inverted() {
-                        gl.clear_color(1.0, 0.65, 0.65, 1.0);
-                    } else {
-                        gl.clear_color(0.65, 1.0, 0.75, 1.0);
-                    }
-                    gl.clear(glow::COLOR_BUFFER_BIT);
-
-                    //gl.draw_arrays(glow::POINTS, 0, points.len() as i32);
-
-                    gl.bind_vertex_array(None);
-                    gl.draw_arrays(glow::POINTS, 0, 73);
-
-                    let verts: [f32; 2] = [sip.x, sip.y];
-                    let bytes = std::slice::from_raw_parts(
-                        verts.as_ptr() as *const u8,
-                        verts.len() * size_of::<f32>(),
-                    );
                     let vbo = gl.create_buffer().unwrap();
                     gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
-                    gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, bytes, glow::STATIC_DRAW);
+
+                    let points = state
+                        .strokes
+                        .iter()
+                        .map(|stroke| {
+                            stroke
+                                .points
+                                .iter()
+                                .map(|point| [point.pos.x, point.pos.y, point.pressure])
+                                .flatten()
+                        })
+                        .flatten()
+                        .collect::<Vec<f32>>();
+
+                    let bytes = std::slice::from_raw_parts(
+                        points.as_ptr() as *const u8,
+                        points.len() * size_of::<f32>(),
+                    );
+
+                    gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, &bytes, glow::STATIC_DRAW);
+
                     let vao = gl.create_vertex_array().unwrap();
                     gl.bind_vertex_array(Some(vao));
                     gl.enable_vertex_attrib_array(0);
@@ -363,12 +324,52 @@ fn main() {
                         2,
                         glow::FLOAT,
                         false,
-                        size_of::<f32>() as i32,
+                        size_of::<f32>() as i32 * 3,
                         0,
                     );
-                    gl.uniform_1_f32(Some(&draw_origin_uniform), 1.0);
-                    gl.draw_arrays(glow::POINTS, 0, 1);
-                    gl.uniform_1_f32(Some(&draw_origin_uniform), 0.0);
+                    gl.vertex_attrib_pointer_f32(
+                        1,
+                        1,
+                        glow::FLOAT,
+                        false,
+                        size_of::<f32>() as i32 * 3,
+                        2,
+                    );
+
+                    if state.stylus.inverted() {
+                        gl.clear_color(1.0, 0.65, 0.65, 1.0);
+                    } else {
+                        gl.clear_color(0.65, 1.0, 0.75, 1.0);
+                    }
+                    gl.clear(glow::COLOR_BUFFER_BIT);
+
+                    gl.draw_arrays(glow::POINTS, 0, points.len() as i32);
+
+                    //gl.bind_vertex_array(None);
+                    //gl.draw_arrays(glow::POINTS, 0, 73);
+
+                    //let verts: [f32; 2] = [sip.x, sip.y];
+                    //let bytes = std::slice::from_raw_parts(
+                    //    verts.as_ptr() as *const u8,
+                    //    verts.len() * size_of::<f32>(),
+                    //);
+                    //let vbo = gl.create_buffer().unwrap();
+                    //gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
+                    //gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, bytes, glow::STATIC_DRAW);
+                    //let vao = gl.create_vertex_array().unwrap();
+                    //gl.bind_vertex_array(Some(vao));
+                    //gl.enable_vertex_attrib_array(0);
+                    //gl.vertex_attrib_pointer_f32(
+                    //    0,
+                    //    2,
+                    //    glow::FLOAT,
+                    //    false,
+                    //    size_of::<f32>() as i32,
+                    //    0,
+                    //);
+                    //gl.uniform_1_f32(Some(&draw_origin_uniform), 1.0);
+                    //gl.draw_arrays(glow::POINTS, 0, 1);
+                    //gl.uniform_1_f32(Some(&draw_origin_uniform), 0.0);
                 }
                 context.swap_buffers().unwrap();
             }
