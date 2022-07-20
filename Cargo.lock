@@ -468,6 +468,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "glam"
+version = "0.21.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "781aa11be58ef14b0cd7326618afcbd9cdb5ba686bdab7193d87cdc322cd7033"
+
+[[package]]
 name = "glow"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1145,6 +1151,7 @@ version = "0.1.0"
 dependencies = [
  "bspline",
  "evc_derive",
+ "glam",
  "glow",
  "glutin",
  "image",

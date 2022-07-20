@@ -14,6 +14,7 @@ bspline = '1.1.0'
 glutin = { path = 'glutin/glutin', default-features = false }
 glow = { version = '0.11.2' }
 lyon = '1.0.0'
+glam = '0.21.2'
 
 [features]
 default = []

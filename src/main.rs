@@ -35,7 +35,7 @@ fn main() {
         (gl, context, event_loop)
     };
 
-    let (sip_uniform, zoom_uniform, height_over_width_uniform);
+    let (sip_uniform, zoom_uniform);
 
     unsafe {
         let va = gl.create_vertex_array().expect("create vertex array");
@@ -74,16 +74,10 @@ fn main() {
 
         gl.use_program(Some(program));
 
-        let PhysicalSize { width, height } = context.window().inner_size();
         sip_uniform = gl.get_uniform_location(program, "sip").unwrap();
         zoom_uniform = gl.get_uniform_location(program, "zoom").unwrap();
-        height_over_width_uniform = gl.get_uniform_location(program, "heightOverWidth").unwrap();
         gl.uniform_2_f32(Some(&sip_uniform), 0.0, 0.0);
         gl.uniform_1_f32(Some(&zoom_uniform), 1.0);
-        gl.uniform_1_f32(
-            Some(&height_over_width_uniform),
-            height as f32 / width as f32,
-        );
         gl.enable(glow::VERTEX_PROGRAM_POINT_SIZE);
     };
 
@@ -250,9 +244,16 @@ fn main() {
                 let prev = input_handler.cursor_pos();
                 input_handler.handle_mouse_move(position);
 
+                let PhysicalSize { width, height } = context.window().inner_size();
+                let gl_pos = GlPos::from_pixel(width, height, prev);
+                let st_pos = StrokePos::from_gl(sip, zoom, gl_pos);
+                println!(
+                    "px={},{} gl={:.02},{:.02} st={:.02},{:.02}",
+                    prev.x, prev.y, gl_pos.x, gl_pos.y, st_pos.x, st_pos.y
+                );
+
                 if input_handler.button_down(MouseButton::Left) {
                     let next = input_handler.cursor_pos();
-                    let PhysicalSize { width, height } = context.window().inner_size();
 
                     let prev_gl = GlPos::from_pixel(width, height, prev);
                     let next_gl = GlPos::from_pixel(width, height, next);
@@ -337,13 +338,8 @@ fn main() {
                 event: WindowEvent::Resized(size),
                 ..
             } => {
-                unsafe {
-                    gl.uniform_1_f32(
-                        Some(&height_over_width_uniform),
-                        size.height as f32 / size.width as f32,
-                    );
-                }
                 context.resize(size);
+                unsafe { gl.viewport(0, 0, size.width as i32, size.height as i32) };
             }
 
             _ => {}
