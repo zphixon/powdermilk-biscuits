@@ -216,11 +216,11 @@ fn main() {
                     MouseScrollDelta::PixelDelta(pos) if pos.y.is_sign_negative() => false,
                     _ => unreachable!(),
                 };
-                const ZOOM_SPEED: f32 = 0.25;
+                const ZOOM_SPEED: f32 = 4.25;
 
                 let dzoom = if zoom_in { ZOOM_SPEED } else { -ZOOM_SPEED };
                 zoom += dzoom;
-                zoom = zoom.clamp(0.01, 5.0);
+                zoom = zoom.clamp(1.0, 500.0);
 
                 context.window().request_redraw();
             }
@@ -341,12 +341,16 @@ fn main() {
 
                     let PhysicalSize { width, height } = context.window().inner_size();
                     let (width, height) = (width as f32, height as f32);
+
+                    let translate = GlPos::from_stroke(StrokePos { x: 0., y: 0. }, zoom, gis);
                     let view = glam::Mat4::from_scale_rotation_translation(
-                        glam::vec3(zoom, zoom, 0.0),
+                        glam::vec3(zoom / width, zoom / height, 0.0),
                         glam::Quat::IDENTITY,
-                        glam::vec3(-gis.x, -gis.y, 0.0),
+                        glam::vec3(-translate.x, -translate.y, 0.0),
                     );
-                    let proj = glam::Mat4::orthographic_rh_gl(0.0, width, 0.0, height, 0.01, 10.0);
+                    let proj = glam::Mat4::IDENTITY;
+                    // uhhhhehehhghhuhuhuh
+
                     gl.uniform_matrix_4_f32_slice(
                         Some(&view_uniform),
                         false,

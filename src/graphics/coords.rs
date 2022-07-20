@@ -14,18 +14,12 @@ impl GlPos {
         GlPos { x, y }
     }
 
-    pub fn from_stroke(
-        gis: StrokePos,
-        zoom: f32,
-        width: u32,
-        height: u32,
-        stroke: StrokePos,
-    ) -> GlPos {
+    pub fn from_stroke(gis: StrokePos, zoom: f32, stroke: StrokePos) -> GlPos {
         let diff_x = stroke.x - gis.x;
         let diff_y = stroke.y - gis.y;
         GlPos {
             x: diff_x * zoom,
-            y: diff_y * zoom * (height as f32 / width as f32),
+            y: diff_y * zoom,
         }
     }
 }
