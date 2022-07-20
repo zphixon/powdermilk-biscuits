@@ -349,7 +349,7 @@ fn main() {
                         &proj.to_cols_array(),
                     );
 
-                    gl.draw_arrays(glow::POINTS, 0, (points.len() / 3) as i32);
+                    gl.draw_arrays(glow::LINE_STRIP, 0, (points.len() / 3) as i32);
                 }
                 context.swap_buffers().unwrap();
             }
