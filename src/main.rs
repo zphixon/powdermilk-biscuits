@@ -313,18 +313,13 @@ fn main() {
                 let prev = input_handler.cursor_pos();
                 input_handler.handle_mouse_move(position);
 
-                let PhysicalSize { width, height } = context.window().inner_size();
-
-                let prev_gl = physical_position_to_gl(width, height, prev);
-                let prev_stroke = gl_to_stroke(width, height, zoom, prev_gl);
-                let prev_xformed = xform_stroke(gis, prev_stroke);
-
-                println!(
-                    "px={:.02},{:.02} -> gl={prev_gl} -> st=>{prev_stroke} -> xf={prev_xformed}",
-                    prev.x, prev.y
-                );
-
                 if input_handler.button_down(MouseButton::Left) {
+                    let PhysicalSize { width, height } = context.window().inner_size();
+
+                    let prev_gl = physical_position_to_gl(width, height, prev);
+                    let prev_stroke = gl_to_stroke(width, height, zoom, prev_gl);
+                    let prev_xformed = xform_stroke(gis, prev_stroke);
+
                     let next_gl = physical_position_to_gl(width, height, position);
                     let next_stroke = gl_to_stroke(width, height, zoom, next_gl);
                     let next_xformed = xform_stroke(gis, next_stroke);
@@ -349,8 +344,7 @@ fn main() {
                     use tablet_thing::graphics::*;
                     // WHEH LAD
                     let PhysicalSize { width, height } = context.window().inner_size();
-                    let xform = un_xform_stroke(gis, Default::default());
-                    let xform = stroke_to_gl(width, height, zoom, xform);
+                    let xform = stroke_to_gl(width, height, zoom, gis);
                     let view = glam::Mat4::from_scale_rotation_translation(
                         glam::vec3(zoom / width as f32, zoom / height as f32, 1.0),
                         glam::Quat::IDENTITY,
