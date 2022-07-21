@@ -35,13 +35,13 @@ pub fn circle_points(radius: f32, num_segments: usize) -> Vec<f32> {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct NewGlPos {
+pub struct GlPos {
     pub x: f32,
     pub y: f32,
 }
 
-pub fn physical_position_to_gl(width: u32, height: u32, pos: PhysicalPosition<f64>) -> NewGlPos {
-    NewGlPos {
+pub fn physical_position_to_gl(width: u32, height: u32, pos: PhysicalPosition<f64>) -> GlPos {
+    GlPos {
         x: (2.0 * pos.x as f32) / width as f32 - 1.0,
         y: -((2.0 * pos.y as f32) / height as f32 - 1.0),
     }
@@ -53,10 +53,17 @@ pub struct StrokePoint {
     pub y: f32,
 }
 
-pub fn gl_to_stroke(width: u32, height: u32, gl: NewGlPos) -> StrokePoint {
+pub fn gl_to_stroke(width: u32, height: u32, zoom: f32, gl: GlPos) -> StrokePoint {
     StrokePoint {
-        x: gl.x * width as f32,
-        y: gl.y * height as f32,
+        x: gl.x * width as f32 / zoom,
+        y: gl.y * height as f32 / zoom,
+    }
+}
+
+pub fn stroke_to_gl(width: u32, height: u32, zoom: f32, point: StrokePoint) -> GlPos {
+    GlPos {
+        x: point.x * zoom / width as f32,
+        y: point.y * zoom / height as f32,
     }
 }
 
@@ -66,16 +73,19 @@ pub struct StrokePos {
     pub y: f32,
 }
 
-pub fn xform_stroke(gis: StrokePoint, zoom: f32, stroke: StrokePoint) -> StrokePos {
-    let dx = stroke.x - gis.x;
-    let dy = stroke.y - gis.y;
-    StrokePos {
-        x: dx / zoom,
-        y: dy / zoom,
-    }
+pub fn xform_stroke(gis: StrokePoint, stroke: StrokePoint) -> StrokePos {
+    let x = stroke.x - gis.x;
+    let y = stroke.y - gis.y;
+    StrokePos { x, y }
 }
 
-impl Display for NewGlPos {
+pub fn un_xform_stroke(gis: StrokePoint, stroke: StrokePos) -> StrokePoint {
+    let x = stroke.x + gis.x;
+    let y = stroke.y + gis.y;
+    StrokePoint { x, y }
+}
+
+impl Display for GlPos {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:.02},{:.02}", self.x, self.y)
     }

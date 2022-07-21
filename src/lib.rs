@@ -262,7 +262,7 @@ impl State {
         } = touch;
 
         let gl_pos = graphics::physical_position_to_gl(width, height, location);
-        let point = graphics::gl_to_stroke(width, height, gl_pos);
+        let point = graphics::gl_to_stroke(width, height, zoom, gl_pos);
 
         let pressure = match force {
             Some(Force::Normalized(force)) => force,
@@ -297,10 +297,10 @@ impl State {
         self.stylus.pressure = pressure as f32;
         self.stylus.state = state;
 
-        self.handle_update(gis, zoom, phase);
+        self.handle_update(gis, phase);
     }
 
-    fn handle_update(&mut self, gis: StrokePoint, zoom: f32, phase: TouchPhase) {
+    fn handle_update(&mut self, gis: StrokePoint, phase: TouchPhase) {
         if self.stylus.inverted() {
             if phase == TouchPhase::Moved && self.stylus.down() {
                 for stroke in self.strokes.iter_mut() {
@@ -321,7 +321,7 @@ impl State {
                 }
             }
         } else {
-            let pos = graphics::xform_stroke(gis, zoom, self.stylus.pos);
+            let pos = graphics::xform_stroke(gis, self.stylus.pos);
 
             match phase {
                 TouchPhase::Started => {
