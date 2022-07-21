@@ -26,6 +26,6 @@ The winit fork is cloned automatically if you cloned with `--recurse-submodules`
 Coordinate types:
 - `PhysicalPosition` - pixels in window, provided by winit
 - `GlPos` - NDC used to calculate where the user is clicking
-- `StrokeFromGl` - stroke position relative to NDC origin in stroke space
+- `StrokePoint` - stroke position relative to NDC origin in stroke space
 - `StrokePos` - stroke position relative to stroke space origin
 
