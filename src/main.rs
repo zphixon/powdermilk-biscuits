@@ -11,7 +11,7 @@ use glutin::{
 use tablet_thing::{
     graphics::coords::{GlPos, StrokePos},
     input::InputHandler,
-    State, StrokePoint, StrokeStyle,
+    State, StrokeStyle,
 };
 
 #[allow(unreachable_code)]
@@ -36,11 +36,12 @@ fn main() {
     };
 
     let view_uniform;
-    let proj_uniform;
+    let stroke_color_uniform;
 
     unsafe {
         gl.enable(glow::VERTEX_PROGRAM_POINT_SIZE);
         gl.disable(glow::CULL_FACE);
+        gl.clear_color(0.0, 0.0, 0.0, 1.0);
 
         let va = gl.create_vertex_array().expect("create vertex array");
         gl.bind_vertex_array(Some(va));
@@ -78,14 +79,9 @@ fn main() {
 
         gl.use_program(Some(program));
 
-        proj_uniform = gl.get_uniform_location(program, "proj").unwrap();
         view_uniform = gl.get_uniform_location(program, "view").unwrap();
+        stroke_color_uniform = gl.get_uniform_location(program, "strokeColor").unwrap();
 
-        gl.uniform_matrix_4_f32_slice(
-            Some(&proj_uniform),
-            false,
-            &glam::Mat4::IDENTITY.to_cols_array(),
-        );
         gl.uniform_matrix_4_f32_slice(
             Some(&view_uniform),
             false,
@@ -288,7 +284,6 @@ fn main() {
                     glam::Quat::IDENTITY,
                     glam::vec3(-translate.x, -translate.y, 0.0),
                 );
-                let proj = glam::Mat4::IDENTITY;
 
                 unsafe {
                     gl.uniform_matrix_4_f32_slice(
@@ -296,16 +291,6 @@ fn main() {
                         false,
                         &view.to_cols_array(),
                     );
-                    gl.uniform_matrix_4_f32_slice(
-                        Some(&proj_uniform),
-                        false,
-                        &proj.to_cols_array(),
-                    );
-                    if state.stylus.inverted() {
-                        gl.clear_color(1.0, 0.65, 0.65, 1.0);
-                    } else {
-                        gl.clear_color(0.65, 1.0, 0.75, 1.0);
-                    }
                     gl.clear(glow::COLOR_BUFFER_BIT);
                 }
 
@@ -356,6 +341,13 @@ fn main() {
                             size_of::<f32>() as i32 * 2,
                         );
                         gl.enable_vertex_attrib_array(1);
+
+                        gl.uniform_3_f32(
+                            Some(&stroke_color_uniform),
+                            stroke.color[0] as f32 / 255.0,
+                            stroke.color[1] as f32 / 255.0,
+                            stroke.color[2] as f32 / 255.0,
+                        );
 
                         gl.draw_arrays(glow::LINE_STRIP, 0, stroke.points.len() as i32);
                     }
