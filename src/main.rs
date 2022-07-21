@@ -341,6 +341,7 @@ fn main() {
 
             Event::RedrawRequested(_) => {
                 unsafe {
+                    gl.use_program(Some(strokes_program));
                     let view = tablet_thing::graphics::view_matrix(
                         zoom,
                         context.window().inner_size(),
@@ -352,7 +353,6 @@ fn main() {
                         &view.to_cols_array(),
                     );
                     gl.clear(glow::COLOR_BUFFER_BIT);
-                    gl.use_program(Some(strokes_program));
                 }
 
                 for stroke in state.strokes.iter_mut() {
