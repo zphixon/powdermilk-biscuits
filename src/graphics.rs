@@ -332,8 +332,10 @@ pub fn circles(
 ) {
     let mut iter = stroke.points.windows(2);
     while let Some([a, b]) = iter.next() {
-        let PixelPos { x: ax, y: ay } = PixelPos::from_stroke(a.pos, zoom, screen_in_paper);
-        let PixelPos { x: bx, y: by } = PixelPos::from_stroke(b.pos, zoom, screen_in_paper);
+        let PixelPos { x: ax, y: ay } =
+            PixelPos::from_stroke(StrokePos { x: a.x, y: a.y }, zoom, screen_in_paper);
+        let PixelPos { x: bx, y: by } =
+            PixelPos::from_stroke(StrokePos { x: b.x, y: b.y }, zoom, screen_in_paper);
 
         let mut ax = ax as isize;
         let bx = bx as isize;
@@ -389,8 +391,10 @@ pub fn circles_pressure(
 ) {
     let mut iter = stroke.points.windows(2);
     while let Some([a, b]) = iter.next() {
-        let PixelPos { x: ax, y: ay } = PixelPos::from_stroke(a.pos, zoom, screen_in_paper);
-        let PixelPos { x: bx, y: by } = PixelPos::from_stroke(b.pos, zoom, screen_in_paper);
+        let PixelPos { x: ax, y: ay } =
+            PixelPos::from_stroke(StrokePos { x: a.x, y: a.y }, zoom, screen_in_paper);
+        let PixelPos { x: bx, y: by } =
+            PixelPos::from_stroke(StrokePos { x: b.x, y: b.y }, zoom, screen_in_paper);
 
         let mut ax = ax as isize;
         let bx = bx as isize;
@@ -476,8 +480,10 @@ pub fn lines(
 ) {
     let mut iter = stroke.points.windows(2);
     while let Some([a, b]) = iter.next() {
-        let PixelPos { x: ax, y: ay } = PixelPos::from_stroke(a.pos, zoom, screen_in_paper);
-        let PixelPos { x: bx, y: by } = PixelPos::from_stroke(b.pos, zoom, screen_in_paper);
+        let PixelPos { x: ax, y: ay } =
+            PixelPos::from_stroke(StrokePos { x: a.x, y: a.y }, zoom, screen_in_paper);
+        let PixelPos { x: bx, y: by } =
+            PixelPos::from_stroke(StrokePos { x: b.x, y: b.y }, zoom, screen_in_paper);
 
         let mut ax = ax as isize;
         let bx = bx as isize;
@@ -538,7 +544,10 @@ pub fn points(
             frame,
             width,
             height,
-            point.pos,
+            StrokePos {
+                x: point.x,
+                y: point.y,
+            },
             stroke.color,
             zoom,
             screen_in_paper,

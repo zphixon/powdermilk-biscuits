@@ -10,8 +10,10 @@ use std::io::Write;
 pub type Color = [u8; 3];
 
 #[derive(Default, Debug, Clone, Copy)]
+#[repr(packed)]
 pub struct StrokePoint {
-    pub pos: StrokePos,
+    pub x: f32,
+    pub y: f32,
     pub pressure: f32,
 }
 
@@ -23,6 +25,8 @@ pub struct Stroke {
     pub style: StrokeStyle,
     pub spline: Option<BSpline<StrokePos, f32>>,
     pub erased: bool,
+    pub vbo: Option<glow::Buffer>,
+    pub vao: Option<glow::VertexArray>,
 }
 
 impl Stroke {
@@ -245,8 +249,8 @@ impl State {
             if phase == TouchPhase::Moved && self.stylus.down() {
                 for stroke in self.strokes.iter_mut() {
                     'inner: for point in stroke.points.iter() {
-                        let dist = ((self.stylus.pos.x - point.pos.x).powi(2)
-                            + (self.stylus.pos.y - point.pos.y).powi(2))
+                        let dist = ((self.stylus.pos.x - point.x).powi(2)
+                            + (self.stylus.pos.y - point.y).powi(2))
                         .sqrt();
                         if dist < self.brush_size {
                             stroke.erased = true;
@@ -265,6 +269,8 @@ impl State {
                         style: self.stroke_style,
                         erased: false,
                         spline: None,
+                        vbo: None,
+                        vao: None,
                     });
                 }
 
@@ -272,7 +278,8 @@ impl State {
                     if let Some(stroke) = self.strokes.last_mut() {
                         if self.stylus.down() {
                             stroke.points.push(StrokePoint {
-                                pos: self.stylus.pos,
+                                x: self.stylus.pos.x,
+                                y: self.stylus.pos.y,
                                 pressure: self.stylus.pressure,
                             });
 

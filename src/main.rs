@@ -11,7 +11,7 @@ use glutin::{
 use tablet_thing::{
     graphics::coords::{GlPos, StrokePos},
     input::InputHandler,
-    State, StrokeStyle,
+    State, StrokePoint, StrokeStyle,
 };
 
 #[allow(unreachable_code)]
@@ -131,7 +131,10 @@ fn main() {
                     for stroke in state.strokes.iter() {
                         println!("stroke");
                         for point in stroke.points.iter() {
-                            println!("{}, {}, {}", point.pos.x, point.pos.y, point.pressure);
+                            let x = point.x;
+                            let y = point.y;
+                            let pressure = point.pressure;
+                            println!("{x}, {y}, {pressure}");
                         }
                     }
                     println!("zoom={zoom:.02}");
@@ -276,68 +279,18 @@ fn main() {
             }
 
             Event::RedrawRequested(_) => {
+                let PhysicalSize { width, height } = context.window().inner_size();
+                let (width, height) = (width as f32, height as f32);
+
+                let translate = GlPos::from_stroke(StrokePos { x: 0., y: 0. }, zoom, gis);
+                let view = glam::Mat4::from_scale_rotation_translation(
+                    glam::vec3(zoom / width, zoom / height, 0.0),
+                    glam::Quat::IDENTITY,
+                    glam::vec3(-translate.x, -translate.y, 0.0),
+                );
+                let proj = glam::Mat4::IDENTITY;
+
                 unsafe {
-                    let points = state
-                        .strokes
-                        .iter()
-                        .map(|stroke| {
-                            stroke
-                                .points
-                                .iter()
-                                .map(|point| [point.pos.x, point.pos.y, point.pressure])
-                                .flatten()
-                        })
-                        .flatten()
-                        .collect::<Vec<f32>>();
-
-                    let bytes = std::slice::from_raw_parts(
-                        points.as_ptr() as *const u8,
-                        points.len() * size_of::<f32>(),
-                    );
-
-                    let vbo = gl.create_buffer().unwrap();
-                    gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
-                    gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, &bytes, glow::STATIC_DRAW);
-
-                    let vao = gl.create_vertex_array().unwrap();
-                    gl.bind_vertex_array(Some(vao));
-                    gl.vertex_attrib_pointer_f32(
-                        0,
-                        2,
-                        glow::FLOAT,
-                        false,
-                        size_of::<f32>() as i32 * 3,
-                        0,
-                    );
-                    gl.enable_vertex_attrib_array(0);
-                    gl.vertex_attrib_pointer_f32(
-                        1,
-                        1,
-                        glow::FLOAT,
-                        false,
-                        size_of::<f32>() as i32 * 3,
-                        size_of::<f32>() as i32 * 2,
-                    );
-                    gl.enable_vertex_attrib_array(1);
-
-                    if state.stylus.inverted() {
-                        gl.clear_color(1.0, 0.65, 0.65, 1.0);
-                    } else {
-                        gl.clear_color(0.65, 1.0, 0.75, 1.0);
-                    }
-                    gl.clear(glow::COLOR_BUFFER_BIT);
-
-                    let PhysicalSize { width, height } = context.window().inner_size();
-                    let (width, height) = (width as f32, height as f32);
-
-                    let translate = GlPos::from_stroke(StrokePos { x: 0., y: 0. }, zoom, gis);
-                    let view = glam::Mat4::from_scale_rotation_translation(
-                        glam::vec3(zoom / width, zoom / height, 0.0),
-                        glam::Quat::IDENTITY,
-                        glam::vec3(-translate.x, -translate.y, 0.0),
-                    );
-                    let proj = glam::Mat4::IDENTITY;
-
                     gl.uniform_matrix_4_f32_slice(
                         Some(&view_uniform),
                         false,
@@ -348,9 +301,66 @@ fn main() {
                         false,
                         &proj.to_cols_array(),
                     );
-
-                    gl.draw_arrays(glow::LINE_STRIP, 0, (points.len() / 3) as i32);
+                    if state.stylus.inverted() {
+                        gl.clear_color(1.0, 0.65, 0.65, 1.0);
+                    } else {
+                        gl.clear_color(0.65, 1.0, 0.75, 1.0);
+                    }
+                    gl.clear(glow::COLOR_BUFFER_BIT);
                 }
+
+                for stroke in state.strokes.iter_mut() {
+                    if stroke.points.is_empty() || stroke.erased {
+                        continue;
+                    }
+
+                    unsafe {
+                        let vbo = stroke
+                            .vbo
+                            .get_or_insert_with(|| gl.create_buffer().unwrap());
+                        let vao = stroke
+                            .vao
+                            .get_or_insert_with(|| gl.create_vertex_array().unwrap());
+
+                        let points_flat = std::slice::from_raw_parts(
+                            stroke.points.as_ptr() as *const f32,
+                            stroke.points.len() * 3,
+                        );
+
+                        let bytes = std::slice::from_raw_parts(
+                            points_flat.as_ptr() as *const u8,
+                            points_flat.len() * size_of::<f32>(),
+                        );
+
+                        gl.bind_buffer(glow::ARRAY_BUFFER, Some(*vbo));
+                        gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, &bytes, glow::STATIC_DRAW);
+
+                        gl.bind_vertex_array(Some(*vao));
+
+                        gl.vertex_attrib_pointer_f32(
+                            0,
+                            2,
+                            glow::FLOAT,
+                            false,
+                            size_of::<f32>() as i32 * 3,
+                            0,
+                        );
+                        gl.enable_vertex_attrib_array(0);
+
+                        gl.vertex_attrib_pointer_f32(
+                            1,
+                            1,
+                            glow::FLOAT,
+                            false,
+                            size_of::<f32>() as i32 * 3,
+                            size_of::<f32>() as i32 * 2,
+                        );
+                        gl.enable_vertex_attrib_array(1);
+
+                        gl.draw_arrays(glow::LINE_STRIP, 0, stroke.points.len() as i32);
+                    }
+                }
+
                 context.swap_buffers().unwrap();
             }
 

@@ -107,7 +107,7 @@ impl StrokePos {
 
 impl From<crate::StrokePoint> for StrokePos {
     fn from(p: crate::StrokePoint) -> Self {
-        p.pos
+        StrokePos { x: p.x, y: p.y }
     }
 }
 
