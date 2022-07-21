@@ -1,4 +1,4 @@
-use glutin::dpi::PhysicalPosition;
+use glutin::dpi::{PhysicalPosition, PhysicalSize};
 use std::fmt::{Display, Formatter};
 
 pub type Color = [u8; 3];
@@ -32,6 +32,16 @@ pub fn circle_points(radius: f32, num_segments: usize) -> Vec<f32> {
     }
 
     segments
+}
+
+pub fn view_matrix(zoom: f32, size: PhysicalSize<u32>, origin: StrokePoint) -> glam::Mat4 {
+    let PhysicalSize { width, height } = size;
+    let xform = stroke_to_gl(width, height, zoom, origin);
+    glam::Mat4::from_scale_rotation_translation(
+        glam::vec3(zoom / width as f32, zoom / height as f32, 1.0),
+        glam::Quat::IDENTITY,
+        glam::vec3(xform.x, xform.y, 0.0),
+    )
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -77,12 +87,6 @@ pub fn xform_stroke(gis: StrokePoint, stroke: StrokePoint) -> StrokePos {
     let x = stroke.x - gis.x;
     let y = stroke.y - gis.y;
     StrokePos { x, y }
-}
-
-pub fn un_xform_stroke(gis: StrokePoint, stroke: StrokePos) -> StrokePoint {
-    let x = stroke.x + gis.x;
-    let y = stroke.y + gis.y;
-    StrokePoint { x, y }
 }
 
 impl Display for GlPos {

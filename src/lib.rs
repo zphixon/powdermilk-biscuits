@@ -301,6 +301,8 @@ impl State {
     }
 
     fn handle_update(&mut self, gis: StrokePoint, phase: TouchPhase) {
+        let pos = graphics::xform_stroke(gis, self.stylus.pos);
+
         if self.stylus.inverted() {
             if phase == TouchPhase::Moved && self.stylus.down() {
                 for stroke in self.strokes.iter_mut() {
@@ -309,11 +311,8 @@ impl State {
                     }
 
                     'inner: for point in stroke.points.iter() {
-                        let dist = ((self.stylus.pos.x - point.x).powi(2)
-                            + (self.stylus.pos.y - point.y).powi(2))
-                        .sqrt();
+                        let dist = ((pos.x - point.x).powi(2) + (pos.y - point.y).powi(2)).sqrt();
                         if dist < self.brush_size {
-                            println!("poof d={dist:.02} bs={}", self.brush_size as usize);
                             stroke.erased = true;
                             break 'inner;
                         }
@@ -321,8 +320,6 @@ impl State {
                 }
             }
         } else {
-            let pos = graphics::xform_stroke(gis, self.stylus.pos);
-
             match phase {
                 TouchPhase::Started => {
                     self.strokes.push(Stroke {
