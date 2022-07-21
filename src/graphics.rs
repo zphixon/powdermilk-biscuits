@@ -5,6 +5,22 @@ use crate::{
     Color, Stroke,
 };
 
+pub fn circle_points(radius: f32, num_segments: usize) -> Vec<f32> {
+    let mut segments = Vec::with_capacity(num_segments);
+
+    let mut angle = 0.0;
+    let segments_f32 = num_segments as f32;
+    for _ in 0..num_segments {
+        let d_theta = std::f32::consts::TAU / segments_f32;
+        angle += d_theta;
+        let (x, y) = angle.sin_cos();
+        segments.push(x * radius);
+        segments.push(y * radius);
+    }
+
+    segments
+}
+
 #[inline]
 pub fn clear(frame: &mut [u8]) {
     for pixel in frame.chunks_exact_mut(4) {

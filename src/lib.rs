@@ -132,20 +132,21 @@ mod hide {
     }
 }
 
+pub const MAX_BRUSH: f32 = 32.0;
+pub const MIN_BRUSH: f32 = 1.0;
+
 impl State {
     pub fn increase_brush(&mut self) {
-        let max_brush = 32.0;
-        if self.brush_size + 1. > max_brush {
-            self.brush_size = max_brush;
+        if self.brush_size + 1. > MAX_BRUSH {
+            self.brush_size = MAX_BRUSH;
         } else {
             self.brush_size += 1.;
         }
     }
 
     pub fn decrease_brush(&mut self) {
-        let min_brush = 1.0;
-        if self.brush_size - 1. < min_brush {
-            self.brush_size = min_brush;
+        if self.brush_size - 1. < MIN_BRUSH {
+            self.brush_size = MIN_BRUSH;
         } else {
             self.brush_size -= 1.;
         }
