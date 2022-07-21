@@ -1,29 +1,49 @@
 pub mod graphics;
 pub mod input;
 
-use crate::graphics::coords::{PixelPos, StrokePos};
 use bspline::BSpline;
 use glutin::event::{Force, Touch, TouchPhase};
-use graphics::coords::GlPos;
-use std::io::Write;
+use graphics::StrokePos;
 
 pub type Color = [u8; 3];
 
 #[derive(Default, Debug, Clone, Copy)]
 #[repr(packed)]
-pub struct StrokePoint {
+pub struct StrokeElement {
     pub x: f32,
     pub y: f32,
     pub pressure: f32,
 }
 
+impl std::ops::Add for StrokeElement {
+    type Output = StrokeElement;
+    fn add(self, rhs: Self) -> Self::Output {
+        StrokeElement {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+            pressure: self.pressure,
+        }
+    }
+}
+
+impl std::ops::Mul<f32> for StrokeElement {
+    type Output = StrokeElement;
+    fn mul(self, rhs: f32) -> Self::Output {
+        StrokeElement {
+            x: self.x * rhs,
+            y: self.y * rhs,
+            pressure: self.pressure,
+        }
+    }
+}
+
 #[derive(Default, Debug)]
 pub struct Stroke {
-    pub points: Vec<StrokePoint>,
+    pub points: Vec<StrokeElement>,
     pub color: Color,
     pub brush_size: f32,
     pub style: StrokeStyle,
-    pub spline: Option<BSpline<StrokePos, f32>>,
+    pub spline: Option<BSpline<StrokeElement, f32>>,
     pub erased: bool,
     pub vbo: Option<glow::Buffer>,
     pub vao: Option<glow::VertexArray>,
@@ -39,7 +59,7 @@ impl Stroke {
                 .chain(self.points.iter().cloned())
                 .chain([self.points.last().cloned().unwrap(); Stroke::DEGREE])
                 .map(|point| point.into())
-                .collect::<Vec<_>>();
+                .collect::<Vec<StrokeElement>>();
 
             let knots = std::iter::repeat(())
                 .take(points.len() + Stroke::DEGREE + 1)
@@ -169,32 +189,9 @@ impl State {
             ..
         } = touch;
 
-        let pixel_pos = PixelPos::from_physical_position(location);
-        let gl_pos = GlPos::from_pixel(width, height, pixel_pos);
-        let pos = StrokePos::from_gl(gis, zoom, gl_pos);
-        let pos = StrokePos {
-            x: pos.x * width as f32,
-            y: pos.y * height as f32,
-        };
-
-        let pressure_str = if let Some(force) = force {
-            if phase == TouchPhase::Moved && self.stylus.down() {
-                format!("{:.02}", force.normalized())
-            } else {
-                String::from("    ")
-            }
-        } else {
-            String::from("    ")
-        };
-        let inverted_str = if inverted { " (inverted) " } else { " " };
-        let pixel_str = format!("{},{}", pixel_pos.x, pixel_pos.y);
-        let gl_str = format!("{:.02},{:.02}", gl_pos.x, gl_pos.y);
-        let stroke_str = format!("{:.02},{:.02}", pos.x, pos.y);
-        let gis_str = format!("{:.02},{:.02}", gis.x, gis.y);
-        let stroke_str = format!(
-            "{gis_str} {pixel_str} -> {gl_str} -> {stroke_str}{inverted_str}{:?}            ",
-            self.stroke_style
-        );
+        let ngl = graphics::physical_position_to_gl(width, height, location);
+        let nsp = graphics::gl_to_stroke(width, height, ngl);
+        let pos = graphics::xform_stroke(gis, zoom, nsp);
 
         let pressure = match force {
             Some(Force::Normalized(force)) => force,
@@ -209,33 +206,20 @@ impl State {
         };
 
         let state = match phase {
-            TouchPhase::Started => {
-                println!("start stroke {stroke_str}");
-
-                StylusState {
-                    pos: StylusPosition::Down,
-                    inverted,
-                }
-            }
+            TouchPhase::Started => StylusState {
+                pos: StylusPosition::Down,
+                inverted,
+            },
 
             TouchPhase::Moved => {
-                if self.stylus.down() {
-                    print!("\r{pressure_str}         {stroke_str}");
-                    std::io::stdout().flush().unwrap();
-                }
-
                 self.stylus.state.inverted = inverted;
                 self.stylus.state
             }
 
-            TouchPhase::Ended | TouchPhase::Cancelled => {
-                println!("\rend stroke   {stroke_str}\n");
-
-                StylusState {
-                    pos: StylusPosition::Up,
-                    inverted,
-                }
-            }
+            TouchPhase::Ended | TouchPhase::Cancelled => StylusState {
+                pos: StylusPosition::Up,
+                inverted,
+            },
         };
 
         self.stylus.pos = pos;
@@ -249,11 +233,16 @@ impl State {
         if self.stylus.inverted() {
             if phase == TouchPhase::Moved && self.stylus.down() {
                 for stroke in self.strokes.iter_mut() {
+                    if stroke.erased {
+                        continue;
+                    }
+
                     'inner: for point in stroke.points.iter() {
                         let dist = ((self.stylus.pos.x - point.x).powi(2)
                             + (self.stylus.pos.y - point.y).powi(2))
                         .sqrt();
                         if dist < self.brush_size {
+                            println!("poof d={dist:.02} bs={}", self.brush_size as usize);
                             stroke.erased = true;
                             break 'inner;
                         }
@@ -278,7 +267,7 @@ impl State {
                 TouchPhase::Moved => {
                     if let Some(stroke) = self.strokes.last_mut() {
                         if self.stylus.down() {
-                            stroke.points.push(StrokePoint {
+                            stroke.points.push(StrokeElement {
                                 x: self.stylus.pos.x,
                                 y: self.stylus.pos.y,
                                 pressure: self.stylus.pressure,
@@ -295,31 +284,6 @@ impl State {
                     }
                 }
             };
-        }
-    }
-
-    pub fn draw_strokes(
-        &mut self,
-        frame: &mut [u8],
-        width: usize,
-        height: usize,
-        zoom: f32,
-        gis: StrokePos,
-    ) {
-        for stroke in self.strokes.iter_mut() {
-            if !stroke.erased {
-                (match if self.use_individual_style {
-                    stroke.style
-                } else {
-                    self.stroke_style
-                } {
-                    StrokeStyle::Lines => graphics::lines,
-                    StrokeStyle::Circles => graphics::circles,
-                    StrokeStyle::CirclesPressure => graphics::circles_pressure,
-                    StrokeStyle::Points => graphics::points,
-                    StrokeStyle::Spline => graphics::spline,
-                })(stroke, frame, width, height, zoom, gis);
-            }
         }
     }
 }

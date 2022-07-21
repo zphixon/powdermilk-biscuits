@@ -12,7 +12,6 @@ layout (location=2) out vec3 fragStrokeColor;
 
 void main() {
   vec4 pos = view * vec4(strokePos, 0.0, 1.0);
-  pos.z = 0;
   gl_Position = pos;
 
   fragPos = pos;

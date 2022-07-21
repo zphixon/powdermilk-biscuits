@@ -1,11 +1,8 @@
-use {
-    crate::graphics::coords::PixelPos,
-    glutin::{
-        dpi::PhysicalPosition,
-        event::{ElementState, MouseButton, VirtualKeyCode},
-    },
-    std::collections::HashMap,
+use glutin::{
+    dpi::PhysicalPosition,
+    event::{ElementState, MouseButton, VirtualKeyCode},
 };
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy)]
 pub enum KeyState {
@@ -52,12 +49,16 @@ impl InputHandler {
         *button_state = next_state;
     }
 
-    pub fn cursor_pos(&self) -> PixelPos {
-        PixelPos::from_physical_position(self.cursor_pos)
+    pub fn cursor_pos(&self) -> PhysicalPosition<f64> {
+        self.cursor_pos
     }
 
     pub fn button_down(&mut self, button: MouseButton) -> bool {
         self.buttons.contains_key(&button) && self.buttons[&button].is_down()
+    }
+
+    pub fn button_just_pressed(&mut self, button: MouseButton) -> bool {
+        self.buttons.contains_key(&button) && self.buttons[&button].just_pressed()
     }
 
     pub fn handle_key(&mut self, key: VirtualKeyCode, state: ElementState) {

@@ -8,11 +8,7 @@ use glutin::{
     window::WindowBuilder,
     ContextBuilder,
 };
-use tablet_thing::{
-    graphics::coords::{GlPos, PixelPos, StrokePos},
-    input::InputHandler,
-    State, StrokeStyle,
-};
+use tablet_thing::{graphics::StrokePos, input::InputHandler, State, StrokeStyle};
 
 #[allow(unreachable_code)]
 fn main() {
@@ -153,7 +149,8 @@ fn main() {
 
     // gl origin in stroke space
     let mut gis = StrokePos { x: 0.0, y: 0.0 };
-    let mut zoom = 50.;
+    const DEFAULT_ZOOM: f32 = 50.;
+    let mut zoom = DEFAULT_ZOOM;
 
     ev.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
@@ -198,9 +195,17 @@ fn main() {
                     context.window().request_redraw();
                 }
 
-                if input_handler.control() && input_handler.just_pressed(Z) {
-                    state.undo_stroke();
-                    context.window().request_redraw();
+                match (input_handler.control(), input_handler.just_pressed(Z)) {
+                    (true, true) => {
+                        state.undo_stroke();
+                        context.window().request_redraw();
+                    }
+                    (false, true) => {
+                        gis = Default::default();
+                        zoom = DEFAULT_ZOOM;
+                        context.window().request_redraw();
+                    }
+                    _ => {}
                 }
 
                 if input_handler.just_pressed(Key1)
@@ -275,7 +280,7 @@ fn main() {
 
                 let dzoom = if zoom_in { ZOOM_SPEED } else { -ZOOM_SPEED };
                 zoom += dzoom;
-                zoom = zoom.clamp(0.01, 500.0);
+                zoom = zoom.clamp(1.0, 500.0);
 
                 context.window().request_redraw();
             }
@@ -309,16 +314,20 @@ fn main() {
                 let PhysicalSize { width, height } = context.window().inner_size();
 
                 if input_handler.button_down(MouseButton::Left) {
-                    let next = input_handler.cursor_pos();
+                    use tablet_thing::graphics::*;
 
-                    let prev_gl = GlPos::from_pixel(width, height, prev);
-                    let next_gl = GlPos::from_pixel(width, height, next);
+                    let prev_gl = physical_position_to_gl(width, height, prev);
+                    let prev_stroke = gl_to_stroke(width, height, prev_gl);
+                    let prev_xformed = xform_stroke(gis, zoom, prev_stroke);
 
-                    let prev_stroke = StrokePos::from_gl(gis, zoom, prev_gl);
-                    let next_stroke = StrokePos::from_gl(gis, zoom, next_gl);
-                    let diff_stroke = next_stroke - prev_stroke;
+                    let next_gl = physical_position_to_gl(width, height, position);
+                    let next_stroke = gl_to_stroke(width, height, next_gl);
+                    let next_xformed = xform_stroke(gis, zoom, next_stroke);
 
-                    gis = gis - diff_stroke;
+                    let dx = next_xformed.x - prev_xformed.x;
+                    let dy = next_xformed.y - prev_xformed.y;
+                    gis.x += dx;
+                    gis.y += dy;
 
                     context.window().request_redraw();
                 }
@@ -331,22 +340,13 @@ fn main() {
             }
 
             Event::RedrawRequested(_) => {
-                let PhysicalSize { width, height } = context.window().inner_size();
-                let (width, height) = (width as f32, height as f32);
-
-                let translate = GlPos::from_stroke(StrokePos { x: 0., y: 0. }, zoom, gis);
-                let view = glam::Mat4::from_scale_rotation_translation(
-                    glam::vec3(zoom / width, zoom / height, 0.0),
-                    glam::Quat::IDENTITY,
-                    glam::vec3(-translate.x, -translate.y, 0.0),
-                );
-
+                // uinform hehe
                 unsafe {
-                    gl.uniform_matrix_4_f32_slice(
-                        Some(&view_uniform),
-                        false,
-                        &view.to_cols_array(),
-                    );
+                    //gl.uniform_matrix_4_f32_slice(
+                    //    Some(&view_uniform),
+                    //    false,
+                    //    &view.to_cols_array(),
+                    //);
                     gl.clear(glow::COLOR_BUFFER_BIT);
                     gl.use_program(Some(strokes_program));
                 }
@@ -443,26 +443,7 @@ fn main() {
                             if state.stylus.down() { 1.0 } else { 0.0 },
                         );
 
-                        let PhysicalSize { width, height } = context.window().inner_size();
-                        let ppos = PixelPos::from_stroke(gis, zoom, state.stylus.pos);
-                        let ppos = PixelPos {
-                            //wuhh
-                            x: (ppos.x + width as isize) / 2,
-                            y: (ppos.y + height as isize) / 2,
-                        };
-                        let gpos = GlPos::from_pixel(width, height, ppos);
-                        let (width, height) = (width as f32, height as f32);
-                        let view = glam::Mat4::from_scale_rotation_translation(
-                            glam::vec3(state.brush_size / width, state.brush_size / height, 0.0),
-                            glam::Quat::IDENTITY,
-                            glam::vec3(gpos.x, gpos.y, 0.0),
-                        );
-                        gl.uniform_matrix_4_f32_slice(
-                            Some(&circle_view_uniform),
-                            false,
-                            &view.to_cols_array(),
-                        );
-
+                        // uniform heehee
                         gl.draw_arrays(glow::LINE_LOOP, 0, circle.len() as i32 / 2);
                     }
                 }
