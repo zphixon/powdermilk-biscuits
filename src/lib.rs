@@ -3,9 +3,7 @@ pub mod input;
 
 use bspline::BSpline;
 use glutin::event::{Force, Touch, TouchPhase};
-use graphics::StrokePos;
-
-pub type Color = [u8; 3];
+use graphics::{Color, ColorExt, StrokePoint};
 
 #[derive(Default, Debug, Clone, Copy)]
 #[repr(packed)]
@@ -114,7 +112,7 @@ impl Default for StylusState {
 pub struct Stylus {
     pub state: StylusState,
     pub pressure: f32,
-    pub pos: StrokePos,
+    pub pos: StrokePoint,
 }
 
 impl Stylus {
@@ -140,11 +138,85 @@ mod hide {
     use super::*;
     impl Default for State {
         fn default() -> Self {
+            use std::iter::repeat;
+            let mut strokes = vec![Stroke {
+                points: graphics::circle_points(1.0, 50)
+                    .chunks_exact(2)
+                    .map(|arr| StrokeElement {
+                        x: arr[0],
+                        y: arr[1],
+                        pressure: 1.0,
+                    })
+                    .collect(),
+                color: Color::WHITE,
+                ..Default::default()
+            }];
+
+            strokes.extend(repeat(-25.0).take(50).enumerate().map(|(i, x)| {
+                Stroke {
+                    points: repeat(-25.0)
+                        .take(50)
+                        .enumerate()
+                        .map(|(j, y)| StrokeElement {
+                            x: i as f32 + x,
+                            y: j as f32 + y,
+                            pressure: 1.0,
+                        })
+                        .collect(),
+                    color: Color::grey(0.1),
+                    ..Default::default()
+                }
+            }));
+
+            strokes.extend(repeat(-25.0).take(50).enumerate().map(|(i, y)| {
+                Stroke {
+                    points: repeat(-25.0)
+                        .take(50)
+                        .enumerate()
+                        .map(|(j, x)| StrokeElement {
+                            x: j as f32 + x,
+                            y: i as f32 + y,
+                            pressure: 1.0,
+                        })
+                        .collect(),
+                    color: Color::grey(0.1),
+                    ..Default::default()
+                }
+            }));
+
+            strokes.push(Stroke {
+                points: repeat(-25.0)
+                    .take(50)
+                    .enumerate()
+                    .map(|(i, x)| StrokeElement {
+                        x: i as f32 + x,
+                        y: 0.0,
+                        pressure: 1.0,
+                    })
+                    .collect(),
+                color: Color::grey(0.3),
+                ..Default::default()
+            });
+
+            strokes.push(Stroke {
+                points: repeat(-25.0)
+                    .take(50)
+                    .enumerate()
+                    .map(|(i, y)| StrokeElement {
+                        x: 0.0,
+                        y: i as f32 + y,
+                        pressure: 1.0,
+                    })
+                    .collect(),
+                color: Color::grey(0.3),
+                ..Default::default()
+            });
+
             State {
                 stylus: Default::default(),
                 brush_size: 1.0,
                 fill_brush_head: false,
-                strokes: Default::default(),
+                strokes,
                 stroke_style: Default::default(),
                 use_individual_style: false,
             }
@@ -180,7 +252,7 @@ impl State {
         self.strokes.pop();
     }
 
-    pub fn update(&mut self, gis: StrokePos, zoom: f32, width: u32, height: u32, touch: Touch) {
+    pub fn update(&mut self, gis: StrokePoint, zoom: f32, width: u32, height: u32, touch: Touch) {
         let Touch {
             force,
             phase,
@@ -189,9 +261,8 @@ impl State {
             ..
         } = touch;
 
-        let ngl = graphics::physical_position_to_gl(width, height, location);
-        let nsp = graphics::gl_to_stroke(width, height, ngl);
-        let pos = graphics::xform_stroke(gis, zoom, nsp);
+        let gl_pos = graphics::physical_position_to_gl(width, height, location);
+        let point = graphics::gl_to_stroke(width, height, gl_pos);
 
         let pressure = match force {
             Some(Force::Normalized(force)) => force,
@@ -222,14 +293,14 @@ impl State {
             },
         };
 
-        self.stylus.pos = pos;
+        self.stylus.pos = point;
         self.stylus.pressure = pressure as f32;
         self.stylus.state = state;
 
-        self.handle_update(phase);
+        self.handle_update(gis, zoom, phase);
     }
 
-    fn handle_update(&mut self, phase: TouchPhase) {
+    fn handle_update(&mut self, gis: StrokePoint, zoom: f32, phase: TouchPhase) {
         if self.stylus.inverted() {
             if phase == TouchPhase::Moved && self.stylus.down() {
                 for stroke in self.strokes.iter_mut() {
@@ -250,6 +321,8 @@ impl State {
                 }
             }
         } else {
+            let pos = graphics::xform_stroke(gis, zoom, self.stylus.pos);
+
             match phase {
                 TouchPhase::Started => {
                     self.strokes.push(Stroke {
@@ -268,8 +341,8 @@ impl State {
                     if let Some(stroke) = self.strokes.last_mut() {
                         if self.stylus.down() {
                             stroke.points.push(StrokeElement {
-                                x: self.stylus.pos.x,
-                                y: self.stylus.pos.y,
+                                x: pos.x,
+                                y: pos.y,
                                 pressure: self.stylus.pressure,
                             });
 

@@ -1,6 +1,23 @@
 use glutin::dpi::PhysicalPosition;
 use std::fmt::{Display, Formatter};
 
+pub type Color = [u8; 3];
+
+pub trait ColorExt {
+    const WHITE: [u8; 3] = [0xff, 0xff, 0xff];
+    const BLACK: [u8; 3] = [0x00, 0x00, 0x00];
+
+    fn grey(level: f32) -> Color {
+        [
+            (level * 0xff as f32) as u8,
+            (level * 0xff as f32) as u8,
+            (level * 0xff as f32) as u8,
+        ]
+    }
+}
+
+impl ColorExt for Color {}
+
 pub fn circle_points(radius: f32, num_segments: usize) -> Vec<f32> {
     let mut segments = Vec::with_capacity(num_segments);
 
@@ -49,7 +66,7 @@ pub struct StrokePos {
     pub y: f32,
 }
 
-pub fn xform_stroke(gis: StrokePos, zoom: f32, stroke: StrokePoint) -> StrokePos {
+pub fn xform_stroke(gis: StrokePoint, zoom: f32, stroke: StrokePoint) -> StrokePos {
     let dx = stroke.x - gis.x;
     let dy = stroke.y - gis.y;
     StrokePos {

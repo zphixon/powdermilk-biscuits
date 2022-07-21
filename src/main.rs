@@ -8,7 +8,7 @@ use glutin::{
     window::WindowBuilder,
     ContextBuilder,
 };
-use tablet_thing::{graphics::StrokePos, input::InputHandler, State, StrokeStyle};
+use tablet_thing::{graphics::StrokePoint, input::InputHandler, State, StrokeStyle};
 
 #[allow(unreachable_code)]
 fn main() {
@@ -148,7 +148,7 @@ fn main() {
     println!("stroke style {:?}", state.stroke_style);
 
     // gl origin in stroke space
-    let mut gis = StrokePos { x: 0.0, y: 0.0 };
+    let mut gis = StrokePoint { x: 0.0, y: 0.0 };
     const DEFAULT_ZOOM: f32 = 50.;
     let mut zoom = DEFAULT_ZOOM;
 
@@ -308,18 +308,23 @@ fn main() {
                 event: WindowEvent::CursorMoved { position, .. },
                 ..
             } => {
+                use tablet_thing::graphics::*;
+
                 let prev = input_handler.cursor_pos();
                 input_handler.handle_mouse_move(position);
 
                 let PhysicalSize { width, height } = context.window().inner_size();
 
+                let prev_gl = physical_position_to_gl(width, height, prev);
+                let prev_stroke = gl_to_stroke(width, height, prev_gl);
+                let prev_xformed = xform_stroke(gis, zoom, prev_stroke);
+
+                println!(
+                    "px={:.02},{:.02} -> gl={prev_gl} -> st=>{prev_stroke} -> xf={prev_xformed}",
+                    prev.x, prev.y
+                );
+
                 if input_handler.button_down(MouseButton::Left) {
-                    use tablet_thing::graphics::*;
-
-                    let prev_gl = physical_position_to_gl(width, height, prev);
-                    let prev_stroke = gl_to_stroke(width, height, prev_gl);
-                    let prev_xformed = xform_stroke(gis, zoom, prev_stroke);
-
                     let next_gl = physical_position_to_gl(width, height, position);
                     let next_stroke = gl_to_stroke(width, height, next_gl);
                     let next_xformed = xform_stroke(gis, zoom, next_stroke);
@@ -340,13 +345,19 @@ fn main() {
             }
 
             Event::RedrawRequested(_) => {
-                // uinform hehe
                 unsafe {
-                    //gl.uniform_matrix_4_f32_slice(
-                    //    Some(&view_uniform),
-                    //    false,
-                    //    &view.to_cols_array(),
-                    //);
+                    let PhysicalSize { width, height } = context.window().inner_size();
+                    let xform = tablet_thing::graphics::xform_stroke(Default::default(), 1.0, gis);
+                    let view = glam::Mat4::from_scale_rotation_translation(
+                        glam::vec3(zoom / width as f32, zoom / height as f32, 1.0),
+                        glam::Quat::IDENTITY,
+                        glam::vec3(xform.x, xform.y, 0.0),
+                    );
+                    gl.uniform_matrix_4_f32_slice(
+                        Some(&view_uniform),
+                        false,
+                        &view.to_cols_array(),
+                    );
                     gl.clear(glow::COLOR_BUFFER_BIT);
                     gl.use_program(Some(strokes_program));
                 }
@@ -437,13 +448,27 @@ fn main() {
                             Some(&erasing_uniform),
                             if state.stylus.inverted() { 1.0 } else { 0.0 },
                         );
-
                         gl.uniform_1_f32(
                             Some(&pen_down_uniform),
                             if state.stylus.down() { 1.0 } else { 0.0 },
                         );
 
-                        // uniform heehee
+                        let PhysicalSize { width, height } = context.window().inner_size();
+                        let view = glam::Mat4::from_scale_rotation_translation(
+                            glam::vec3(
+                                state.brush_size / width as f32,
+                                state.brush_size / height as f32,
+                                1.0,
+                            ),
+                            glam::Quat::IDENTITY,
+                            glam::vec3(state.stylus.pos.x, state.stylus.pos.y, 0.0),
+                        );
+
+                        gl.uniform_matrix_4_f32_slice(
+                            Some(&view_uniform),
+                            false,
+                            &view.to_cols_array(),
+                        );
                         gl.draw_arrays(glow::LINE_LOOP, 0, circle.len() as i32 / 2);
                     }
                 }
