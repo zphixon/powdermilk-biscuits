@@ -457,18 +457,23 @@ fn main() {
                         );
 
                         let PhysicalSize { width, height } = context.window().inner_size();
+                        let xform = tablet_thing::graphics::stroke_to_gl(
+                            width,
+                            height,
+                            zoom,
+                            state.stylus.pos,
+                        );
                         let view = glam::Mat4::from_scale_rotation_translation(
                             glam::vec3(
-                                state.brush_size / width as f32,
-                                state.brush_size / height as f32,
+                                zoom * state.brush_size / width as f32,
+                                zoom * state.brush_size / height as f32,
                                 1.0,
                             ),
                             glam::Quat::IDENTITY,
-                            glam::vec3(state.stylus.pos.x, state.stylus.pos.y, 0.0),
+                            glam::vec3(xform.x, xform.y, 0.0),
                         );
-
                         gl.uniform_matrix_4_f32_slice(
-                            Some(&view_uniform),
+                            Some(&circle_view_uniform),
                             false,
                             &view.to_cols_array(),
                         );
