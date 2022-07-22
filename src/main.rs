@@ -8,7 +8,7 @@ use glutin::{
     window::WindowBuilder,
     ContextBuilder,
 };
-use tablet_thing::{graphics::StrokePoint, input::InputHandler, State, StrokeStyle};
+use tablet_thing::{input::InputHandler, State, StrokeStyle};
 
 #[allow(unreachable_code)]
 fn main() {
@@ -148,10 +148,6 @@ fn main() {
     println!("stroke style {:?}", state.stroke_style);
 
     // gl origin in stroke space
-    let mut gis = StrokePoint { x: 0.0, y: 0.0 };
-    const DEFAULT_ZOOM: f32 = 50.;
-    let mut zoom = DEFAULT_ZOOM;
-
     ev.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
         match event {
@@ -186,8 +182,8 @@ fn main() {
                             println!("{x}, {y}, {pressure}");
                         }
                     }
-                    println!("zoom={zoom:.02}");
-                    println!("gis={gis:?}");
+                    println!("zoom={:.02}", state.zoom);
+                    println!("gis={}", state.gis);
                 }
 
                 match (input_handler.control(), input_handler.just_pressed(Z)) {
@@ -196,8 +192,8 @@ fn main() {
                         context.window().request_redraw();
                     }
                     (false, true) => {
-                        gis = Default::default();
-                        zoom = DEFAULT_ZOOM;
+                        state.gis = Default::default();
+                        state.zoom = tablet_thing::DEFAULT_ZOOM;
                         context.window().request_redraw();
                     }
                     _ => {}
@@ -304,8 +300,7 @@ fn main() {
                 const ZOOM_SPEED: f32 = 4.25;
 
                 let dzoom = if zoom_in { ZOOM_SPEED } else { -ZOOM_SPEED };
-                zoom += dzoom;
-                zoom = zoom.clamp(1.0, 500.0);
+                state.change_zoom(dzoom);
 
                 context.window().request_redraw();
             }
@@ -333,27 +328,13 @@ fn main() {
                 event: WindowEvent::CursorMoved { position, .. },
                 ..
             } => {
-                use tablet_thing::graphics::*;
-
                 let prev = input_handler.cursor_pos();
                 input_handler.handle_mouse_move(position);
 
                 if input_handler.button_down(MouseButton::Left) {
+                    let next = input_handler.cursor_pos();
                     let PhysicalSize { width, height } = context.window().inner_size();
-
-                    let prev_gl = physical_position_to_gl(width, height, prev);
-                    let prev_stroke = gl_to_stroke(width, height, zoom, prev_gl);
-                    let prev_xformed = xform_stroke(gis, prev_stroke);
-
-                    let next_gl = physical_position_to_gl(width, height, position);
-                    let next_stroke = gl_to_stroke(width, height, zoom, next_gl);
-                    let next_xformed = xform_stroke(gis, next_stroke);
-
-                    let dx = next_xformed.x - prev_xformed.x;
-                    let dy = next_xformed.y - prev_xformed.y;
-                    gis.x += dx;
-                    gis.y += dy;
-
+                    state.move_origin(width, height, prev, next);
                     context.window().request_redraw();
                 }
 
@@ -368,9 +349,9 @@ fn main() {
                 unsafe {
                     gl.use_program(Some(strokes_program));
                     let view = tablet_thing::graphics::view_matrix(
-                        zoom,
+                        state.zoom,
                         context.window().inner_size(),
-                        gis,
+                        state.gis,
                     );
                     gl.uniform_matrix_4_f32_slice(
                         Some(&view_uniform),
@@ -472,7 +453,7 @@ fn main() {
                         );
 
                         let view = tablet_thing::graphics::view_matrix(
-                            zoom,
+                            state.zoom,
                             context.window().inner_size(),
                             state.stylus.pos,
                         );

@@ -2,7 +2,10 @@ pub mod graphics;
 pub mod input;
 
 use bspline::BSpline;
-use glutin::event::{Force, Touch, TouchPhase};
+use glutin::{
+    dpi::PhysicalPosition,
+    event::{Force, Touch, TouchPhase},
+};
 use graphics::{Color, ColorExt, StrokePoint};
 
 #[derive(Default, Debug, Clone, Copy)]
@@ -131,6 +134,8 @@ pub struct State {
     pub strokes: Vec<Stroke>,
     pub stroke_style: StrokeStyle,
     pub use_individual_style: bool,
+    pub zoom: f32,
+    pub gis: StrokePoint,
 }
 
 mod hide {
@@ -217,10 +222,16 @@ mod hide {
                 strokes,
                 stroke_style: Default::default(),
                 use_individual_style: false,
+                gis: Default::default(),
+                zoom: DEFAULT_ZOOM,
             }
         }
     }
 }
+
+pub const DEFAULT_ZOOM: f32 = 50.;
+pub const MAX_ZOOM: f32 = 500.;
+pub const MIN_ZOOM: f32 = 1.;
 
 pub const BRUSH_DEFAULT: f32 = 0.6;
 pub const MAX_BRUSH: f32 = 4.0;
@@ -238,6 +249,34 @@ impl State {
         self.brush_size = self.brush_size.clamp(MIN_BRUSH, MAX_BRUSH);
     }
 
+    pub fn move_origin(
+        &mut self,
+        width: u32,
+        height: u32,
+        prev: PhysicalPosition<f64>,
+        next: PhysicalPosition<f64>,
+    ) {
+        use graphics::*;
+
+        let prev_gl = physical_position_to_gl(width, height, prev);
+        let prev_stroke = gl_to_stroke(width, height, self.zoom, prev_gl);
+        let prev_xformed = xform_stroke(self.gis, prev_stroke);
+
+        let next_gl = physical_position_to_gl(width, height, next);
+        let next_stroke = gl_to_stroke(width, height, self.zoom, next_gl);
+        let next_xformed = xform_stroke(self.gis, next_stroke);
+
+        let dx = next_xformed.x - prev_xformed.x;
+        let dy = next_xformed.y - prev_xformed.y;
+        self.gis.x += dx;
+        self.gis.y += dy;
+    }
+
+    pub fn change_zoom(&mut self, dz: f32) {
+        self.zoom += dz;
+        self.zoom = self.zoom.clamp(MIN_ZOOM, MAX_ZOOM);
+    }
+
     pub fn clear_strokes(&mut self) {
         std::mem::take(&mut self.strokes);
     }
@@ -246,7 +285,7 @@ impl State {
         self.strokes.pop();
     }
 
-    pub fn update(&mut self, gis: StrokePoint, zoom: f32, width: u32, height: u32, touch: Touch) {
+    pub fn update(&mut self, width: u32, height: u32, touch: Touch) {
         let Touch {
             force,
             phase,
@@ -256,7 +295,7 @@ impl State {
         } = touch;
 
         let gl_pos = graphics::physical_position_to_gl(width, height, location);
-        let point = graphics::gl_to_stroke(width, height, zoom, gl_pos);
+        let point = graphics::gl_to_stroke(width, height, self.zoom, gl_pos);
 
         let pressure = match force {
             Some(Force::Normalized(force)) => force,
@@ -291,11 +330,11 @@ impl State {
         self.stylus.pressure = pressure as f32;
         self.stylus.state = state;
 
-        self.handle_update(gis, phase);
+        self.handle_update(phase);
     }
 
-    fn handle_update(&mut self, gis: StrokePoint, phase: TouchPhase) {
-        let pos = graphics::xform_stroke(gis, self.stylus.pos);
+    fn handle_update(&mut self, phase: TouchPhase) {
+        let pos = graphics::xform_stroke(self.gis, self.stylus.pos);
 
         if self.stylus.inverted() {
             if phase == TouchPhase::Moved && self.stylus.down() {
