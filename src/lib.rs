@@ -214,7 +214,7 @@ mod hide {
 
             State {
                 stylus: Default::default(),
-                brush_size: 1.0,
+                brush_size: BRUSH_DEFAULT,
                 fill_brush_head: false,
                 strokes,
                 stroke_style: Default::default(),
@@ -224,24 +224,20 @@ mod hide {
     }
 }
 
-pub const MAX_BRUSH: f32 = 32.0;
-pub const MIN_BRUSH: f32 = 1.0;
+pub const BRUSH_DEFAULT: f32 = 0.6;
+pub const MAX_BRUSH: f32 = 4.0;
+pub const MIN_BRUSH: f32 = 0.1;
+pub const BRUSH_DELTA: f32 = 0.5;
 
 impl State {
     pub fn increase_brush(&mut self) {
-        if self.brush_size + 1. > MAX_BRUSH {
-            self.brush_size = MAX_BRUSH;
-        } else {
-            self.brush_size += 1.;
-        }
+        self.brush_size += BRUSH_DELTA;
+        self.brush_size = self.brush_size.clamp(MIN_BRUSH, MAX_BRUSH);
     }
 
     pub fn decrease_brush(&mut self) {
-        if self.brush_size - 1. < MIN_BRUSH {
-            self.brush_size = MIN_BRUSH;
-        } else {
-            self.brush_size -= 1.;
-        }
+        self.brush_size -= BRUSH_DELTA;
+        self.brush_size = self.brush_size.clamp(MIN_BRUSH, MAX_BRUSH);
     }
 
     pub fn clear_strokes(&mut self) {
