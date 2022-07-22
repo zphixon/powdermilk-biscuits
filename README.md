@@ -10,16 +10,19 @@ The winit fork is cloned automatically if you cloned with `--recurse-submodules`
 
 ## Features:
 
-- Strokes can be drawn with a number of stroke styles, erased, undone, and cleared
-- The image can be saved
+- Strokes can be drawn, undone, and erased
 
 ## Todo:
 
 - Better handling of the effects of pen pressure on stroke width
-- Antialiasing
+- Make graphics handling better
+  - Move all the GL stuff into `State`, maybe in a way that allows multiple backends
+  - Antialiasing for free (`glEnable(GL_MULTISAMPLING)`)
 - Geometry-based rather than pixel-based rendering, includes compositing
+  - Splines with `lyon_tesselation`
 - Any sort of GUI
-- Graphics using Vulkano or Ash?
+  - Undo system
+  - Layers?
 
 ## Notes
 
