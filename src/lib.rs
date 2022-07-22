@@ -334,13 +334,21 @@ impl State {
         self.stylus.pressure = pressure as f32;
         self.stylus.state = state;
 
-        self.handle_update(phase);
+        self.handle_update(width, height, phase);
     }
 
-    fn handle_update(&mut self, phase: TouchPhase) {
-        let pos = graphics::xform_stroke(self.gis, self.stylus.pos);
+    fn handle_update(&mut self, width: u32, height: u32, phase: TouchPhase) {
+        use graphics::*;
+
+        let pos = xform_stroke(self.gis, self.stylus.pos);
 
         if self.stylus.inverted() {
+            let stylus_gl =
+                stroke_to_gl(width, height, self.zoom, StrokePoint { x: pos.x, y: pos.y });
+            let stylus_pix = gl_to_physical_position(width, height, stylus_gl);
+            let stylus_pix_x = stylus_pix.x as f32;
+            let stylus_pix_y = stylus_pix.y as f32;
+
             if phase == TouchPhase::Moved && self.stylus.down() {
                 for stroke in self.strokes.iter_mut() {
                     if stroke.erased {
@@ -348,7 +356,24 @@ impl State {
                     }
 
                     'inner: for point in stroke.points.iter() {
-                        let dist = ((pos.x - point.x).powi(2) + (pos.y - point.y).powi(2)).sqrt();
+                        let point_gl = stroke_to_gl(
+                            width,
+                            height,
+                            self.zoom,
+                            StrokePoint {
+                                x: point.x,
+                                y: point.y,
+                            },
+                        );
+                        let point_pix = gl_to_physical_position(width, height, point_gl);
+                        let point_pix_x = point_pix.x as f32;
+                        let point_pix_y = point_pix.y as f32;
+
+                        let dist = ((stylus_pix_x - point_pix_x).powi(2)
+                            + (stylus_pix_y - point_pix_y).powi(2))
+                        .sqrt()
+                            * 2.0;
+
                         if dist < self.brush_size {
                             stroke.erased = true;
                             break 'inner;
