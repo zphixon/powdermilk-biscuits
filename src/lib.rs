@@ -273,7 +273,10 @@ impl State {
     }
 
     pub fn change_zoom(&mut self, dz: f32) {
-        self.zoom += dz;
+        if (self.zoom + dz).is_finite() {
+            self.zoom += dz;
+        }
+
         self.zoom = self.zoom.clamp(MIN_ZOOM, MAX_ZOOM);
     }
 
