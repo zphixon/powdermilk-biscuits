@@ -128,7 +128,6 @@ impl Stylus {
 pub struct State {
     pub stylus: Stylus,
     pub brush_size: f32,
-    pub fill_brush_head: bool,
     pub strokes: Vec<Stroke>,
     pub stroke_style: StrokeStyle,
     pub use_individual_style: bool,
@@ -215,7 +214,6 @@ mod hide {
             State {
                 stylus: Default::default(),
                 brush_size: BRUSH_DEFAULT,
-                fill_brush_head: false,
                 strokes,
                 stroke_style: Default::default(),
                 use_individual_style: false,

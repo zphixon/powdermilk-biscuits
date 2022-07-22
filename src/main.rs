@@ -190,11 +190,6 @@ fn main() {
                     println!("gis={gis:?}");
                 }
 
-                if input_handler.just_pressed(F) {
-                    state.fill_brush_head = !state.fill_brush_head;
-                    context.window().request_redraw();
-                }
-
                 match (input_handler.control(), input_handler.just_pressed(Z)) {
                     (true, true) => {
                         state.undo_stroke();
