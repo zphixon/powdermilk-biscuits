@@ -143,6 +143,7 @@ fn main() {
 
     let mut cursor_visible = true;
     let mut input_handler = InputHandler::default();
+    let mut aa = true;
 
     let mut state = State::default();
     println!("stroke style {:?}", state.stroke_style);
@@ -188,6 +189,18 @@ fn main() {
                     }
                     println!("zoom={:.02}", state.zoom);
                     println!("gis={}", state.gis);
+                }
+
+                if input_handler.just_pressed(A) {
+                    aa = !aa;
+
+                    if aa {
+                        unsafe { gl.enable(glow::MULTISAMPLE) };
+                    } else {
+                        unsafe { gl.disable(glow::MULTISAMPLE) };
+                    }
+
+                    context.window().request_redraw();
                 }
 
                 match (input_handler.control(), input_handler.just_pressed(Z)) {
