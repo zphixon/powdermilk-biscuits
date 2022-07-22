@@ -57,6 +57,13 @@ pub fn physical_position_to_gl(width: u32, height: u32, pos: PhysicalPosition<f6
     }
 }
 
+pub fn gl_to_physical_position(width: u32, height: u32, pos: GlPos) -> PhysicalPosition<f64> {
+    PhysicalPosition {
+        x: (pos.x as f64 + 1.0) * width as f64 / 2.0,
+        y: (-pos.y as f64 + 1.0) * height as f64 / 2.0,
+    }
+}
+
 #[derive(Default, Debug, Clone, Copy)]
 pub struct StrokePoint {
     pub x: f32,

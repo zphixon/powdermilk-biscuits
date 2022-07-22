@@ -279,10 +279,31 @@ fn main() {
                 event: WindowEvent::Touch(touch),
                 ..
             } => {
+                use tablet_thing::graphics::*;
+
                 cursor_visible = false;
                 context.window().set_cursor_visible(cursor_visible);
+
                 let PhysicalSize { width, height } = context.window().inner_size();
-                state.update(gis, zoom, width, height, touch);
+                let prev_gl = stroke_to_gl(width, height, state.zoom, state.stylus.pos);
+                let prev = gl_to_physical_position(width, height, prev_gl);
+
+                state.update(width, height, touch);
+
+                let next_gl = stroke_to_gl(width, height, state.zoom, state.stylus.pos);
+                let next = gl_to_physical_position(width, height, next_gl);
+
+                match (
+                    input_handler.button_down(MouseButton::Middle),
+                    input_handler.control(),
+                ) {
+                    (true, false) => {
+                        state.move_origin(width, height, prev, next);
+                    }
+                    (true, true) => state.change_zoom(next.y as f32 - prev.y as f32),
+                    _ => {}
+                }
+
                 context.window().request_redraw();
             }
 
