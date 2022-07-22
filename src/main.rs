@@ -17,6 +17,7 @@ fn main() {
             ContextBuilder::new()
                 .with_vsync(true)
                 .with_gl(glutin::GlRequest::Latest)
+                .with_multisampling(4)
                 .build_windowed(builder, &event_loop)
                 .unwrap()
                 .make_current()
@@ -40,6 +41,7 @@ fn main() {
     let pen_down_uniform;
 
     unsafe {
+        gl.enable(glow::MULTISAMPLE);
         gl.enable(glow::VERTEX_PROGRAM_POINT_SIZE);
         gl.enable(glow::DEBUG_OUTPUT);
         gl.disable(glow::CULL_FACE);
