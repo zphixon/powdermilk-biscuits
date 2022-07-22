@@ -290,10 +290,11 @@ impl State {
             force,
             phase,
             location,
-            inverted,
+            pen_info,
             ..
         } = touch;
 
+        let inverted = pen_info.map(|info| info.inverted).unwrap_or(false);
         let gl_pos = graphics::physical_position_to_gl(width, height, location);
         let point = graphics::gl_to_stroke(width, height, self.zoom, gl_pos);
 

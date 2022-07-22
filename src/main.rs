@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use glow::{Context, HasContext};
 use glutin::{
     dpi::PhysicalSize,
@@ -8,9 +6,9 @@ use glutin::{
     window::WindowBuilder,
     ContextBuilder,
 };
+use std::mem::size_of;
 use tablet_thing::{input::InputHandler, State, StrokeStyle};
 
-#[allow(unreachable_code)]
 fn main() {
     let (gl, context, ev) = {
         let event_loop = EventLoop::new();
@@ -153,11 +151,15 @@ fn main() {
         match event {
             Event::WindowEvent {
                 event:
-                    WindowEvent::KeyboardInput(KeyboardInput {
-                        virtual_keycode: Some(key),
-                        state: key_state,
+                    WindowEvent::KeyboardInput {
+                        input:
+                            KeyboardInput {
+                                virtual_keycode: Some(key),
+                                state: key_state,
+                                ..
+                            },
                         ..
-                    }),
+                    },
                 ..
             } => {
                 use VirtualKeyCode::*;
