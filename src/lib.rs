@@ -218,7 +218,7 @@ mod hide {
 
             State {
                 stylus: Default::default(),
-                brush_size: BRUSH_DEFAULT,
+                brush_size: DEFAULT_BRUSH,
                 strokes,
                 stroke_style: Default::default(),
                 use_individual_style: false,
@@ -233,9 +233,9 @@ pub const DEFAULT_ZOOM: f32 = 50.;
 pub const MAX_ZOOM: f32 = 500.;
 pub const MIN_ZOOM: f32 = 1.;
 
-pub const BRUSH_DEFAULT: f32 = 0.6;
-pub const MAX_BRUSH: f32 = 4.0;
-pub const MIN_BRUSH: f32 = 0.1;
+pub const DEFAULT_BRUSH: f32 = 1.0;
+pub const MAX_BRUSH: f32 = 20.0;
+pub const MIN_BRUSH: f32 = 1.0;
 pub const BRUSH_DELTA: f32 = 0.5;
 
 impl State {
