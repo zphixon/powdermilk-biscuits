@@ -245,6 +245,36 @@ fn main() {
                     state.use_individual_style = !state.use_individual_style;
                     context.window().request_redraw();
                 }
+
+                if input_handler.shift() && input_handler.just_pressed(S) {
+                    let num_string = std::fs::read_to_string("img/num.txt").expect("read num.txt");
+                    let num = num_string.trim().parse::<usize>().expect("parse num.txt");
+                    let filename = format!("img/strokes{num}.png");
+
+                    let image = unsafe {
+                        let PhysicalSize { width, height } = context.window().inner_size();
+                        let mut data = std::iter::repeat(0)
+                            .take(width as usize * height as usize * 4)
+                            .collect::<Vec<_>>();
+                        gl.read_pixels(
+                            0,
+                            0,
+                            width as i32,
+                            height as i32,
+                            glow::RGBA,
+                            glow::UNSIGNED_BYTE,
+                            glow::PixelPackData::Slice(data.as_mut_slice()),
+                        );
+                        image::DynamicImage::ImageRgba8(
+                            image::RgbaImage::from_raw(width, height, data).unwrap(),
+                        )
+                    };
+
+                    image.flipv().save(&filename).unwrap();
+                    let next_num = num + 1;
+                    std::fs::write("img/num.txt", format!("{next_num}")).unwrap();
+                    println!("wrote image as {filename}");
+                }
             }
 
             Event::WindowEvent {
