@@ -284,25 +284,32 @@ fn main() {
                 use tablet_thing::graphics::*;
 
                 cursor_visible = false;
+
+                // TODO handle fingers
+                let prev_cursor_y = input_handler.cursor_pos().y as f32;
+                input_handler.handle_mouse_move(touch.location);
+                let next_cursor_y = input_handler.cursor_pos().y as f32;
+                let cursor_dy = next_cursor_y - prev_cursor_y;
+
                 context.window().set_cursor_visible(cursor_visible);
 
                 let PhysicalSize { width, height } = context.window().inner_size();
-                let prev_gl = stroke_to_gl(width, height, state.zoom, state.stylus.pos);
-                let prev = gl_to_physical_position(width, height, prev_gl);
+                let prev_stylus_gl = stroke_to_gl(width, height, state.zoom, state.stylus.pos);
+                let prev_stylus = gl_to_physical_position(width, height, prev_stylus_gl);
 
                 state.update(width, height, touch);
 
-                let next_gl = stroke_to_gl(width, height, state.zoom, state.stylus.pos);
-                let next = gl_to_physical_position(width, height, next_gl);
+                let next_stylus_gl = stroke_to_gl(width, height, state.zoom, state.stylus.pos);
+                let next_stylus = gl_to_physical_position(width, height, next_stylus_gl);
 
                 match (
                     input_handler.button_down(MouseButton::Middle),
                     input_handler.control(),
                 ) {
                     (true, false) => {
-                        state.move_origin(width, height, prev, next);
+                        state.move_origin(width, height, prev_stylus, next_stylus);
                     }
-                    (true, true) => state.change_zoom(next.y as f32 - prev.y as f32),
+                    (true, true) => state.change_zoom(cursor_dy),
                     _ => {}
                 }
 
