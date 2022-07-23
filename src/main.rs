@@ -355,6 +355,7 @@ fn main() {
                     gl.use_program(Some(strokes_program));
                     let view = tablet_thing::graphics::view_matrix(
                         state.zoom,
+                        state.zoom,
                         context.window().inner_size(),
                         state.origin,
                     );
@@ -459,17 +460,11 @@ fn main() {
                             if state.stylus.down() { 1.0 } else { 0.0 },
                         );
 
-                        let PhysicalSize { width, height } = context.window().inner_size();
-                        let xform = tablet_thing::graphics::stroke_to_gl(
-                            width,
-                            height,
+                        let view = tablet_thing::graphics::view_matrix(
                             state.zoom,
+                            1.0,
+                            context.window().inner_size(),
                             state.stylus.point,
-                        );
-                        let view = glam::Mat4::from_scale_rotation_translation(
-                            glam::vec3(1.0 / width as f32, 1.0 / height as f32, 1.0),
-                            glam::Quat::IDENTITY,
-                            glam::vec3(xform.x, xform.y, 0.0),
                         );
 
                         gl.uniform_matrix_4_f32_slice(
@@ -477,6 +472,7 @@ fn main() {
                             false,
                             &view.to_cols_array(),
                         );
+
                         gl.draw_arrays(glow::LINE_LOOP, 0, circle.len() as i32 / 2);
                     }
                 }
