@@ -29,9 +29,9 @@ fn main() {
     let strokes_program;
     let pen_cursor_program;
 
-    let view_uniform;
-    let stroke_color_uniform;
-    let brush_size_uniform;
+    let strokes_view;
+    let strokes_color;
+    let strokes_brush_size;
 
     let pen_cursor_view;
     let pen_cursor_erasing;
@@ -74,16 +74,15 @@ fn main() {
         );
         gl.use_program(Some(strokes_program));
 
-        view_uniform = gl.get_uniform_location(strokes_program, "view").unwrap();
-        stroke_color_uniform = gl
+        strokes_view = gl.get_uniform_location(strokes_program, "view").unwrap();
+        strokes_color = gl
             .get_uniform_location(strokes_program, "strokeColor")
             .unwrap();
-        brush_size_uniform = gl
+        strokes_brush_size = gl
             .get_uniform_location(strokes_program, "brushSize")
             .unwrap();
-
         gl.uniform_matrix_4_f32_slice(
-            Some(&view_uniform),
+            Some(&strokes_view),
             false,
             &glam::Mat4::IDENTITY.to_cols_array(),
         );
@@ -360,7 +359,7 @@ fn main() {
                         state.origin,
                     );
                     gl.uniform_matrix_4_f32_slice(
-                        Some(&view_uniform),
+                        Some(&strokes_view),
                         false,
                         &view.to_cols_array(),
                     );
@@ -416,13 +415,13 @@ fn main() {
                         gl.enable_vertex_attrib_array(1);
 
                         gl.uniform_3_f32(
-                            Some(&stroke_color_uniform),
+                            Some(&strokes_color),
                             stroke.color[0] as f32 / 255.0,
                             stroke.color[1] as f32 / 255.0,
                             stroke.color[2] as f32 / 255.0,
                         );
 
-                        gl.uniform_1_f32(Some(&brush_size_uniform), stroke.brush_size);
+                        gl.uniform_1_f32(Some(&strokes_brush_size), stroke.brush_size);
 
                         gl.draw_arrays(stroke_style, 0, stroke.points.len() as i32);
                     }
