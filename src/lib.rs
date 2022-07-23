@@ -298,7 +298,6 @@ impl State {
             ..
         } = touch;
 
-        let inverted = pen_info.map(|info| info.inverted).unwrap_or(false);
         let gl_pos = graphics::physical_position_to_gl(width, height, location);
         let point = graphics::gl_to_stroke(width, height, self.zoom, gl_pos);
 
@@ -313,6 +312,10 @@ impl State {
 
             _ => 0.0,
         };
+
+        let inverted = pen_info
+            .map(|info| info.inverted)
+            .unwrap_or(self.stylus.state.inverted);
 
         let state = match phase {
             TouchPhase::Started => StylusState {

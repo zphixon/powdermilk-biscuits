@@ -270,6 +270,11 @@ fn main() {
                     context.window().request_redraw();
                 }
 
+                if input_handler.just_pressed(E) {
+                    state.stylus.state.inverted = !state.stylus.state.inverted;
+                    context.window().request_redraw();
+                }
+
                 if input_handler.shift() && input_handler.just_pressed(S) {
                     let num_string = std::fs::read_to_string("img/num.txt").expect("read num.txt");
                     let num = num_string.trim().parse::<usize>().expect("parse num.txt");
