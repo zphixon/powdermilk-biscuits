@@ -5,6 +5,7 @@ layout (location=1) in float pressure;
 
 layout (location=0) uniform mat4 view;
 layout (location=1) uniform vec3 strokeColor;
+layout (location=2) uniform float brushSize;
 
 layout (location=0) out vec4 fragPos;
 layout (location=1) out float fragPressure;
@@ -13,6 +14,8 @@ layout (location=2) out vec3 fragStrokeColor;
 void main() {
   vec4 pos = view * vec4(strokePos, 0.0, 1.0);
   gl_Position = pos;
+
+  gl_PointSize = brushSize;
 
   fragPos = pos;
   fragStrokeColor = strokeColor;

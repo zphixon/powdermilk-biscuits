@@ -35,6 +35,7 @@ fn main() {
 
     let view_uniform;
     let stroke_color_uniform;
+    let brush_size_uniform;
 
     let circle_view_uniform;
     let erasing_uniform;
@@ -132,6 +133,9 @@ fn main() {
         view_uniform = gl.get_uniform_location(strokes_program, "view").unwrap();
         stroke_color_uniform = gl
             .get_uniform_location(strokes_program, "strokeColor")
+            .unwrap();
+        brush_size_uniform = gl
+            .get_uniform_location(strokes_program, "brushSize")
             .unwrap();
 
         gl.uniform_matrix_4_f32_slice(
@@ -472,6 +476,8 @@ fn main() {
                             stroke.color[1] as f32 / 255.0,
                             stroke.color[2] as f32 / 255.0,
                         );
+
+                        gl.uniform_1_f32(Some(&brush_size_uniform), stroke.brush_size);
 
                         gl.draw_arrays(stroke_style, 0, stroke.points.len() as i32);
                     }
