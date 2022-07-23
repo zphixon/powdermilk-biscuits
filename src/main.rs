@@ -429,7 +429,7 @@ fn main() {
                 }
 
                 if !cursor_visible {
-                    let circle = tablet_thing::graphics::circle_points(state.brush_size, 32);
+                    let circle = tablet_thing::graphics::circle_points(state.brush_size as f32, 32);
                     unsafe {
                         gl.use_program(Some(pen_cursor_program));
                         let vbo = gl.create_buffer().unwrap();

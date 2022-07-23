@@ -131,7 +131,7 @@ impl Stylus {
 
 pub struct State {
     pub stylus: Stylus,
-    pub brush_size: f32,
+    pub brush_size: usize,
     pub strokes: Vec<Stroke>,
     pub stroke_style: StrokeStyle,
     pub use_individual_style: bool,
@@ -234,10 +234,10 @@ pub const DEFAULT_ZOOM: f32 = 50.;
 pub const MAX_ZOOM: f32 = 500.;
 pub const MIN_ZOOM: f32 = 1.;
 
-pub const DEFAULT_BRUSH: f32 = 1.0;
-pub const MAX_BRUSH: f32 = 20.0;
-pub const MIN_BRUSH: f32 = 1.0;
-pub const BRUSH_DELTA: f32 = 0.5;
+pub const DEFAULT_BRUSH: usize = 1;
+pub const MAX_BRUSH: usize = 20;
+pub const MIN_BRUSH: usize = 1;
+pub const BRUSH_DELTA: usize = 1;
 
 impl State {
     pub fn increase_brush(&mut self) {
@@ -381,7 +381,7 @@ impl State {
                         .sqrt()
                             * 2.0;
 
-                        if dist < self.brush_size {
+                        if dist < self.brush_size as f32 {
                             stroke.erased = true;
                             break 'inner;
                         }
@@ -394,7 +394,7 @@ impl State {
                     self.strokes.push(Stroke {
                         points: Vec::new(),
                         color: rand::random(),
-                        brush_size: self.brush_size,
+                        brush_size: self.brush_size as f32,
                         style: self.stroke_style,
                         erased: false,
                         spline: None,
