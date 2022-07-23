@@ -10,37 +10,34 @@ use std::mem::size_of;
 use tablet_thing::{input::InputHandler, State, StrokeStyle};
 
 fn main() {
-    let (gl, context, ev) = {
-        let event_loop = EventLoop::new();
-        let builder = WindowBuilder::new().with_title("hi! <3");
-        let context = unsafe {
-            ContextBuilder::new()
-                .with_vsync(true)
-                .with_gl(glutin::GlRequest::Latest)
-                .with_multisampling(4)
-                .build_windowed(builder, &event_loop)
-                .unwrap()
-                .make_current()
-                .unwrap()
-        };
-        let gl = unsafe {
-            Context::from_loader_function(|name| context.get_proc_address(name) as *const _)
-        };
-
-        (gl, context, event_loop)
+    // build window and GL context
+    let ev = EventLoop::new();
+    let builder = WindowBuilder::new().with_title("hi! <3");
+    let context = unsafe {
+        ContextBuilder::new()
+            .with_vsync(true)
+            .with_gl(glutin::GlRequest::Latest)
+            .with_multisampling(4)
+            .build_windowed(builder, &ev)
+            .unwrap()
+            .make_current()
+            .unwrap()
     };
+    let gl =
+        unsafe { Context::from_loader_function(|name| context.get_proc_address(name) as *const _) };
 
     let strokes_program;
-    let circle_program;
+    let pen_cursor_program;
 
     let view_uniform;
     let stroke_color_uniform;
     let brush_size_uniform;
 
-    let circle_view_uniform;
-    let erasing_uniform;
-    let pen_down_uniform;
+    let pen_cursor_view;
+    let pen_cursor_erasing;
+    let pen_cursor_pen_down;
 
+    // set up shaders
     unsafe {
         gl.enable(glow::MULTISAMPLE);
         gl.enable(glow::VERTEX_PROGRAM_POINT_SIZE);
@@ -48,86 +45,33 @@ fn main() {
         gl.disable(glow::CULL_FACE);
         gl.clear_color(0.0, 0.0, 0.0, 1.0);
 
-        circle_program = gl.create_program().expect("create program");
-        let (circles_vs_source, circles_fs_source) = (
-            include_str!("shaders/circle.vert"),
-            include_str!("shaders/circle.frag"),
+        pen_cursor_program = tablet_thing::graphics::compile_program(
+            &gl,
+            "src/shaders/circle.vert",
+            "src/shaders/circle.frag",
         );
-        let circles_vs = gl
-            .create_shader(glow::VERTEX_SHADER)
-            .expect("create shader");
-        gl.shader_source(circles_vs, circles_vs_source);
-        gl.compile_shader(circles_vs);
-        if !gl.get_shader_compile_status(circles_vs) {
-            panic!("{}", gl.get_shader_info_log(circles_vs));
-        }
-        gl.attach_shader(circle_program, circles_vs);
-        let circles_fs = gl
-            .create_shader(glow::FRAGMENT_SHADER)
-            .expect("create shader");
-        gl.shader_source(circles_fs, circles_fs_source);
-        gl.compile_shader(circles_fs);
-        if !gl.get_shader_compile_status(circles_fs) {
-            panic!("{}", gl.get_shader_info_log(circles_fs));
-        }
-        gl.attach_shader(circle_program, circles_fs);
-        gl.link_program(circle_program);
-        if !gl.get_program_link_status(circle_program) {
-            panic!("{}", gl.get_program_info_log(circle_program));
-        }
-        gl.detach_shader(circle_program, circles_vs);
-        gl.delete_shader(circles_vs);
-        gl.detach_shader(circle_program, circles_fs);
-        gl.delete_shader(circles_fs);
+        gl.use_program(Some(pen_cursor_program));
 
-        gl.use_program(Some(circle_program));
-        erasing_uniform = gl.get_uniform_location(circle_program, "erasing").unwrap();
-        pen_down_uniform = gl.get_uniform_location(circle_program, "penDown").unwrap();
-        circle_view_uniform = gl.get_uniform_location(circle_program, "view").unwrap();
-        gl.uniform_1_f32(Some(&erasing_uniform), 0.0);
-        gl.uniform_1_f32(Some(&pen_down_uniform), 0.0);
+        pen_cursor_erasing = gl
+            .get_uniform_location(pen_cursor_program, "erasing")
+            .unwrap();
+        pen_cursor_pen_down = gl
+            .get_uniform_location(pen_cursor_program, "penDown")
+            .unwrap();
+        pen_cursor_view = gl.get_uniform_location(pen_cursor_program, "view").unwrap();
+        gl.uniform_1_f32(Some(&pen_cursor_erasing), 0.0);
+        gl.uniform_1_f32(Some(&pen_cursor_pen_down), 0.0);
         gl.uniform_matrix_4_f32_slice(
-            Some(&circle_view_uniform),
+            Some(&pen_cursor_view),
             false,
             &glam::Mat4::IDENTITY.to_cols_array(),
         );
 
-        strokes_program = gl.create_program().expect("create program");
-        let (strokes_vs_source, strokes_fs_source) = (
-            include_str!("shaders/points.vert"),
-            include_str!("shaders/points.frag"),
+        strokes_program = tablet_thing::graphics::compile_program(
+            &gl,
+            "src/shaders/points.vert",
+            "src/shaders/points.frag",
         );
-
-        let strokes_vs = gl
-            .create_shader(glow::VERTEX_SHADER)
-            .expect("create shader");
-        gl.shader_source(strokes_vs, strokes_vs_source);
-        gl.compile_shader(strokes_vs);
-        if !gl.get_shader_compile_status(strokes_vs) {
-            panic!("{}", gl.get_shader_info_log(strokes_vs));
-        }
-        gl.attach_shader(strokes_program, strokes_vs);
-
-        let strokes_fs = gl
-            .create_shader(glow::FRAGMENT_SHADER)
-            .expect("create shader");
-        gl.shader_source(strokes_fs, strokes_fs_source);
-        gl.compile_shader(strokes_fs);
-        if !gl.get_shader_compile_status(strokes_fs) {
-            panic!("{}", gl.get_shader_info_log(strokes_fs));
-        }
-
-        gl.attach_shader(strokes_program, strokes_fs);
-        gl.link_program(strokes_program);
-        if !gl.get_program_link_status(strokes_program) {
-            panic!("{}", gl.get_program_info_log(strokes_program));
-        }
-
-        gl.detach_shader(strokes_program, strokes_vs);
-        gl.delete_shader(strokes_vs);
-        gl.detach_shader(strokes_program, strokes_fs);
-        gl.delete_shader(strokes_fs);
-
         gl.use_program(Some(strokes_program));
 
         view_uniform = gl.get_uniform_location(strokes_program, "view").unwrap();
@@ -486,7 +430,7 @@ fn main() {
                 if !cursor_visible {
                     let circle = tablet_thing::graphics::circle_points(state.brush_size, 32);
                     unsafe {
-                        gl.use_program(Some(circle_program));
+                        gl.use_program(Some(pen_cursor_program));
                         let vbo = gl.create_buffer().unwrap();
                         gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
                         let vao = gl.create_vertex_array().unwrap();
@@ -507,11 +451,11 @@ fn main() {
                         );
 
                         gl.uniform_1_f32(
-                            Some(&erasing_uniform),
+                            Some(&pen_cursor_erasing),
                             if state.stylus.inverted() { 1.0 } else { 0.0 },
                         );
                         gl.uniform_1_f32(
-                            Some(&pen_down_uniform),
+                            Some(&pen_cursor_pen_down),
                             if state.stylus.down() { 1.0 } else { 0.0 },
                         );
 
@@ -529,7 +473,7 @@ fn main() {
                         );
 
                         gl.uniform_matrix_4_f32_slice(
-                            Some(&circle_view_uniform),
+                            Some(&pen_cursor_view),
                             false,
                             &view.to_cols_array(),
                         );

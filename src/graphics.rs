@@ -1,3 +1,4 @@
+use glow::HasContext;
 use glutin::dpi::{PhysicalPosition, PhysicalSize};
 use std::fmt::{Display, Formatter};
 
@@ -112,4 +113,50 @@ impl Display for StrokePos {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:.02},{:.02}", self.x, self.y)
     }
+}
+
+pub unsafe fn compile_shader(
+    gl: &glow::Context,
+    shader_type: u32,
+    path: &'static str,
+) -> glow::NativeShader {
+    let source =
+        std::fs::read_to_string(path).expect(&format!("could not read shader at path {path}"));
+
+    let shader = gl.create_shader(shader_type).unwrap();
+    gl.shader_source(shader, &source);
+    gl.compile_shader(shader);
+
+    if !gl.get_shader_compile_status(shader) {
+        panic!("{}", gl.get_shader_info_log(shader));
+    }
+
+    shader
+}
+
+pub unsafe fn compile_program(
+    gl: &glow::Context,
+    vert_path: &'static str,
+    frag_path: &'static str,
+) -> glow::NativeProgram {
+    let program = gl.create_program().unwrap();
+
+    let vert = compile_shader(gl, glow::VERTEX_SHADER, vert_path);
+    let frag = compile_shader(gl, glow::FRAGMENT_SHADER, frag_path);
+
+    gl.attach_shader(program, vert);
+    gl.attach_shader(program, frag);
+
+    gl.link_program(program);
+
+    if !gl.get_program_link_status(program) {
+        panic!("{}", gl.get_program_info_log(program));
+    }
+
+    gl.detach_shader(program, vert);
+    gl.detach_shader(program, frag);
+    gl.delete_shader(vert);
+    gl.delete_shader(frag);
+
+    program
 }
