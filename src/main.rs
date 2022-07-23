@@ -144,6 +144,7 @@ fn main() {
     let mut cursor_visible = true;
     let mut input_handler = InputHandler::default();
     let mut aa = true;
+    let mut stroke_style = glow::LINE_STRIP;
 
     let mut state = State::default();
     println!("stroke style {:?}", state.stroke_style);
@@ -200,6 +201,16 @@ fn main() {
                     } else {
                         unsafe { gl.disable(glow::MULTISAMPLE) };
                     }
+
+                    context.window().request_redraw();
+                }
+
+                if input_handler.just_pressed(P) {
+                    stroke_style = match stroke_style {
+                        glow::LINE_STRIP => glow::POINTS,
+                        glow::POINTS => glow::LINE_STRIP,
+                        _ => glow::LINE_STRIP,
+                    };
 
                     context.window().request_redraw();
                 }
@@ -462,7 +473,7 @@ fn main() {
                             stroke.color[2] as f32 / 255.0,
                         );
 
-                        gl.draw_arrays(glow::LINE_STRIP, 0, stroke.points.len() as i32);
+                        gl.draw_arrays(stroke_style, 0, stroke.points.len() as i32);
                     }
                 }
 
