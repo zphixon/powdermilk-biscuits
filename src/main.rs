@@ -187,8 +187,9 @@ fn main() {
                             println!("{x}, {y}, {pressure}");
                         }
                     }
+                    println!("brush={}", state.brush_size);
                     println!("zoom={:.02}", state.zoom);
-                    println!("gis={}", state.gis);
+                    println!("origin={}", state.origin);
                 }
 
                 if input_handler.just_pressed(A) {
@@ -209,7 +210,7 @@ fn main() {
                         context.window().request_redraw();
                     }
                     (false, true) => {
-                        state.gis = Default::default();
+                        state.origin = Default::default();
                         state.zoom = tablet_thing::DEFAULT_ZOOM;
                         context.window().request_redraw();
                     }
@@ -309,12 +310,12 @@ fn main() {
                 context.window().set_cursor_visible(cursor_visible);
 
                 let PhysicalSize { width, height } = context.window().inner_size();
-                let prev_stylus_gl = stroke_to_gl(width, height, state.zoom, state.stylus.pos);
+                let prev_stylus_gl = stroke_to_gl(width, height, state.zoom, state.stylus.point);
                 let prev_stylus = gl_to_physical_position(width, height, prev_stylus_gl);
 
                 state.update(width, height, touch);
 
-                let next_stylus_gl = stroke_to_gl(width, height, state.zoom, state.stylus.pos);
+                let next_stylus_gl = stroke_to_gl(width, height, state.zoom, state.stylus.point);
                 let next_stylus = gl_to_physical_position(width, height, next_stylus_gl);
 
                 match (
@@ -396,7 +397,7 @@ fn main() {
                     let view = tablet_thing::graphics::view_matrix(
                         state.zoom,
                         context.window().inner_size(),
-                        state.gis,
+                        state.origin,
                     );
                     gl.uniform_matrix_4_f32_slice(
                         Some(&view_uniform),
@@ -502,7 +503,7 @@ fn main() {
                             width,
                             height,
                             state.zoom,
-                            state.stylus.pos,
+                            state.stylus.point,
                         );
                         let view = glam::Mat4::from_scale_rotation_translation(
                             glam::vec3(1.0 / width as f32, 1.0 / height as f32, 1.0),

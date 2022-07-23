@@ -6,7 +6,7 @@ use glutin::{
     dpi::PhysicalPosition,
     event::{Force, Touch, TouchPhase},
 };
-use graphics::{Color, ColorExt, StrokePoint};
+use graphics::{Color, ColorExt, StrokePoint, StrokePos};
 
 #[derive(Default, Debug, Clone, Copy)]
 #[repr(packed)]
@@ -115,7 +115,8 @@ impl Default for StylusState {
 pub struct Stylus {
     pub state: StylusState,
     pub pressure: f32,
-    pub pos: StrokePoint,
+    pub point: StrokePoint,
+    pub pos: StrokePos,
 }
 
 impl Stylus {
@@ -135,7 +136,7 @@ pub struct State {
     pub stroke_style: StrokeStyle,
     pub use_individual_style: bool,
     pub zoom: f32,
-    pub gis: StrokePoint,
+    pub origin: StrokePoint,
 }
 
 mod hide {
@@ -222,7 +223,7 @@ mod hide {
                 strokes,
                 stroke_style: Default::default(),
                 use_individual_style: false,
-                gis: Default::default(),
+                origin: Default::default(),
                 zoom: DEFAULT_ZOOM,
             }
         }
@@ -260,16 +261,16 @@ impl State {
 
         let prev_gl = physical_position_to_gl(width, height, prev);
         let prev_stroke = gl_to_stroke(width, height, self.zoom, prev_gl);
-        let prev_xformed = xform_stroke(self.gis, prev_stroke);
+        let prev_xformed = xform_point_to_pos(self.origin, prev_stroke);
 
         let next_gl = physical_position_to_gl(width, height, next);
         let next_stroke = gl_to_stroke(width, height, self.zoom, next_gl);
-        let next_xformed = xform_stroke(self.gis, next_stroke);
+        let next_xformed = xform_point_to_pos(self.origin, next_stroke);
 
         let dx = next_xformed.x - prev_xformed.x;
         let dy = next_xformed.y - prev_xformed.y;
-        self.gis.x += dx;
-        self.gis.y += dy;
+        self.origin.x += dx;
+        self.origin.y += dy;
     }
 
     pub fn change_zoom(&mut self, dz: f32) {
@@ -330,7 +331,8 @@ impl State {
             },
         };
 
-        self.stylus.pos = point;
+        self.stylus.point = point;
+        self.stylus.pos = graphics::xform_point_to_pos(self.origin, self.stylus.point);
         self.stylus.pressure = pressure as f32;
         self.stylus.state = state;
 
@@ -340,11 +342,16 @@ impl State {
     fn handle_update(&mut self, width: u32, height: u32, phase: TouchPhase) {
         use graphics::*;
 
-        let pos = xform_stroke(self.gis, self.stylus.pos);
-
         if self.stylus.inverted() {
-            let stylus_gl =
-                stroke_to_gl(width, height, self.zoom, StrokePoint { x: pos.x, y: pos.y });
+            let stylus_gl = stroke_to_gl(
+                width,
+                height,
+                self.zoom,
+                StrokePoint {
+                    x: self.stylus.pos.x,
+                    y: self.stylus.pos.y,
+                },
+            );
             let stylus_pix = gl_to_physical_position(width, height, stylus_gl);
             let stylus_pix_x = stylus_pix.x as f32;
             let stylus_pix_y = stylus_pix.y as f32;
@@ -400,8 +407,8 @@ impl State {
                     if let Some(stroke) = self.strokes.last_mut() {
                         if self.stylus.down() {
                             stroke.points.push(StrokeElement {
-                                x: pos.x,
-                                y: pos.y,
+                                x: self.stylus.pos.x,
+                                y: self.stylus.pos.y,
                                 pressure: self.stylus.pressure,
                             });
 
