@@ -11,7 +11,6 @@ rand = '0.8.5'
 evc_derive = { path = 'evc_derive' }
 image = '0.24.2'
 bspline = '1.1.0'
-glutin = { path = 'glutin/glutin', default-features = false }
 glow = { version = '0.11.2' }
 lyon = '1.0.0'
 glam = '0.21.2'
@@ -19,6 +18,15 @@ glam = '0.21.2'
 [features]
 default = []
 output-spirv = []
+
+[target.'cfg(windows)'.dependencies.glutin]
+path = 'glutin/glutin'
+default-features = false
+
+[target.'cfg(unix)'.dependencies.glutin]
+path = 'glutin/glutin'
+default-features = false
+features = ['x11']
 
 #winit = { path = 'winit2' }
 #vulkano = { path = 'vulkano/vulkano' }
