@@ -137,6 +137,7 @@ pub struct State {
     pub use_individual_style: bool,
     pub zoom: f32,
     pub origin: StrokePoint,
+    pub num_fingers: usize,
 }
 
 mod hide {
@@ -225,6 +226,7 @@ mod hide {
                 use_individual_style: false,
                 origin: Default::default(),
                 zoom: DEFAULT_ZOOM,
+                num_fingers: 0,
             }
         }
     }
@@ -295,8 +297,11 @@ impl State {
             phase,
             location,
             pen_info,
+            id,
             ..
         } = touch;
+
+        println!("{phase:?} {id} ({} touches)", self.num_fingers);
 
         let gl_pos = graphics::physical_position_to_gl(width, height, location);
         let point = graphics::gl_to_stroke(width, height, self.zoom, gl_pos);
@@ -318,20 +323,26 @@ impl State {
             .unwrap_or(self.stylus.state.inverted);
 
         let state = match phase {
-            TouchPhase::Started => StylusState {
-                pos: StylusPosition::Down,
-                inverted,
-            },
+            TouchPhase::Started => {
+                self.num_fingers += 1;
+                StylusState {
+                    pos: StylusPosition::Down,
+                    inverted,
+                }
+            }
 
             TouchPhase::Moved => {
                 self.stylus.state.inverted = inverted;
                 self.stylus.state
             }
 
-            TouchPhase::Ended | TouchPhase::Cancelled => StylusState {
-                pos: StylusPosition::Up,
-                inverted,
-            },
+            TouchPhase::Ended | TouchPhase::Cancelled => {
+                self.num_fingers -= 1;
+                StylusState {
+                    pos: StylusPosition::Up,
+                    inverted,
+                }
+            }
         };
 
         self.stylus.point = point;
@@ -344,6 +355,14 @@ impl State {
 
     fn handle_update(&mut self, width: u32, height: u32, phase: TouchPhase) {
         use graphics::*;
+
+        if self.num_fingers > 1 {
+            if self.num_fingers == 2 && phase == TouchPhase::Started {
+                self.strokes.pop();
+            }
+            println!("handle gesture");
+            return;
+        }
 
         if self.stylus.inverted() {
             let stylus_gl = stroke_to_gl(
