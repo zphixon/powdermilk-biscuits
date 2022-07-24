@@ -93,8 +93,14 @@ fn main() {
     let mut aa = true;
     let mut stroke_style = glow::LINE_STRIP;
 
-    let mut state = State::default();
-    println!("stroke style {:?}", state.stroke_style);
+    let mut state = if let Some(filename) = std::env::args().nth(1) {
+        println!("filename={filename}");
+        todo!();
+    } else {
+        State::default()
+    };
+
+    println!("stroke style {:?}", state.settings.stroke_style);
 
     // gl origin in stroke space
     ev.run(move |event, _, control_flow| {
@@ -135,9 +141,9 @@ fn main() {
                             println!("{x}, {y}, {pressure}");
                         }
                     }
-                    println!("brush={}", state.brush_size);
-                    println!("zoom={:.02}", state.zoom);
-                    println!("origin={}", state.origin);
+                    println!("brush={}", state.settings.brush_size);
+                    println!("zoom={:.02}", state.settings.zoom);
+                    println!("origin={}", state.settings.origin);
                 }
 
                 if input_handler.just_pressed(A) {
@@ -168,8 +174,8 @@ fn main() {
                         context.window().request_redraw();
                     }
                     (false, true) => {
-                        state.origin = Default::default();
-                        state.zoom = tablet_thing::DEFAULT_ZOOM;
+                        state.settings.origin = Default::default();
+                        state.settings.zoom = tablet_thing::DEFAULT_ZOOM;
                         context.window().request_redraw();
                     }
                     _ => {}
@@ -186,7 +192,7 @@ fn main() {
                     || input_handler.just_pressed(Key9)
                     || input_handler.just_pressed(Key0)
                 {
-                    state.stroke_style = unsafe {
+                    state.settings.stroke_style = unsafe {
                         std::mem::transmute(
                             match key {
                                 Key1 => 0,
@@ -205,11 +211,11 @@ fn main() {
                     };
                     context.window().request_redraw();
 
-                    println!("stroke style {:?}", state.stroke_style);
+                    println!("stroke style {:?}", state.settings.stroke_style);
                 }
 
                 if input_handler.just_pressed(R) {
-                    state.use_individual_style = !state.use_individual_style;
+                    state.settings.use_individual_style = !state.settings.use_individual_style;
                     context.window().request_redraw();
                 }
 
@@ -273,12 +279,14 @@ fn main() {
                 context.window().set_cursor_visible(cursor_visible);
 
                 let PhysicalSize { width, height } = context.window().inner_size();
-                let prev_stylus_gl = stroke_to_gl(width, height, state.zoom, state.stylus.point);
+                let prev_stylus_gl =
+                    stroke_to_gl(width, height, state.settings.zoom, state.stylus.point);
                 let prev_stylus = gl_to_physical_position(width, height, prev_stylus_gl);
 
                 state.update(width, height, touch);
 
-                let next_stylus_gl = stroke_to_gl(width, height, state.zoom, state.stylus.point);
+                let next_stylus_gl =
+                    stroke_to_gl(width, height, state.settings.zoom, state.stylus.point);
                 let next_stylus = gl_to_physical_position(width, height, next_stylus_gl);
 
                 match (
@@ -358,10 +366,10 @@ fn main() {
                 unsafe {
                     gl.use_program(Some(strokes_program));
                     let view = tablet_thing::graphics::view_matrix(
-                        state.zoom,
-                        state.zoom,
+                        state.settings.zoom,
+                        state.settings.zoom,
                         context.window().inner_size(),
-                        state.origin,
+                        state.settings.origin,
                     );
                     gl.uniform_matrix_4_f32_slice(
                         Some(&strokes_view),
@@ -433,7 +441,8 @@ fn main() {
                 }
 
                 if !cursor_visible {
-                    let circle = tablet_thing::graphics::circle_points(state.brush_size as f32, 32);
+                    let circle =
+                        tablet_thing::graphics::circle_points(state.settings.brush_size as f32, 32);
                     unsafe {
                         gl.use_program(Some(pen_cursor_program));
                         let vbo = gl.create_buffer().unwrap();
@@ -465,7 +474,7 @@ fn main() {
                         );
 
                         let view = tablet_thing::graphics::view_matrix(
-                            state.zoom,
+                            state.settings.zoom,
                             1.0,
                             context.window().inner_size(),
                             state.stylus.point,

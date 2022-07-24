@@ -7,8 +7,9 @@ use glutin::{
     event::{Force, Touch, TouchPhase},
 };
 use graphics::{Color, ColorExt, StrokePoint, StrokePos};
+use serde::{Deserialize, Serialize};
 
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy, Serialize, Deserialize)]
 #[repr(packed)]
 pub struct StrokeElement {
     pub x: f32,
@@ -38,15 +39,18 @@ impl std::ops::Mul<f32> for StrokeElement {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Serialize, Deserialize)]
 pub struct Stroke {
     pub points: Vec<StrokeElement>,
     pub color: Color,
     pub brush_size: f32,
     pub style: StrokeStyle,
+    #[serde(skip)]
     pub spline: Option<BSpline<StrokeElement, f32>>,
     pub erased: bool,
+    #[serde(skip)]
     pub vbo: Option<glow::Buffer>,
+    #[serde(skip)]
     pub vao: Option<glow::VertexArray>,
 }
 
@@ -73,7 +77,7 @@ impl Stroke {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, evc_derive::EnumVariantCount)]
+#[derive(Debug, Clone, Copy, PartialEq, evc_derive::EnumVariantCount, Serialize, Deserialize)]
 #[repr(usize)]
 #[allow(dead_code)]
 pub enum StrokeStyle {
@@ -173,15 +177,32 @@ impl GestureState {
     }
 }
 
-pub struct State {
-    pub stylus: Stylus,
+#[derive(Serialize, Deserialize)]
+pub struct Settings {
     pub brush_size: usize,
-    pub strokes: Vec<Stroke>,
     pub stroke_style: StrokeStyle,
     pub use_individual_style: bool,
     pub zoom: f32,
     pub origin: StrokePoint,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Settings {
+            brush_size: DEFAULT_BRUSH,
+            stroke_style: StrokeStyle::Lines,
+            use_individual_style: false,
+            zoom: DEFAULT_ZOOM,
+            origin: Default::default(),
+        }
+    }
+}
+
+pub struct State {
+    pub stylus: Stylus,
+    pub strokes: Vec<Stroke>,
     pub gesture_state: GestureState,
+    pub settings: Settings,
 }
 
 impl Default for State {
@@ -262,13 +283,9 @@ impl Default for State {
 
         State {
             stylus: Default::default(),
-            brush_size: DEFAULT_BRUSH,
             strokes,
-            stroke_style: Default::default(),
-            use_individual_style: false,
-            origin: Default::default(),
-            zoom: DEFAULT_ZOOM,
             gesture_state: GestureState::NoInput,
+            settings: Default::default(),
         }
     }
 }
@@ -284,13 +301,13 @@ pub const BRUSH_DELTA: usize = 1;
 
 impl State {
     pub fn increase_brush(&mut self) {
-        self.brush_size += BRUSH_DELTA;
-        self.brush_size = self.brush_size.clamp(MIN_BRUSH, MAX_BRUSH);
+        self.settings.brush_size += BRUSH_DELTA;
+        self.settings.brush_size = self.settings.brush_size.clamp(MIN_BRUSH, MAX_BRUSH);
     }
 
     pub fn decrease_brush(&mut self) {
-        self.brush_size -= BRUSH_DELTA;
-        self.brush_size = self.brush_size.clamp(MIN_BRUSH, MAX_BRUSH);
+        self.settings.brush_size -= BRUSH_DELTA;
+        self.settings.brush_size = self.settings.brush_size.clamp(MIN_BRUSH, MAX_BRUSH);
     }
 
     pub fn move_origin(
@@ -303,25 +320,25 @@ impl State {
         use graphics::*;
 
         let prev_gl = physical_position_to_gl(width, height, prev);
-        let prev_stroke = gl_to_stroke(width, height, self.zoom, prev_gl);
-        let prev_xformed = xform_point_to_pos(self.origin, prev_stroke);
+        let prev_stroke = gl_to_stroke(width, height, self.settings.zoom, prev_gl);
+        let prev_xformed = xform_point_to_pos(self.settings.origin, prev_stroke);
 
         let next_gl = physical_position_to_gl(width, height, next);
-        let next_stroke = gl_to_stroke(width, height, self.zoom, next_gl);
-        let next_xformed = xform_point_to_pos(self.origin, next_stroke);
+        let next_stroke = gl_to_stroke(width, height, self.settings.zoom, next_gl);
+        let next_xformed = xform_point_to_pos(self.settings.origin, next_stroke);
 
         let dx = next_xformed.x - prev_xformed.x;
         let dy = next_xformed.y - prev_xformed.y;
-        self.origin.x += dx;
-        self.origin.y += dy;
+        self.settings.origin.x += dx;
+        self.settings.origin.y += dy;
     }
 
     pub fn change_zoom(&mut self, dz: f32) {
-        if (self.zoom + dz).is_finite() {
-            self.zoom += dz;
+        if (self.settings.zoom + dz).is_finite() {
+            self.settings.zoom += dz;
         }
 
-        self.zoom = self.zoom.clamp(MIN_ZOOM, MAX_ZOOM);
+        self.settings.zoom = self.settings.zoom.clamp(MIN_ZOOM, MAX_ZOOM);
     }
 
     pub fn clear_strokes(&mut self) {
@@ -342,7 +359,7 @@ impl State {
         } = touch;
 
         let gl_pos = graphics::physical_position_to_gl(width, height, location);
-        let point = graphics::gl_to_stroke(width, height, self.zoom, gl_pos);
+        let point = graphics::gl_to_stroke(width, height, self.settings.zoom, gl_pos);
 
         let pressure = match force {
             Some(Force::Normalized(force)) => force,
@@ -390,7 +407,7 @@ impl State {
         };
 
         self.stylus.point = point;
-        self.stylus.pos = graphics::xform_point_to_pos(self.origin, self.stylus.point);
+        self.stylus.pos = graphics::xform_point_to_pos(self.settings.origin, self.stylus.point);
         self.stylus.pressure = pressure as f32;
         self.stylus.state = state;
 
@@ -409,7 +426,7 @@ impl State {
             let stylus_gl = stroke_to_gl(
                 width,
                 height,
-                self.zoom,
+                self.settings.zoom,
                 StrokePoint {
                     x: self.stylus.pos.x,
                     y: self.stylus.pos.y,
@@ -429,7 +446,7 @@ impl State {
                         let point_gl = stroke_to_gl(
                             width,
                             height,
-                            self.zoom,
+                            self.settings.zoom,
                             StrokePoint {
                                 x: point.x,
                                 y: point.y,
@@ -444,7 +461,7 @@ impl State {
                         .sqrt()
                             * 2.0;
 
-                        if dist < self.brush_size as f32 {
+                        if dist < self.settings.brush_size as f32 {
                             stroke.erased = true;
                             break 'inner;
                         }
@@ -457,8 +474,8 @@ impl State {
                     self.strokes.push(Stroke {
                         points: Vec::new(),
                         color: rand::random(),
-                        brush_size: self.brush_size as f32,
-                        style: self.stroke_style,
+                        brush_size: self.settings.brush_size as f32,
+                        style: self.settings.stroke_style,
                         erased: false,
                         spline: None,
                         vbo: None,

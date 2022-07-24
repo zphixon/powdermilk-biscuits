@@ -1,5 +1,6 @@
 use glow::HasContext;
 use glutin::dpi::{PhysicalPosition, PhysicalSize};
+use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 
 pub type Color = [u8; 3];
@@ -70,7 +71,7 @@ pub fn gl_to_physical_position(width: u32, height: u32, pos: GlPos) -> PhysicalP
     }
 }
 
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct StrokePoint {
     pub x: f32,
     pub y: f32,
