@@ -229,13 +229,7 @@ fn main() {
 
                 if !input_handler.shift() && input_handler.just_pressed(S) {
                     if let Some(filename) = filename.as_ref() {
-                        tablet_thing::write_file(
-                            filename,
-                            &tablet_thing::ToDisk {
-                                strokes: state.strokes.clone(),
-                                settings: state.settings.clone(),
-                            },
-                        );
+                        tablet_thing::write_file(filename, &state);
                         println!("saved as {filename}");
                         state.modified = false;
                     }

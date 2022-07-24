@@ -34,10 +34,10 @@ pub fn read_file(filename: &str) -> State {
     }
 }
 
-pub fn write_file(filename: &str, disk: &ToDisk) {
+pub fn write_file(filename: &str, state: &State) {
     let file = std::fs::File::create(filename).unwrap();
     let writer = flate2::write::DeflateEncoder::new(file, flate2::Compression::fast());
-    bincode::serialize_into(writer, disk).unwrap();
+    bincode::serialize_into(writer, &state.to_disk()).unwrap();
 }
 
 #[derive(Default, Debug, Clone, Copy, Serialize, Deserialize)]
@@ -339,6 +339,13 @@ pub const MIN_BRUSH: usize = 1;
 pub const BRUSH_DELTA: usize = 1;
 
 impl State {
+    pub fn to_disk(&self) -> ToDisk {
+        ToDisk {
+            strokes: self.strokes.clone(),
+            settings: self.settings.clone(),
+        }
+    }
+
     pub fn increase_brush(&mut self) {
         self.settings.brush_size += BRUSH_DELTA;
         self.settings.brush_size = self.settings.brush_size.clamp(MIN_BRUSH, MAX_BRUSH);
