@@ -1178,6 +1178,7 @@ dependencies = [
  "bincode",
  "bspline",
  "evc_derive",
+ "flate2",
  "glam",
  "glow",
  "glutin",

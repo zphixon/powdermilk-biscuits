@@ -9,6 +9,37 @@ use glutin::{
 use graphics::{Color, ColorExt, StrokePoint, StrokePos};
 use serde::{Deserialize, Serialize};
 
+pub fn read_file(filename: &str) -> State {
+    let file = match std::fs::File::open(filename) {
+        Ok(file) => file,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            println!("new file {filename}");
+            return State::default();
+        }
+        Err(e) => panic!("{e}"),
+    };
+
+    println!("loading {filename}");
+    let reader = flate2::read::DeflateDecoder::new(file);
+    let mut disk: ToDisk = bincode::deserialize_from(reader).unwrap();
+
+    for stroke in disk.strokes.iter_mut() {
+        stroke.calculate_spline();
+    }
+
+    State {
+        strokes: disk.strokes,
+        settings: disk.settings,
+        ..Default::default()
+    }
+}
+
+pub fn write_file(filename: &str, disk: &ToDisk) {
+    let file = std::fs::File::create(filename).unwrap();
+    let writer = flate2::write::DeflateEncoder::new(file, flate2::Compression::fast());
+    bincode::serialize_into(writer, disk).unwrap();
+}
+
 #[derive(Default, Debug, Clone, Copy, Serialize, Deserialize)]
 #[repr(packed)]
 pub struct StrokeElement {

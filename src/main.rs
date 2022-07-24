@@ -98,32 +98,10 @@ fn main() {
 
     let filename = std::env::args().nth(1);
 
-    let file = filename.as_ref().and_then(|filename| {
-        println!("loading {filename} from disk");
-        std::fs::File::open(filename).ok()
-    });
-
-    let mut state = if let Some(ref file) = file {
-        match bincode::deserialize_from::<_, tablet_thing::ToDisk>(file) {
-            Ok(mut disk) => {
-                for stroke in disk.strokes.iter_mut() {
-                    stroke.calculate_spline();
-                }
-
-                let mut state = State::default();
-                state.settings = disk.settings;
-                state.strokes = disk.strokes;
-                state
-            }
-
-            Err(e) => {
-                println!("error: {e}");
-                State::default()
-            }
-        }
-    } else {
-        State::default()
-    };
+    let mut state = filename
+        .as_ref()
+        .map(|filename| tablet_thing::read_file(filename))
+        .unwrap_or_else(State::default);
 
     println!("stroke style {:?}", state.settings.stroke_style);
 
@@ -251,15 +229,13 @@ fn main() {
 
                 if !input_handler.shift() && input_handler.just_pressed(S) {
                     if let Some(filename) = filename.as_ref() {
-                        let mut file = std::fs::File::create(&filename).unwrap();
-
-                        let binary = bincode::serialize(&tablet_thing::ToDisk {
-                            strokes: state.strokes.clone(),
-                            settings: state.settings.clone(),
-                        })
-                        .unwrap();
-
-                        file.write_all(&binary).unwrap();
+                        tablet_thing::write_file(
+                            filename,
+                            &tablet_thing::ToDisk {
+                                strokes: state.strokes.clone(),
+                                settings: state.settings.clone(),
+                            },
+                        );
                         println!("saved as {filename}");
                         state.modified = false;
                     }
