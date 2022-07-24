@@ -129,6 +129,50 @@ impl Stylus {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum GestureState {
+    NoInput,
+    Stroke,
+    Active(usize),
+}
+
+impl GestureState {
+    pub fn active(&self) -> bool {
+        use GestureState::*;
+        !matches!(self, NoInput | Stroke)
+    }
+
+    // returns should delete last stroke
+    pub fn touch(&mut self) -> bool {
+        use GestureState::*;
+
+        let prev = *self;
+        *self = match *self {
+            NoInput => Stroke,
+            Stroke => Active(2),
+            Active(num) => Active(num + 1),
+        };
+
+        if self.active() {
+            println!("do gesture {self:?}");
+        }
+
+        matches!(prev, Stroke) && matches!(self, Active(2))
+    }
+
+    pub fn release(&mut self) {
+        use GestureState::*;
+        *self = match *self {
+            NoInput | Stroke | Active(1) => NoInput,
+            Active(num) => Active(num - 1),
+        };
+
+        if self.active() {
+            println!("do gesture {self:?}");
+        }
+    }
+}
+
 pub struct State {
     pub stylus: Stylus,
     pub brush_size: usize,
@@ -137,95 +181,94 @@ pub struct State {
     pub use_individual_style: bool,
     pub zoom: f32,
     pub origin: StrokePoint,
+    pub gesture_state: GestureState,
 }
 
-mod hide {
-    use super::*;
-    impl Default for State {
-        fn default() -> Self {
-            use std::iter::repeat;
-            let mut strokes = vec![Stroke {
-                points: graphics::circle_points(1.0, 50)
-                    .chunks_exact(2)
-                    .map(|arr| StrokeElement {
-                        x: arr[0],
-                        y: arr[1],
-                        pressure: 1.0,
-                    })
-                    .collect(),
-                color: Color::WHITE,
-                ..Default::default()
-            }];
+impl Default for State {
+    fn default() -> Self {
+        use std::iter::repeat;
+        let mut strokes = vec![Stroke {
+            points: graphics::circle_points(1.0, 50)
+                .chunks_exact(2)
+                .map(|arr| StrokeElement {
+                    x: arr[0],
+                    y: arr[1],
+                    pressure: 1.0,
+                })
+                .collect(),
+            color: Color::WHITE,
+            ..Default::default()
+        }];
 
-            strokes.extend(repeat(-25.0).take(50).enumerate().map(|(i, x)| {
-                Stroke {
-                    points: repeat(-25.0)
-                        .take(50)
-                        .enumerate()
-                        .map(|(j, y)| StrokeElement {
-                            x: i as f32 + x,
-                            y: j as f32 + y,
-                            pressure: 1.0,
-                        })
-                        .collect(),
-                    color: Color::grey(0.1),
-                    ..Default::default()
-                }
-            }));
-
-            strokes.extend(repeat(-25.0).take(50).enumerate().map(|(i, y)| {
-                Stroke {
-                    points: repeat(-25.0)
-                        .take(50)
-                        .enumerate()
-                        .map(|(j, x)| StrokeElement {
-                            x: j as f32 + x,
-                            y: i as f32 + y,
-                            pressure: 1.0,
-                        })
-                        .collect(),
-                    color: Color::grey(0.1),
-                    ..Default::default()
-                }
-            }));
-
-            strokes.push(Stroke {
+        strokes.extend(repeat(-25.0).take(50).enumerate().map(|(i, x)| {
+            Stroke {
                 points: repeat(-25.0)
                     .take(50)
                     .enumerate()
-                    .map(|(i, x)| StrokeElement {
+                    .map(|(j, y)| StrokeElement {
                         x: i as f32 + x,
-                        y: 0.0,
+                        y: j as f32 + y,
                         pressure: 1.0,
                     })
                     .collect(),
-                color: Color::grey(0.3),
+                color: Color::grey(0.1),
                 ..Default::default()
-            });
+            }
+        }));
 
-            strokes.push(Stroke {
+        strokes.extend(repeat(-25.0).take(50).enumerate().map(|(i, y)| {
+            Stroke {
                 points: repeat(-25.0)
                     .take(50)
                     .enumerate()
-                    .map(|(i, y)| StrokeElement {
-                        x: 0.0,
+                    .map(|(j, x)| StrokeElement {
+                        x: j as f32 + x,
                         y: i as f32 + y,
                         pressure: 1.0,
                     })
                     .collect(),
-                color: Color::grey(0.3),
+                color: Color::grey(0.1),
                 ..Default::default()
-            });
-
-            State {
-                stylus: Default::default(),
-                brush_size: DEFAULT_BRUSH,
-                strokes,
-                stroke_style: Default::default(),
-                use_individual_style: false,
-                origin: Default::default(),
-                zoom: DEFAULT_ZOOM,
             }
+        }));
+
+        strokes.push(Stroke {
+            points: repeat(-25.0)
+                .take(50)
+                .enumerate()
+                .map(|(i, x)| StrokeElement {
+                    x: i as f32 + x,
+                    y: 0.0,
+                    pressure: 1.0,
+                })
+                .collect(),
+            color: Color::grey(0.3),
+            ..Default::default()
+        });
+
+        strokes.push(Stroke {
+            points: repeat(-25.0)
+                .take(50)
+                .enumerate()
+                .map(|(i, y)| StrokeElement {
+                    x: 0.0,
+                    y: i as f32 + y,
+                    pressure: 1.0,
+                })
+                .collect(),
+            color: Color::grey(0.3),
+            ..Default::default()
+        });
+
+        State {
+            stylus: Default::default(),
+            brush_size: DEFAULT_BRUSH,
+            strokes,
+            stroke_style: Default::default(),
+            use_individual_style: false,
+            origin: Default::default(),
+            zoom: DEFAULT_ZOOM,
+            gesture_state: GestureState::NoInput,
         }
     }
 }
@@ -298,7 +341,6 @@ impl State {
             ..
         } = touch;
 
-        let inverted = pen_info.map(|info| info.inverted).unwrap_or(false);
         let gl_pos = graphics::physical_position_to_gl(width, height, location);
         let point = graphics::gl_to_stroke(width, height, self.zoom, gl_pos);
 
@@ -314,27 +356,48 @@ impl State {
             _ => 0.0,
         };
 
+        let inverted = pen_info
+            .map(|info| info.inverted)
+            .unwrap_or(self.stylus.state.inverted);
+
         let state = match phase {
-            TouchPhase::Started => StylusState {
-                pos: StylusPosition::Down,
-                inverted,
-            },
+            TouchPhase::Started => {
+                if pen_info.is_none() && self.gesture_state.touch() {
+                    self.strokes.pop();
+                }
+
+                StylusState {
+                    pos: StylusPosition::Down,
+                    inverted,
+                }
+            }
 
             TouchPhase::Moved => {
                 self.stylus.state.inverted = inverted;
                 self.stylus.state
             }
 
-            TouchPhase::Ended | TouchPhase::Cancelled => StylusState {
-                pos: StylusPosition::Up,
-                inverted,
-            },
+            TouchPhase::Ended | TouchPhase::Cancelled => {
+                if pen_info.is_none() {
+                    self.gesture_state.release();
+                }
+
+                StylusState {
+                    pos: StylusPosition::Up,
+                    inverted,
+                }
+            }
         };
 
         self.stylus.point = point;
         self.stylus.pos = graphics::xform_point_to_pos(self.origin, self.stylus.point);
         self.stylus.pressure = pressure as f32;
         self.stylus.state = state;
+
+        if pen_info.is_none() && self.gesture_state.active() {
+            self.stylus.state.pos = StylusPosition::Up;
+            return;
+        }
 
         self.handle_update(width, height, phase);
     }

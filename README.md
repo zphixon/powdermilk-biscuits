@@ -14,8 +14,7 @@ The winit fork is cloned automatically if you cloned with `--recurse-submodules`
 
 ## Todo:
 
-- Better handling of the effects of pen pressure on stroke width
-- Make graphics handling better
+- Make graphics better
   - Move all the GL stuff into `State`, maybe in a way that allows multiple backends
 - Geometry-based rather than pixel-based rendering, includes compositing
   - Splines with `lyon_tesselation`
@@ -23,6 +22,7 @@ The winit fork is cloned automatically if you cloned with `--recurse-submodules`
   - Undo system
   - Layers?
   - Customization
+- Finger gestures
 
 ## Notes
 
@@ -32,3 +32,19 @@ Coordinate types:
 - `StrokePoint` - stroke position relative to NDC origin in stroke space
 - `StrokePos` - stroke position relative to stroke space origin
 
+Finger/stylus interaction:
+- `Touch` events have a unique ID to represent different touches. The behavior for recognizing touch gestures should be:
+  - When we get a `Touch` event, remember the ID. Set the pen state to down.
+  - While the pen is down, if we receive another `Touch` event with a different ID:
+    - Remember the ID of the new touch
+    - Remove the stroke currently being drawn, set the pen state to up
+    - Handle the appropriate gesture based on how many concurrent touches there are
+    - Wait until all the touches are ended
+- Settings - library function that loads and validates settings file, used by build script to check per-platform builds
+  - Ignore touch inputs entirely
+  - Use touch inputs only for gestures
+  - Use mouse inputs as finger/stylus inputs
+  - Gesture for each number of fingers
+  - Tap gestures
+
+![Gesture state diagram](eg/gesture-state.png)
