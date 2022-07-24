@@ -140,94 +140,91 @@ pub struct State {
     pub num_fingers: usize,
 }
 
-mod hide {
-    use super::*;
-    impl Default for State {
-        fn default() -> Self {
-            use std::iter::repeat;
-            let mut strokes = vec![Stroke {
-                points: graphics::circle_points(1.0, 50)
-                    .chunks_exact(2)
-                    .map(|arr| StrokeElement {
-                        x: arr[0],
-                        y: arr[1],
-                        pressure: 1.0,
-                    })
-                    .collect(),
-                color: Color::WHITE,
-                ..Default::default()
-            }];
+impl Default for State {
+    fn default() -> Self {
+        use std::iter::repeat;
+        let mut strokes = vec![Stroke {
+            points: graphics::circle_points(1.0, 50)
+                .chunks_exact(2)
+                .map(|arr| StrokeElement {
+                    x: arr[0],
+                    y: arr[1],
+                    pressure: 1.0,
+                })
+                .collect(),
+            color: Color::WHITE,
+            ..Default::default()
+        }];
 
-            strokes.extend(repeat(-25.0).take(50).enumerate().map(|(i, x)| {
-                Stroke {
-                    points: repeat(-25.0)
-                        .take(50)
-                        .enumerate()
-                        .map(|(j, y)| StrokeElement {
-                            x: i as f32 + x,
-                            y: j as f32 + y,
-                            pressure: 1.0,
-                        })
-                        .collect(),
-                    color: Color::grey(0.1),
-                    ..Default::default()
-                }
-            }));
-
-            strokes.extend(repeat(-25.0).take(50).enumerate().map(|(i, y)| {
-                Stroke {
-                    points: repeat(-25.0)
-                        .take(50)
-                        .enumerate()
-                        .map(|(j, x)| StrokeElement {
-                            x: j as f32 + x,
-                            y: i as f32 + y,
-                            pressure: 1.0,
-                        })
-                        .collect(),
-                    color: Color::grey(0.1),
-                    ..Default::default()
-                }
-            }));
-
-            strokes.push(Stroke {
+        strokes.extend(repeat(-25.0).take(50).enumerate().map(|(i, x)| {
+            Stroke {
                 points: repeat(-25.0)
                     .take(50)
                     .enumerate()
-                    .map(|(i, x)| StrokeElement {
+                    .map(|(j, y)| StrokeElement {
                         x: i as f32 + x,
-                        y: 0.0,
+                        y: j as f32 + y,
                         pressure: 1.0,
                     })
                     .collect(),
-                color: Color::grey(0.3),
+                color: Color::grey(0.1),
                 ..Default::default()
-            });
+            }
+        }));
 
-            strokes.push(Stroke {
+        strokes.extend(repeat(-25.0).take(50).enumerate().map(|(i, y)| {
+            Stroke {
                 points: repeat(-25.0)
                     .take(50)
                     .enumerate()
-                    .map(|(i, y)| StrokeElement {
-                        x: 0.0,
+                    .map(|(j, x)| StrokeElement {
+                        x: j as f32 + x,
                         y: i as f32 + y,
                         pressure: 1.0,
                     })
                     .collect(),
-                color: Color::grey(0.3),
+                color: Color::grey(0.1),
                 ..Default::default()
-            });
-
-            State {
-                stylus: Default::default(),
-                brush_size: DEFAULT_BRUSH,
-                strokes,
-                stroke_style: Default::default(),
-                use_individual_style: false,
-                origin: Default::default(),
-                zoom: DEFAULT_ZOOM,
-                num_fingers: 0,
             }
+        }));
+
+        strokes.push(Stroke {
+            points: repeat(-25.0)
+                .take(50)
+                .enumerate()
+                .map(|(i, x)| StrokeElement {
+                    x: i as f32 + x,
+                    y: 0.0,
+                    pressure: 1.0,
+                })
+                .collect(),
+            color: Color::grey(0.3),
+            ..Default::default()
+        });
+
+        strokes.push(Stroke {
+            points: repeat(-25.0)
+                .take(50)
+                .enumerate()
+                .map(|(i, y)| StrokeElement {
+                    x: 0.0,
+                    y: i as f32 + y,
+                    pressure: 1.0,
+                })
+                .collect(),
+            color: Color::grey(0.3),
+            ..Default::default()
+        });
+
+        State {
+            stylus: Default::default(),
+            brush_size: DEFAULT_BRUSH,
+            strokes,
+            stroke_style: Default::default(),
+            use_individual_style: false,
+            origin: Default::default(),
+            zoom: DEFAULT_ZOOM,
+            num_fingers: 0,
         }
     }
 }
