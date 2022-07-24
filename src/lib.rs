@@ -14,14 +14,33 @@ pub fn read_file(filename: &str) -> State {
         Ok(file) => file,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
             println!("new file {filename}");
+            return State::modified();
+        }
+        Err(e) => {
+            let text = format!("Could not open {filename}\n{e}");
+            native_dialog::MessageDialog::new()
+                .set_title("Error")
+                .set_text(&text)
+                .show_alert()
+                .unwrap();
             return State::default();
         }
-        Err(e) => panic!("{e}"),
     };
 
     println!("loading {filename}");
     let reader = flate2::read::DeflateDecoder::new(file);
-    let mut disk: ToDisk = bincode::deserialize_from(reader).unwrap();
+    let mut disk: ToDisk = match bincode::deserialize_from(reader) {
+        Ok(disk) => disk,
+        Err(e) => {
+            let text = format!("Could not read {filename}\n{e}");
+            native_dialog::MessageDialog::new()
+                .set_title("Error")
+                .set_text(&text)
+                .show_alert()
+                .unwrap();
+            return State::modified();
+        }
+    };
 
     for stroke in disk.strokes.iter_mut() {
         stroke.calculate_spline();
@@ -339,6 +358,12 @@ pub const MIN_BRUSH: usize = 1;
 pub const BRUSH_DELTA: usize = 1;
 
 impl State {
+    pub fn modified() -> State {
+        let mut this = State::default();
+        this.modified = true;
+        this
+    }
+
     pub fn to_disk(&self) -> ToDisk {
         ToDisk {
             strokes: self.strokes.clone(),

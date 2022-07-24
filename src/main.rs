@@ -6,7 +6,7 @@ use glutin::{
     window::WindowBuilder,
     ContextBuilder,
 };
-use std::{io::Write, mem::size_of};
+use std::mem::size_of;
 use tablet_thing::{input::InputHandler, State, StrokeStyle};
 
 const TITLE_UNMODIFIED: &'static str = "hi! <3";
@@ -522,6 +522,24 @@ fn main() {
                 unsafe {
                     gl.viewport(0, 0, size.width as i32, size.height as i32);
                 };
+            }
+
+            Event::LoopDestroyed => {
+                if state.modified
+                    && native_dialog::MessageDialog::new()
+                        .set_type(native_dialog::MessageType::Warning)
+                        .set_title("Confirm exit")
+                        .set_text("The file is modifed. Would you like to save before closing?")
+                        .show_confirm()
+                        .unwrap()
+                {
+                    if let Ok(file) = native_dialog::FileDialog::new()
+                        .add_filter("PMB file", &[".pmb"])
+                        .show_save_single_file()
+                    {
+                        tablet_thing::write_file("beep", &state);
+                    }
+                }
             }
 
             _ => {}
