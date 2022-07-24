@@ -10,7 +10,7 @@ use std::{io::Write, mem::size_of};
 use tablet_thing::{input::InputHandler, State, StrokeStyle};
 
 const TITLE_UNMODIFIED: &'static str = "hi! <3";
-const TITLE_MODIFIED: &'static str = "hi! <3 *";
+const TITLE_MODIFIED: &'static str = "hi! <3 (modified)";
 
 fn main() {
     // build window and GL context
@@ -96,15 +96,11 @@ fn main() {
     let mut aa = true;
     let mut stroke_style = glow::LINE_STRIP;
 
-    let mut file = std::env::args().nth(1).map(|filename| {
+    let filename = std::env::args().nth(1);
+
+    let file = filename.as_ref().and_then(|filename| {
         println!("loading {filename} from disk");
-        std::fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .truncate(false)
-            .open(&filename)
-            .expect(&format!("could not open {filename}"))
+        std::fs::File::open(filename).ok()
     });
 
     let mut state = if let Some(ref file) = file {
@@ -254,7 +250,9 @@ fn main() {
                 }
 
                 if !input_handler.shift() && input_handler.just_pressed(S) {
-                    if let Some(ref mut file) = file {
+                    if let Some(filename) = filename.as_ref() {
+                        let mut file = std::fs::File::create(&filename).unwrap();
+
                         let binary = bincode::serialize(&tablet_thing::ToDisk {
                             strokes: state.strokes.clone(),
                             settings: state.settings.clone(),
@@ -262,7 +260,7 @@ fn main() {
                         .unwrap();
 
                         file.write_all(&binary).unwrap();
-                        println!("saved as {}", std::env::args().nth(1).unwrap());
+                        println!("saved as {filename}");
                         state.modified = false;
                     }
                 }
@@ -405,15 +403,15 @@ fn main() {
                 }
             }
 
-            Event::RedrawEventsCleared => {
-                if file.is_some() {
-                    if state.modified {
-                        context.window().set_title(TITLE_MODIFIED);
-                    } else {
-                        context.window().set_title(TITLE_UNMODIFIED)
-                    }
+            Event::RedrawEventsCleared => match (filename.as_ref(), state.modified) {
+                (Some(filename), true) => {
+                    let title = format!("{filename} (modified)");
+                    context.window().set_title(title.as_str());
                 }
-            }
+                (Some(filename), false) => context.window().set_title(filename.as_str()),
+                (None, true) => context.window().set_title(TITLE_MODIFIED),
+                (None, false) => context.window().set_title(TITLE_UNMODIFIED),
+            },
 
             Event::RedrawRequested(_) => {
                 unsafe {
