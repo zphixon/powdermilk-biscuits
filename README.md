@@ -47,3 +47,4 @@ Finger/stylus interaction:
   - Gesture for each number of fingers
   - Tap gestures
 
+![Gesture state diagram](eg/gesture-state.png)
