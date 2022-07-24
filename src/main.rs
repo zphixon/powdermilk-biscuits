@@ -534,10 +534,13 @@ fn main() {
                         .unwrap()
                 {
                     if let Ok(file) = native_dialog::FileDialog::new()
-                        .add_filter("PMB file", &[".pmb"])
+                        .set_filename(filename.as_ref().map(|s| s.as_str()).unwrap_or("file"))
+                        .add_filter("PMB file", &["pmb"])
                         .show_save_single_file()
                     {
-                        tablet_thing::write_file("beep", &state);
+                        if let Some(file) = file {
+                            tablet_thing::write_file(file, &state);
+                        }
                     }
                 }
             }

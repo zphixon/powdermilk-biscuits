@@ -9,8 +9,9 @@ use glutin::{
 use graphics::{Color, ColorExt, StrokePoint, StrokePos};
 use serde::{Deserialize, Serialize};
 
-pub fn read_file(filename: &str) -> State {
-    let file = match std::fs::File::open(filename) {
+pub fn read_file(path: impl AsRef<std::path::Path>) -> State {
+    let filename = path.as_ref().display();
+    let file = match std::fs::File::open(&path) {
         Ok(file) => file,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
             println!("new file {filename}");
@@ -53,10 +54,12 @@ pub fn read_file(filename: &str) -> State {
     }
 }
 
-pub fn write_file(filename: &str, state: &State) {
-    let file = std::fs::File::create(filename).unwrap();
+pub fn write_file(path: impl AsRef<std::path::Path>, state: &State) {
+    let file = std::fs::File::create(&path).unwrap();
     let writer = flate2::write::DeflateEncoder::new(file, flate2::Compression::fast());
     bincode::serialize_into(writer, &state.to_disk()).unwrap();
+    let filename = path.as_ref().display();
+    println!("saved as {filename}");
 }
 
 #[derive(Default, Debug, Clone, Copy, Serialize, Deserialize)]
