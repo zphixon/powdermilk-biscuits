@@ -121,13 +121,9 @@ fn main() {
                         ..
                     },
                 ..
-            } => {
+            } if key != VirtualKeyCode::Escape => {
                 use VirtualKeyCode::*;
                 input_handler.handle_key(key, key_state);
-
-                if input_handler.just_pressed(Escape) {
-                    *control_flow = ControlFlow::Exit;
-                }
 
                 if input_handler.just_pressed(C) {
                     state.clear_strokes();
@@ -269,7 +265,37 @@ fn main() {
             Event::WindowEvent {
                 event: WindowEvent::CloseRequested,
                 ..
+            }
+            | Event::WindowEvent {
+                event:
+                    WindowEvent::KeyboardInput {
+                        input:
+                            KeyboardInput {
+                                virtual_keycode: Some(VirtualKeyCode::Escape),
+                                ..
+                            },
+                        ..
+                    },
+                ..
             } => {
+                if state.modified
+                    && native_dialog::MessageDialog::new()
+                        .set_type(native_dialog::MessageType::Warning)
+                        .set_title("Confirm exit")
+                        .set_text("The file is modifed. Would you like to save before closing?")
+                        .show_confirm()
+                        .unwrap()
+                {
+                    if let Ok(file) = native_dialog::FileDialog::new()
+                        .set_filename(filename.as_ref().map(|s| s.as_str()).unwrap_or("file"))
+                        .add_filter("PMB file", &["pmb"])
+                        .show_save_single_file()
+                    {
+                        if let Some(file) = file {
+                            tablet_thing::write_file(file, &state);
+                        }
+                    }
+                }
                 *control_flow = ControlFlow::Exit;
             }
 
@@ -522,27 +548,6 @@ fn main() {
                 unsafe {
                     gl.viewport(0, 0, size.width as i32, size.height as i32);
                 };
-            }
-
-            Event::LoopDestroyed => {
-                if state.modified
-                    && native_dialog::MessageDialog::new()
-                        .set_type(native_dialog::MessageType::Warning)
-                        .set_title("Confirm exit")
-                        .set_text("The file is modifed. Would you like to save before closing?")
-                        .show_confirm()
-                        .unwrap()
-                {
-                    if let Ok(file) = native_dialog::FileDialog::new()
-                        .set_filename(filename.as_ref().map(|s| s.as_str()).unwrap_or("file"))
-                        .add_filter("PMB file", &["pmb"])
-                        .show_save_single_file()
-                    {
-                        if let Some(file) = file {
-                            tablet_thing::write_file(file, &state);
-                        }
-                    }
-                }
             }
 
             _ => {}
