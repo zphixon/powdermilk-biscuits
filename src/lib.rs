@@ -362,7 +362,7 @@ impl State {
 
         let state = match phase {
             TouchPhase::Started => {
-                if self.gesture_state.touch() {
+                if pen_info.is_none() && self.gesture_state.touch() {
                     self.strokes.pop();
                 }
 
@@ -378,7 +378,10 @@ impl State {
             }
 
             TouchPhase::Ended | TouchPhase::Cancelled => {
-                self.gesture_state.release();
+                if pen_info.is_none() {
+                    self.gesture_state.release();
+                }
+
                 StylusState {
                     pos: StylusPosition::Up,
                     inverted,
@@ -391,7 +394,7 @@ impl State {
         self.stylus.pressure = pressure as f32;
         self.stylus.state = state;
 
-        if self.gesture_state.active() {
+        if pen_info.is_none() && self.gesture_state.active() {
             self.stylus.state.pos = StylusPosition::Up;
             return;
         }
