@@ -129,6 +129,50 @@ impl Stylus {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum GestureState {
+    NoInput,
+    Stroke,
+    Active(usize),
+}
+
+impl GestureState {
+    pub fn active(&self) -> bool {
+        use GestureState::*;
+        !matches!(self, NoInput | Stroke)
+    }
+
+    // returns should delete last stroke
+    pub fn touch(&mut self) -> bool {
+        use GestureState::*;
+
+        let prev = *self;
+        *self = match *self {
+            NoInput => Stroke,
+            Stroke => Active(2),
+            Active(num) => Active(num + 1),
+        };
+
+        if self.active() {
+            println!("do gesture {self:?}");
+        }
+
+        matches!(prev, Stroke) && matches!(self, Active(2))
+    }
+
+    pub fn release(&mut self) {
+        use GestureState::*;
+        *self = match *self {
+            NoInput | Stroke | Active(1) => NoInput,
+            Active(num) => Active(num - 1),
+        };
+
+        if self.active() {
+            println!("do gesture {self:?}");
+        }
+    }
+}
+
 pub struct State {
     pub stylus: Stylus,
     pub brush_size: f32,
@@ -137,7 +181,7 @@ pub struct State {
     pub use_individual_style: bool,
     pub zoom: f32,
     pub origin: StrokePoint,
-    pub num_fingers: usize,
+    pub gesture_state: GestureState,
 }
 
 impl Default for State {
@@ -224,7 +268,7 @@ impl Default for State {
             use_individual_style: false,
             origin: Default::default(),
             zoom: DEFAULT_ZOOM,
-            num_fingers: 0,
+            gesture_state: GestureState::NoInput,
         }
     }
 }
@@ -294,11 +338,8 @@ impl State {
             phase,
             location,
             pen_info,
-            id,
             ..
         } = touch;
-
-        println!("{phase:?} {id} ({} touches)", self.num_fingers);
 
         let gl_pos = graphics::physical_position_to_gl(width, height, location);
         let point = graphics::gl_to_stroke(width, height, self.zoom, gl_pos);
@@ -321,7 +362,10 @@ impl State {
 
         let state = match phase {
             TouchPhase::Started => {
-                self.num_fingers += 1;
+                if self.gesture_state.touch() {
+                    self.strokes.pop();
+                }
+
                 StylusState {
                     pos: StylusPosition::Down,
                     inverted,
@@ -334,7 +378,7 @@ impl State {
             }
 
             TouchPhase::Ended | TouchPhase::Cancelled => {
-                self.num_fingers -= 1;
+                self.gesture_state.release();
                 StylusState {
                     pos: StylusPosition::Up,
                     inverted,
@@ -347,19 +391,16 @@ impl State {
         self.stylus.pressure = pressure as f32;
         self.stylus.state = state;
 
+        if self.gesture_state.active() {
+            self.stylus.state.pos = StylusPosition::Up;
+            return;
+        }
+
         self.handle_update(width, height, phase);
     }
 
     fn handle_update(&mut self, width: u32, height: u32, phase: TouchPhase) {
         use graphics::*;
-
-        if self.num_fingers > 1 {
-            if self.num_fingers == 2 && phase == TouchPhase::Started {
-                self.strokes.pop();
-            }
-            println!("handle gesture");
-            return;
-        }
 
         if self.stylus.inverted() {
             let stylus_gl = stroke_to_gl(
