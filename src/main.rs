@@ -9,10 +9,13 @@ use glutin::{
 use std::{io::Write, mem::size_of};
 use tablet_thing::{input::InputHandler, State, StrokeStyle};
 
+const TITLE_UNMODIFIED: &'static str = "hi! <3";
+const TITLE_MODIFIED: &'static str = "hi! <3 *";
+
 fn main() {
     // build window and GL context
     let ev = EventLoop::new();
-    let builder = WindowBuilder::new().with_title("hi! <3");
+    let builder = WindowBuilder::new().with_title(TITLE_UNMODIFIED);
     let context = unsafe {
         ContextBuilder::new()
             .with_vsync(true)
@@ -106,7 +109,11 @@ fn main() {
 
     let mut state = if let Some(ref file) = file {
         match bincode::deserialize_from::<_, tablet_thing::ToDisk>(file) {
-            Ok(disk) => {
+            Ok(mut disk) => {
+                for stroke in disk.strokes.iter_mut() {
+                    stroke.calculate_spline();
+                }
+
                 let mut state = State::default();
                 state.settings = disk.settings;
                 state.strokes = disk.strokes;
@@ -256,6 +263,7 @@ fn main() {
 
                         file.write_all(&binary).unwrap();
                         println!("saved as {}", std::env::args().nth(1).unwrap());
+                        state.modified = false;
                     }
                 }
 
@@ -394,6 +402,16 @@ fn main() {
                     cursor_visible = true;
                     context.window().set_cursor_visible(cursor_visible);
                     context.window().request_redraw();
+                }
+            }
+
+            Event::RedrawEventsCleared => {
+                if file.is_some() {
+                    if state.modified {
+                        context.window().set_title(TITLE_MODIFIED);
+                    } else {
+                        context.window().set_title(TITLE_UNMODIFIED)
+                    }
                 }
             }
 

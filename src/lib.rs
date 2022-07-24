@@ -45,9 +45,9 @@ pub struct Stroke {
     pub color: Color,
     pub brush_size: f32,
     pub style: StrokeStyle,
+    pub erased: bool,
     #[serde(skip)]
     pub spline: Option<BSpline<StrokeElement, f32>>,
-    pub erased: bool,
     #[serde(skip)]
     pub vbo: Option<glow::Buffer>,
     #[serde(skip)]
@@ -209,6 +209,7 @@ pub struct State {
     pub strokes: Vec<Stroke>,
     pub gesture_state: GestureState,
     pub settings: Settings,
+    pub modified: bool,
 }
 
 impl Default for State {
@@ -292,6 +293,7 @@ impl Default for State {
             strokes,
             gesture_state: GestureState::NoInput,
             settings: Default::default(),
+            modified: false,
         }
     }
 }
@@ -348,10 +350,12 @@ impl State {
     }
 
     pub fn clear_strokes(&mut self) {
+        self.modified = true;
         std::mem::take(&mut self.strokes);
     }
 
     pub fn undo_stroke(&mut self) {
+        self.modified = true;
         self.strokes.pop();
     }
 
@@ -386,7 +390,7 @@ impl State {
         let state = match phase {
             TouchPhase::Started => {
                 if pen_info.is_none() && self.gesture_state.touch() {
-                    self.strokes.pop();
+                    self.undo_stroke();
                 }
 
                 StylusState {
@@ -469,6 +473,7 @@ impl State {
 
                         if dist < self.settings.brush_size as f32 {
                             stroke.erased = true;
+                            self.modified = true;
                             break 'inner;
                         }
                     }
@@ -477,6 +482,7 @@ impl State {
         } else {
             match phase {
                 TouchPhase::Started => {
+                    self.modified = true;
                     self.strokes.push(Stroke {
                         points: Vec::new(),
                         color: rand::random(),
