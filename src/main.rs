@@ -6,7 +6,7 @@ use glutin::{
     window::WindowBuilder,
     ContextBuilder,
 };
-use std::mem::size_of;
+use std::{io::Write, mem::size_of};
 use tablet_thing::{input::InputHandler, State, StrokeStyle};
 
 fn main() {
@@ -93,9 +93,31 @@ fn main() {
     let mut aa = true;
     let mut stroke_style = glow::LINE_STRIP;
 
-    let mut state = if let Some(filename) = std::env::args().nth(1) {
-        println!("filename={filename}");
-        todo!();
+    let mut file = std::env::args().nth(1).map(|filename| {
+        println!("loading {filename} from disk");
+        std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(&filename)
+            .expect(&format!("could not open {filename}"))
+    });
+
+    let mut state = if let Some(ref file) = file {
+        match bincode::deserialize_from::<_, tablet_thing::ToDisk>(file) {
+            Ok(disk) => {
+                let mut state = State::default();
+                state.settings = disk.settings;
+                state.strokes = disk.strokes;
+                state
+            }
+
+            Err(e) => {
+                println!("error: {e}");
+                State::default()
+            }
+        }
     } else {
         State::default()
     };
@@ -222,6 +244,19 @@ fn main() {
                 if input_handler.just_pressed(E) {
                     state.stylus.state.inverted = !state.stylus.state.inverted;
                     context.window().request_redraw();
+                }
+
+                if !input_handler.shift() && input_handler.just_pressed(S) {
+                    if let Some(ref mut file) = file {
+                        let binary = bincode::serialize(&tablet_thing::ToDisk {
+                            strokes: state.strokes.clone(),
+                            settings: state.settings.clone(),
+                        })
+                        .unwrap();
+
+                        file.write_all(&binary).unwrap();
+                        println!("saved as {}", std::env::args().nth(1).unwrap());
+                    }
                 }
 
                 if input_handler.shift() && input_handler.just_pressed(S) {

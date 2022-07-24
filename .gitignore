@@ -6,3 +6,4 @@ SDL2.dll
 points.txt
 sdl2/
 tablet_registry.txt
+*.pmb

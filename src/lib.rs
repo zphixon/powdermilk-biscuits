@@ -39,7 +39,7 @@ impl std::ops::Mul<f32> for StrokeElement {
     }
 }
 
-#[derive(Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct Stroke {
     pub points: Vec<StrokeElement>,
     pub color: Color,
@@ -177,7 +177,7 @@ impl GestureState {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Settings {
     pub brush_size: usize,
     pub stroke_style: StrokeStyle,
@@ -196,6 +196,12 @@ impl Default for Settings {
             origin: Default::default(),
         }
     }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ToDisk {
+    pub strokes: Vec<Stroke>,
+    pub settings: Settings,
 }
 
 pub struct State {
