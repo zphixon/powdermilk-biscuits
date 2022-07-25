@@ -15,7 +15,12 @@ const TITLE_MODIFIED: &'static str = "hi! <3 (modified)";
 fn main() {
     // build window and GL context
     let ev = EventLoop::new();
-    let builder = WindowBuilder::new().with_title(TITLE_UNMODIFIED);
+    let builder = WindowBuilder::new()
+        .with_position(glutin::dpi::LogicalPosition {
+            x: 1920. / 2. - 800. / 2.,
+            y: 1080. + 1080. / 2. - 600. / 2.,
+        })
+        .with_title(TITLE_UNMODIFIED);
     let context = unsafe {
         ContextBuilder::new()
             .with_vsync(true)
@@ -225,8 +230,7 @@ fn main() {
 
                 if !input_handler.shift() && input_handler.just_pressed(S) {
                     if let Some(filename) = filename.as_ref() {
-                        tablet_thing::write_file(filename, &state);
-                        println!("saved as {filename}");
+                        let _ = tablet_thing::write_file(filename, &state);
                         state.modified = false;
                     }
                 }
@@ -272,31 +276,43 @@ fn main() {
                         input:
                             KeyboardInput {
                                 virtual_keycode: Some(VirtualKeyCode::Escape),
+                                state: glutin::event::ElementState::Pressed,
                                 ..
                             },
                         ..
                     },
                 ..
             } => {
-                if state.modified
-                    && native_dialog::MessageDialog::new()
-                        .set_type(native_dialog::MessageType::Warning)
-                        .set_title("Confirm exit")
-                        .set_text("The file is modifed. Would you like to save before closing?")
-                        .show_confirm()
-                        .unwrap()
-                {
-                    if let Ok(file) = native_dialog::FileDialog::new()
-                        .set_filename(filename.as_ref().map(|s| s.as_str()).unwrap_or("file"))
-                        .add_filter("PMB file", &["pmb"])
-                        .show_save_single_file()
+                if state.modified {
+                    match rfd::MessageDialog::new()
+                        .set_level(rfd::MessageLevel::Warning)
+                        .set_title("Unsaved changes")
+                        .set_description(
+                            "The file is modified. Would you like to save before closing?",
+                        )
+                        .set_buttons(rfd::MessageButtons::YesNoCancel)
+                        .show()
                     {
-                        if let Some(file) = file {
-                            tablet_thing::write_file(file, &state);
+                        rfd::MessageDialogResult::Yes => {
+                            if let Some(path) = rfd::FileDialog::new()
+                                .set_title("Save modified file")
+                                .add_filter("PMB", &["pmb"])
+                                .save_file()
+                            {
+                                if tablet_thing::write_file(path, &state).is_ok() {
+                                    *control_flow = ControlFlow::Exit;
+                                }
+                            }
+                            // don't exit if no file
                         }
+                        rfd::MessageDialogResult::No => {
+                            *control_flow = ControlFlow::Exit;
+                        }
+                        _ => {}
                     }
+                } else {
+                    *control_flow = ControlFlow::Exit;
                 }
-                *control_flow = ControlFlow::Exit;
             }
 
             Event::WindowEvent {

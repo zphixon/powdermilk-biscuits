@@ -17,7 +17,7 @@ glam = '0.21.2'
 bincode = '1.3.3'
 serde = { version = '*', features = ['derive'] }
 flate2 = '1.0.24'
-native-dialog = '0.6.3'
+rfd = { path = 'rfd' }
 
 [features]
 default = []

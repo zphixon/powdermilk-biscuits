@@ -19,11 +19,11 @@ pub fn read_file(path: impl AsRef<std::path::Path>) -> State {
         }
         Err(e) => {
             let text = format!("Could not open {filename}\n{e}");
-            native_dialog::MessageDialog::new()
+            rfd::MessageDialog::new()
                 .set_title("Error")
-                .set_text(&text)
-                .show_alert()
-                .unwrap();
+                .set_description(&text)
+                .set_level(rfd::MessageLevel::Error)
+                .show();
             return State::default();
         }
     };
@@ -34,11 +34,11 @@ pub fn read_file(path: impl AsRef<std::path::Path>) -> State {
         Ok(disk) => disk,
         Err(e) => {
             let text = format!("Could not read {filename}\n{e}");
-            native_dialog::MessageDialog::new()
+            rfd::MessageDialog::new()
                 .set_title("Error")
-                .set_text(&text)
-                .show_alert()
-                .unwrap();
+                .set_description(&text)
+                .set_level(rfd::MessageLevel::Error)
+                .show();
             return State::modified();
         }
     };
@@ -54,12 +54,41 @@ pub fn read_file(path: impl AsRef<std::path::Path>) -> State {
     }
 }
 
-pub fn write_file(path: impl AsRef<std::path::Path>, state: &State) {
-    let file = std::fs::File::create(&path).unwrap();
+pub fn write_file(path: impl AsRef<std::path::Path>, state: &State) -> Result<(), ()> {
+    let file = match std::fs::File::create(&path) {
+        Ok(file) => file,
+        Err(e) => {
+            let text = format!("Could not save file\n{e}");
+            rfd::MessageDialog::new()
+                .set_title("Error")
+                .set_description(&text)
+                .set_level(rfd::MessageLevel::Error)
+                .set_buttons(rfd::MessageButtons::Ok)
+                .show();
+            return Err(());
+        }
+    };
+
     let writer = flate2::write::DeflateEncoder::new(file, flate2::Compression::fast());
-    bincode::serialize_into(writer, &state.to_disk()).unwrap();
+
+    match bincode::serialize_into(writer, &state.to_disk()) {
+        Ok(()) => {}
+        Err(e) => {
+            let text = format!("Could not save file\n{e}");
+            rfd::MessageDialog::new()
+                .set_title("Error")
+                .set_description(&text)
+                .set_level(rfd::MessageLevel::Error)
+                .set_buttons(rfd::MessageButtons::Ok)
+                .show();
+            return Err(());
+        }
+    }
+
     let filename = path.as_ref().display();
     println!("saved as {filename}");
+
+    Ok(())
 }
 
 #[derive(Default, Debug, Clone, Copy, Serialize, Deserialize)]
