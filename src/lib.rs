@@ -10,6 +10,16 @@ use graphics::{Color, ColorExt, StrokePoint, StrokePos};
 use serde::{Deserialize, Serialize};
 
 pub fn read_file(path: impl AsRef<std::path::Path>) -> State {
+    fn error(name: std::path::Display, err: impl std::error::Error) {
+        let text = format!("Could not open {name}\n{err}");
+        rfd::MessageDialog::new()
+            .set_title("Error")
+            .set_description(&text)
+            .set_level(rfd::MessageLevel::Error)
+            .set_buttons(rfd::MessageButtons::Ok)
+            .show();
+    }
+
     let filename = path.as_ref().display();
     let file = match std::fs::File::open(&path) {
         Ok(file) => file,
@@ -18,12 +28,7 @@ pub fn read_file(path: impl AsRef<std::path::Path>) -> State {
             return State::modified();
         }
         Err(e) => {
-            let text = format!("Could not open {filename}\n{e}");
-            rfd::MessageDialog::new()
-                .set_title("Error")
-                .set_description(&text)
-                .set_level(rfd::MessageLevel::Error)
-                .show();
+            error(filename, e);
             return State::default();
         }
     };
@@ -33,12 +38,7 @@ pub fn read_file(path: impl AsRef<std::path::Path>) -> State {
     let mut disk: ToDisk = match bincode::deserialize_from(reader) {
         Ok(disk) => disk,
         Err(e) => {
-            let text = format!("Could not read {filename}\n{e}");
-            rfd::MessageDialog::new()
-                .set_title("Error")
-                .set_description(&text)
-                .set_level(rfd::MessageLevel::Error)
-                .show();
+            error(filename, e);
             return State::modified();
         }
     };
@@ -55,34 +55,27 @@ pub fn read_file(path: impl AsRef<std::path::Path>) -> State {
 }
 
 pub fn write_file(path: impl AsRef<std::path::Path>, state: &State) -> Result<(), ()> {
-    let file = match std::fs::File::create(&path) {
+    fn error(name: std::path::Display, err: impl std::error::Error) -> Result<(), ()> {
+        let text = format!("Could not save {name}\n{err}");
+        rfd::MessageDialog::new()
+            .set_title("Error")
+            .set_description(&text)
+            .set_level(rfd::MessageLevel::Error)
+            .set_buttons(rfd::MessageButtons::Ok)
+            .show();
+        return Err(());
+    }
+
+    let mut file = match std::fs::File::create(&path) {
         Ok(file) => file,
-        Err(e) => {
-            let text = format!("Could not save file\n{e}");
-            rfd::MessageDialog::new()
-                .set_title("Error")
-                .set_description(&text)
-                .set_level(rfd::MessageLevel::Error)
-                .set_buttons(rfd::MessageButtons::Ok)
-                .show();
-            return Err(());
-        }
+        Err(e) => return error(path.as_ref().display(), e),
     };
 
     let writer = flate2::write::DeflateEncoder::new(file, flate2::Compression::fast());
 
     match bincode::serialize_into(writer, &state.to_disk()) {
         Ok(()) => {}
-        Err(e) => {
-            let text = format!("Could not save file\n{e}");
-            rfd::MessageDialog::new()
-                .set_title("Error")
-                .set_description(&text)
-                .set_level(rfd::MessageLevel::Error)
-                .set_buttons(rfd::MessageButtons::Ok)
-                .show();
-            return Err(());
-        }
+        Err(e) => return error(path.as_ref().display(), e),
     }
 
     let filename = path.as_ref().display();
