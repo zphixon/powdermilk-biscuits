@@ -1,15 +1,21 @@
+pub mod backend;
+pub mod event;
 pub mod graphics;
 pub mod input;
 
-use std::io::{Read, Write};
+#[cfg(feature = "gl")]
+pub mod gl;
 
-use bspline::BSpline;
-use glutin::{
-    dpi::PhysicalPosition,
-    event::{Force, Touch, TouchPhase},
+#[cfg(feature = "gl")]
+pub use gl as backend_impl;
+
+use crate::{
+    event::{Touch, TouchPhase},
+    graphics::{Color, ColorExt, PixelPos, StrokePoint, StrokePos},
 };
-use graphics::{Color, ColorExt, StrokePoint, StrokePos};
+use bspline::BSpline;
 use serde::{Deserialize, Serialize};
+use std::io::{Read, Write};
 
 pub fn read_file(path: impl AsRef<std::path::Path>) -> State {
     fn error(name: std::path::Display, err: impl std::fmt::Display) {
@@ -427,21 +433,15 @@ impl State {
         self.settings.brush_size = self.settings.brush_size.clamp(MIN_BRUSH, MAX_BRUSH);
     }
 
-    pub fn move_origin(
-        &mut self,
-        width: u32,
-        height: u32,
-        prev: PhysicalPosition<f64>,
-        next: PhysicalPosition<f64>,
-    ) {
-        use graphics::*;
+    pub fn move_origin(&mut self, width: u32, height: u32, prev: PixelPos, next: PixelPos) {
+        use backend_impl::*;
 
-        let prev_gl = physical_position_to_gl(width, height, prev);
-        let prev_stroke = gl_to_stroke(width, height, self.settings.zoom, prev_gl);
+        let prev_ndc = pixel_to_ndc(width, height, prev);
+        let prev_stroke = ndc_to_stroke(width, height, self.settings.zoom, prev_ndc);
         let prev_xformed = xform_point_to_pos(self.settings.origin, prev_stroke);
 
-        let next_gl = physical_position_to_gl(width, height, next);
-        let next_stroke = gl_to_stroke(width, height, self.settings.zoom, next_gl);
+        let next_ndc = pixel_to_ndc(width, height, next);
+        let next_stroke = ndc_to_stroke(width, height, self.settings.zoom, next_ndc);
         let next_xformed = xform_point_to_pos(self.settings.origin, next_stroke);
 
         let dx = next_xformed.x - prev_xformed.x;
@@ -477,27 +477,16 @@ impl State {
             ..
         } = touch;
 
-        let gl_pos = graphics::physical_position_to_gl(width, height, location);
-        let point = graphics::gl_to_stroke(width, height, self.settings.zoom, gl_pos);
-
-        let pressure = match force {
-            Some(Force::Normalized(force)) => force,
-
-            Some(Force::Calibrated {
-                force,
-                max_possible_force,
-                altitude_angle: _,
-            }) => force / max_possible_force,
-
-            _ => 0.0,
-        };
+        let ndc_pos = backend_impl::pixel_to_ndc(width, height, location);
+        let point = backend_impl::ndc_to_stroke(width, height, self.settings.zoom, ndc_pos);
+        let pressure = force.unwrap_or(0.0);
 
         let inverted = pen_info
             .map(|info| info.inverted)
             .unwrap_or(self.stylus.state.inverted);
 
         let state = match phase {
-            TouchPhase::Started => {
+            TouchPhase::Start => {
                 if pen_info.is_none() && self.gesture_state.touch() {
                     self.undo_stroke();
                 }
@@ -508,12 +497,12 @@ impl State {
                 }
             }
 
-            TouchPhase::Moved => {
+            TouchPhase::Move => {
                 self.stylus.state.inverted = inverted;
                 self.stylus.state
             }
 
-            TouchPhase::Ended | TouchPhase::Cancelled => {
+            TouchPhase::End | TouchPhase::Cancel => {
                 if pen_info.is_none() {
                     self.gesture_state.release();
                 }
@@ -526,7 +515,7 @@ impl State {
         };
 
         self.stylus.point = point;
-        self.stylus.pos = graphics::xform_point_to_pos(self.settings.origin, self.stylus.point);
+        self.stylus.pos = backend_impl::xform_point_to_pos(self.settings.origin, self.stylus.point);
         self.stylus.pressure = pressure as f32;
         self.stylus.state = state;
 
@@ -539,10 +528,10 @@ impl State {
     }
 
     fn handle_update(&mut self, width: u32, height: u32, phase: TouchPhase) {
-        use graphics::*;
+        use backend_impl::*;
 
         if self.stylus.inverted() {
-            let stylus_gl = stroke_to_gl(
+            let stylus_ndc = stroke_to_ndc(
                 width,
                 height,
                 self.settings.zoom,
@@ -551,18 +540,18 @@ impl State {
                     y: self.stylus.pos.y,
                 },
             );
-            let stylus_pix = gl_to_physical_position(width, height, stylus_gl);
+            let stylus_pix = ndc_to_pixel(width, height, stylus_ndc);
             let stylus_pix_x = stylus_pix.x as f32;
             let stylus_pix_y = stylus_pix.y as f32;
 
-            if phase == TouchPhase::Moved && self.stylus.down() {
+            if phase == TouchPhase::Move && self.stylus.down() {
                 for stroke in self.strokes.iter_mut() {
                     if stroke.erased {
                         continue;
                     }
 
                     'inner: for point in stroke.points.iter() {
-                        let point_gl = stroke_to_gl(
+                        let point_ndc = stroke_to_ndc(
                             width,
                             height,
                             self.settings.zoom,
@@ -571,7 +560,7 @@ impl State {
                                 y: point.y,
                             },
                         );
-                        let point_pix = gl_to_physical_position(width, height, point_gl);
+                        let point_pix = ndc_to_pixel(width, height, point_ndc);
                         let point_pix_x = point_pix.x as f32;
                         let point_pix_y = point_pix.y as f32;
 
@@ -590,7 +579,7 @@ impl State {
             }
         } else {
             match phase {
-                TouchPhase::Started => {
+                TouchPhase::Start => {
                     self.modified = true;
                     self.strokes.push(Stroke {
                         points: Vec::new(),
@@ -604,7 +593,7 @@ impl State {
                     });
                 }
 
-                TouchPhase::Moved => {
+                TouchPhase::Move => {
                     if let Some(stroke) = self.strokes.last_mut() {
                         if self.stylus.down() {
                             stroke.points.push(StrokeElement {
@@ -618,7 +607,7 @@ impl State {
                     }
                 }
 
-                TouchPhase::Ended | TouchPhase::Cancelled => {
+                TouchPhase::End | TouchPhase::Cancel => {
                     if let Some(stroke) = self.strokes.last_mut() {
                         stroke.calculate_spline();
                     }
