@@ -228,6 +228,59 @@ fn main() {
                     context.window().request_redraw();
                 }
 
+                // TODO probably move all the filename handling to State
+                if input_handler.control() && input_handler.just_pressed(O) {
+                    let open = |state: &mut State, filename: &mut _| {
+                        if let Some(path) = rfd::FileDialog::new()
+                            .set_title("Open file")
+                            .add_filter("PMB", &["pmb"])
+                            .pick_file()
+                        {
+                            let new_state = tablet_thing::read_file(&path);
+                            state.strokes = new_state.strokes;
+                            state.settings = new_state.settings;
+                            state.modified = false;
+                            *filename = Some(path.display().to_string());
+                        }
+                    };
+
+                    if state.modified {
+                        match rfd::MessageDialog::new()
+                            .set_level(rfd::MessageLevel::Warning)
+                            .set_title("Unsaved changes")
+                            .set_description(
+                                "The file is modified. Would you like to save before opening another file?",
+                            )
+                            .set_buttons(rfd::MessageButtons::YesNoCancel)
+                            .show()
+                        {
+                            rfd::MessageDialogResult::Yes => {
+                                if let Some(path) = rfd::FileDialog::new()
+                                    .set_title("Save modified file")
+                                    .add_filter("PMB", &["pmb"])
+                                    .set_file_name(
+                                        filename.as_ref().map(|s| s.as_str()).unwrap_or(""),
+                                    )
+                                    .save_file()
+                                {
+                                    if tablet_thing::write_file(path, &state).is_ok() {
+                                        open(&mut state, &mut filename);
+                                    }
+                                }
+                                // don't exit if no file
+                            }
+
+                            rfd::MessageDialogResult::No => open(&mut state, &mut filename),
+
+                            _ => {}
+                        }
+                    } else {
+                        open(&mut state, &mut filename);
+                    }
+
+                    context.window().request_redraw();
+                }
+
                 if !input_handler.shift() && input_handler.just_pressed(S) {
                     if let Some(filename) = filename.as_ref() {
                         if tablet_thing::write_file(filename, &state).is_ok() {
@@ -309,6 +362,7 @@ fn main() {
                             if let Some(path) = rfd::FileDialog::new()
                                 .set_title("Save modified file")
                                 .add_filter("PMB", &["pmb"])
+                                .set_file_name(filename.as_ref().map(|s|s.as_str()).unwrap_or(""))
                                 .save_file()
                             {
                                 if tablet_thing::write_file(path, &state).is_ok() {
@@ -427,7 +481,7 @@ fn main() {
                 }
             }
 
-            Event::RedrawEventsCleared => match (filename.as_ref(), state.modified) {
+            Event::MainEventsCleared => match (filename.as_ref(), state.modified) {
                 (Some(filename), true) => {
                     let title = format!("{filename} (modified)");
                     context.window().set_title(title.as_str());
