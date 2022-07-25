@@ -67,7 +67,6 @@ pub fn write(path: impl AsRef<std::path::Path>, disk: ToDisk) -> Result<()> {
     bincode::serialize_into(writer, &disk)?;
 
     let filename = path.as_ref().display();
-    println!("saved as {filename}");
 
     Ok(())
 }
@@ -395,19 +394,10 @@ impl State {
         match (ui::ask_to_save(why), self.path.as_ref()) {
             // if they say yes and the file we're editing has a path
             (rfd::MessageDialogResult::Yes, Some(path)) => {
-                // ask where to save it
-                // TODO a setting for this?
-                match ui::save_dialog("Save changes", Some(path.as_path())) {
-                    Some(new_filename) => {
-                        // try write to disk
-                        let message = format!("Could not save file as {}", new_filename.display());
-                        write(new_filename, self.to_disk()).error_dialog(&message)?;
-                        self.modified = false;
-                        Ok(true)
-                    }
-
-                    None => Ok(false),
-                }
+                let message = format!("Could not save file as {}", path.display());
+                write(path, self.to_disk()).error_dialog(&message)?;
+                self.modified = false;
+                Ok(true)
             }
 
             // they say yes and the file doesn't have a path yet
