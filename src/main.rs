@@ -101,7 +101,9 @@ fn main() {
     let mut aa = true;
     let mut stroke_style = glow::LINE_STRIP;
 
-    let mut filename = std::env::args().nth(1);
+    let mut filename = std::env::args()
+        .nth(1)
+        .map(|file| std::path::PathBuf::from(file));
 
     let mut state = filename
         .as_ref()
@@ -240,7 +242,7 @@ fn main() {
                             state.strokes = new_state.strokes;
                             state.settings = new_state.settings;
                             state.modified = false;
-                            *filename = Some(path.display().to_string());
+                            *filename = Some(path);
                         }
                     };
 
@@ -255,19 +257,21 @@ fn main() {
                             .show()
                         {
                             rfd::MessageDialogResult::Yes => {
-                                if let Some(path) = rfd::FileDialog::new()
-                                    .set_title("Save modified file")
-                                    .add_filter("PMB", &["pmb"])
-                                    .set_file_name(
-                                        filename.as_ref().map(|s| s.as_str()).unwrap_or(""),
-                                    )
-                                    .save_file()
-                                {
-                                    if tablet_thing::write_file(path, &state).is_ok() {
+                                if let Some(old_fn) = filename.as_ref() {
+                                    if tablet_thing::write_file(old_fn, &state).is_ok() {
                                         open(&mut state, &mut filename);
                                     }
+                                } else {
+                                    if let Some(path) = rfd::FileDialog::new()
+                                        .set_title("Save unnamed modified file")
+                                        .add_filter("PMB", &["pmb"])
+                                        .save_file()
+                                    {
+                                        if tablet_thing::write_file(path, &state).is_ok() {
+                                            open(&mut state, &mut filename);
+                                        }
+                                    }
                                 }
-                                // don't exit if no file
                             }
 
                             rfd::MessageDialogResult::No => open(&mut state, &mut filename),
@@ -295,7 +299,7 @@ fn main() {
                             if tablet_thing::write_file(&path, &state).is_ok() {
                                 state.modified = false;
                             }
-                            filename = Some(path.display().to_string());
+                            filename = Some(path);
                         }
                     }
                 }
@@ -359,10 +363,11 @@ fn main() {
                         .show()
                     {
                         rfd::MessageDialogResult::Yes => {
+                            let name = filename.as_ref().and_then(|path| path.file_name()).and_then(|s| s.to_str());
                             if let Some(path) = rfd::FileDialog::new()
                                 .set_title("Save modified file")
                                 .add_filter("PMB", &["pmb"])
-                                .set_file_name(filename.as_ref().map(|s|s.as_str()).unwrap_or(""))
+                                .set_file_name(name.unwrap_or(""))
                                 .save_file()
                             {
                                 if tablet_thing::write_file(path, &state).is_ok() {
@@ -483,10 +488,10 @@ fn main() {
 
             Event::MainEventsCleared => match (filename.as_ref(), state.modified) {
                 (Some(filename), true) => {
-                    let title = format!("{filename} (modified)");
+                    let title = format!("{} (modified)", filename.display());
                     context.window().set_title(title.as_str());
                 }
-                (Some(filename), false) => context.window().set_title(filename.as_str()),
+                (Some(filename), false) => context.window().set_title(&filename.display().to_string()),
                 (None, true) => context.window().set_title(TITLE_MODIFIED),
                 (None, false) => context.window().set_title(TITLE_UNMODIFIED),
             },
