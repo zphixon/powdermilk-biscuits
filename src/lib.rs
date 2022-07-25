@@ -2,6 +2,7 @@ pub mod backend;
 pub mod event;
 pub mod graphics;
 pub mod input;
+pub mod ui;
 
 #[cfg(feature = "gl")]
 pub mod gl;
@@ -12,98 +13,64 @@ pub use gl as backend_impl;
 use crate::{
     event::{Touch, TouchPhase},
     graphics::{Color, ColorExt, PixelPos, StrokePoint, StrokePos},
+    ui::ToUi,
 };
 use bspline::BSpline;
 use serde::{Deserialize, Serialize};
-use std::io::{Read, Write};
+use std::{
+    io::{Read, Write},
+    path::PathBuf,
+};
 
-pub fn read_file(path: impl AsRef<std::path::Path>) -> State {
-    fn error(name: std::path::Display, err: impl std::fmt::Display) {
-        let text = format!("Could not open {name}\n{err}");
-        rfd::MessageDialog::new()
-            .set_title("Error")
-            .set_description(&text)
-            .set_level(rfd::MessageLevel::Error)
-            .set_buttons(rfd::MessageButtons::Ok)
-            .show();
-    }
+pub type Result<T> = core::result::Result<T, PmbError>;
 
-    let filename = path.as_ref().display();
-    let mut file = match std::fs::File::open(&path) {
-        Ok(file) => file,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-            println!("new file {filename}");
-            return State::modified();
-        }
-        Err(e) => {
-            error(filename, e);
-            return State::default();
-        }
-    };
+#[derive(Debug)]
+pub enum PmbError {
+    MissingHeader,
+    IoError(std::io::Error),
+    BincodeError(bincode::Error),
+}
 
-    let mut magic = [0; 3];
-    match file.read_exact(&mut magic) {
-        Ok(()) => {}
-        Err(e) => {
-            error(filename, e);
-            return State::default();
-        }
-    }
-
-    if magic != [b'P', b'M', b'B'] {
-        error(filename, "Invalid file");
-        return State::default();
-    }
-
-    println!("loading {filename}");
-    let reader = flate2::read::DeflateDecoder::new(file);
-    let mut disk: ToDisk = match bincode::deserialize_from(reader) {
-        Ok(disk) => disk,
-        Err(e) => {
-            error(filename, e);
-            return State::modified();
-        }
-    };
-
-    for stroke in disk.strokes.iter_mut() {
-        stroke.calculate_spline();
-    }
-
-    State {
-        strokes: disk.strokes,
-        settings: disk.settings,
-        ..Default::default()
+impl From<std::io::Error> for PmbError {
+    fn from(err: std::io::Error) -> Self {
+        PmbError::IoError(err)
     }
 }
 
-pub fn write_file(path: impl AsRef<std::path::Path>, state: &State) -> Result<(), ()> {
-    fn error(name: std::path::Display, err: impl std::error::Error) -> Result<(), ()> {
-        let text = format!("Could not save {name}\n{err}");
-        rfd::MessageDialog::new()
-            .set_title("Error")
-            .set_description(&text)
-            .set_level(rfd::MessageLevel::Error)
-            .set_buttons(rfd::MessageButtons::Ok)
-            .show();
-        return Err(());
+impl From<bincode::Error> for PmbError {
+    fn from(err: bincode::Error) -> Self {
+        PmbError::BincodeError(err)
+    }
+}
+
+impl std::fmt::Display for PmbError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PmbError::MissingHeader => write!(f, "Missing PMB header"),
+            PmbError::IoError(err) => write!(f, "{err}"),
+            PmbError::BincodeError(err) => write!(f, "{err}"),
+        }
+    }
+}
+
+pub fn read(mut r: impl Read) -> Result<ToDisk> {
+    let mut magic = [0; 3];
+    r.read_exact(&mut magic)?;
+
+    if magic != [b'P', b'M', b'B'] {
+        return Result::Err(PmbError::MissingHeader);
     }
 
-    let mut file = match std::fs::File::create(&path) {
-        Ok(file) => file,
-        Err(e) => return error(path.as_ref().display(), e),
-    };
+    let reader = flate2::read::DeflateDecoder::new(r);
+    Ok(bincode::deserialize_from(reader)?)
+}
 
-    match file.write_all(&[b'P', b'M', b'B']) {
-        Ok(()) => {}
-        Err(e) => return error(path.as_ref().display(), e),
-    }
+pub fn write(path: impl AsRef<std::path::Path>, disk: ToDisk) -> Result<()> {
+    let mut file = std::fs::File::create(&path)?;
+    file.write_all(&[b'P', b'M', b'B'])?;
 
     let writer = flate2::write::DeflateEncoder::new(file, flate2::Compression::fast());
-
-    match bincode::serialize_into(writer, &state.to_disk()) {
-        Ok(()) => {}
-        Err(e) => return error(path.as_ref().display(), e),
-    }
+    bincode::serialize_into(writer, &disk)?;
 
     let filename = path.as_ref().display();
     println!("saved as {filename}");
@@ -312,8 +279,10 @@ pub struct State {
     pub gesture_state: GestureState,
     pub settings: Settings,
     pub modified: bool,
+    pub path: Option<PathBuf>,
 }
 
+// Default for State {{{
 impl Default for State {
     fn default() -> Self {
         use std::iter::repeat;
@@ -396,9 +365,11 @@ impl Default for State {
             gesture_state: GestureState::NoInput,
             settings: Default::default(),
             modified: false,
+            path: None,
         }
     }
 }
+// }}}
 
 pub const DEFAULT_ZOOM: f32 = 50.;
 pub const MAX_ZOOM: f32 = 500.;
@@ -414,6 +385,118 @@ impl State {
         let mut this = State::default();
         this.modified = true;
         this
+    }
+
+    pub fn with_filename(path: impl AsRef<std::path::Path>) -> State {
+        let mut this = State::default();
+        this.path = Some(path.as_ref().to_path_buf());
+        this
+    }
+
+    // returns whether to exit or overwrite state
+    pub fn ask_to_save_then_save(&mut self, why: &str) -> Result<bool> {
+        match (ui::ask_to_save(why), self.path.as_ref()) {
+            // if they say yes and the file we're editing has a path
+            (rfd::MessageDialogResult::Yes, Some(path)) => {
+                // ask where to save it
+                // TODO a setting for this?
+                match ui::save_dialog("Save changes", Some(path.as_path())) {
+                    Some(new_filename) => {
+                        // try write to disk
+                        let message = format!("Could not save file as {}", new_filename.display());
+                        write(new_filename, self.to_disk()).error_dialog(&message)?;
+                        self.modified = false;
+                        Ok(true)
+                    }
+
+                    None => Ok(false),
+                }
+            }
+
+            // they say yes and the file doesn't have a path yet
+            (rfd::MessageDialogResult::Yes, None) => {
+                // ask where to save it
+                match ui::save_dialog("Save unnamed file", None) {
+                    Some(new_filename) => {
+                        // try write to disk
+                        let message = format!("Could not save file as {}", new_filename.display());
+                        write(new_filename, self.to_disk()).error_dialog(&message)?;
+                        self.modified = false;
+                        Ok(true)
+                    }
+
+                    None => Ok(false),
+                }
+            }
+
+            // they say no, don't write changes
+            (rfd::MessageDialogResult::No, _) => Ok(true),
+
+            _ => Ok(false),
+        }
+    }
+
+    pub fn read_file(&mut self, path: Option<impl AsRef<std::path::Path>>) -> Result<()> {
+        // if we are modified
+        if self.modified {
+            // ask to save first
+            if !self.ask_to_save_then_save("Would you like to save before opening another file?")? {
+                return Ok(());
+            }
+        }
+
+        // if we were passed a path, use that, otherwise ask for one
+        let path = match path
+            .map(|path| path.as_ref().to_path_buf())
+            .or_else(|| ui::open_dialog())
+        {
+            Some(path) => path,
+            None => {
+                return Ok(());
+            }
+        };
+
+        // open the new file
+        let file = match std::fs::File::open(&path) {
+            Ok(file) => file,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                // if it doesn't exist don't try to read it
+                *self = State::with_filename(path);
+                self.modified = true;
+                return Ok(());
+            }
+            Err(err) => return Err(PmbError::from(err)),
+        };
+
+        // read the new file
+        let mut disk = read(file)?;
+
+        // if successful, update the state
+        for stroke in disk.strokes.iter_mut() {
+            stroke.calculate_spline();
+        }
+
+        self.strokes = disk.strokes;
+        self.settings = disk.settings;
+        self.modified = false;
+        self.path = Some(path);
+
+        Ok(())
+    }
+
+    pub fn save_file(&mut self) -> Result<()> {
+        if let Some(path) = self.path.as_ref() {
+            let message = format!("Could not save file {}", path.display());
+            write(path, self.to_disk()).error_dialog(&message)?;
+            self.modified = false;
+        } else if let Some(path) = ui::save_dialog("Save unnamed file", None) {
+            let message = format!("Could not save file {}", path.display());
+            self.path = Some(path);
+            write(self.path.as_ref().unwrap(), self.to_disk()).error_dialog(&message)?;
+            self.modified = false;
+        }
+
+        Ok(())
     }
 
     pub fn to_disk(&self) -> ToDisk {
