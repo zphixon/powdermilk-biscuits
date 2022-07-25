@@ -6,8 +6,8 @@ use glutin::{
     window::WindowBuilder,
     ContextBuilder,
 };
+use powdermilk_biscuits::{State, StrokeStyle};
 use std::mem::size_of;
-use tablet_thing::{State, StrokeStyle};
 
 const TITLE_UNMODIFIED: &'static str = "hi! <3";
 const TITLE_MODIFIED: &'static str = "hi! <3 (modified)";
@@ -53,7 +53,7 @@ pub fn main() {
         gl.disable(glow::CULL_FACE);
         gl.clear_color(0.0, 0.0, 0.0, 1.0);
 
-        pen_cursor_program = tablet_thing::backend::gl::compile_program(
+        pen_cursor_program = powdermilk_biscuits::backend::gl::compile_program(
             &gl,
             "src/shaders/circle.vert",
             "src/shaders/circle.frag",
@@ -75,7 +75,7 @@ pub fn main() {
             &glam::Mat4::IDENTITY.to_cols_array(),
         );
 
-        strokes_program = tablet_thing::backend::gl::compile_program(
+        strokes_program = powdermilk_biscuits::backend::gl::compile_program(
             &gl,
             "src/shaders/points.vert",
             "src/shaders/points.frag",
@@ -97,7 +97,7 @@ pub fn main() {
     };
 
     let mut cursor_visible = true;
-    let mut input_handler = tablet_thing::backend::gl::InputHandler::default();
+    let mut input_handler = powdermilk_biscuits::backend::gl::InputHandler::default();
     let mut aa = true;
     let mut stroke_style = glow::LINE_STRIP;
 
@@ -181,7 +181,7 @@ pub fn main() {
                     }
                     (false, true) => {
                         state.settings.origin = Default::default();
-                        state.settings.zoom = tablet_thing::DEFAULT_ZOOM;
+                        state.settings.zoom = powdermilk_biscuits::DEFAULT_ZOOM;
                         context.window().request_redraw();
                     }
                     _ => {}
@@ -307,7 +307,7 @@ pub fn main() {
                 event: WindowEvent::Touch(touch),
                 ..
             } => {
-                use tablet_thing::backend::gl::*;
+                use powdermilk_biscuits::backend::gl::*;
 
                 cursor_visible = false;
 
@@ -416,7 +416,7 @@ pub fn main() {
             Event::RedrawRequested(_) => {
                 unsafe {
                     gl.use_program(Some(strokes_program));
-                    let view = tablet_thing::backend::gl::view_matrix(
+                    let view = powdermilk_biscuits::backend::gl::view_matrix(
                         state.settings.zoom,
                         state.settings.zoom,
                         context.window().inner_size(),
@@ -492,8 +492,10 @@ pub fn main() {
                 }
 
                 if !cursor_visible {
-                    let circle =
-                        tablet_thing::graphics::circle_points(state.settings.brush_size as f32, 32);
+                    let circle = powdermilk_biscuits::graphics::circle_points(
+                        state.settings.brush_size as f32,
+                        32,
+                    );
                     unsafe {
                         gl.use_program(Some(pen_cursor_program));
                         let vbo = gl.create_buffer().unwrap();
@@ -524,7 +526,7 @@ pub fn main() {
                             if state.stylus.down() { 1.0 } else { 0.0 },
                         );
 
-                        let view = tablet_thing::backend::gl::view_matrix(
+                        let view = powdermilk_biscuits::backend::gl::view_matrix(
                             state.settings.zoom,
                             1.0,
                             context.window().inner_size(),

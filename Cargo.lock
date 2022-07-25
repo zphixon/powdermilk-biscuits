@@ -1134,6 +1134,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "powdermilk-biscuits"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "bspline",
+ "evc_derive",
+ "flate2",
+ "glam",
+ "glow",
+ "glutin",
+ "image",
+ "lyon",
+ "rand",
+ "rfd",
+ "serde",
+]
+
+[[package]]
 name = "ppv-lite86"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1364,24 +1382,6 @@ dependencies = [
  "pkg-config",
  "toml",
  "version-compare",
-]
-
-[[package]]
-name = "tablet-thing"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "bspline",
- "evc_derive",
- "flate2",
- "glam",
- "glow",
- "glutin",
- "image",
- "lyon",
- "rand",
- "rfd",
- "serde",
 ]
 
 [[package]]
