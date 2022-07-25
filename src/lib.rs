@@ -1,7 +1,6 @@
 pub mod backend;
 pub mod event;
 pub mod graphics;
-pub mod input;
 pub mod ui;
 
 #[cfg(feature = "gl")]
@@ -117,8 +116,12 @@ pub struct Stroke {
     pub erased: bool,
     #[serde(skip)]
     pub spline: Option<BSpline<StrokeElement, f32>>,
+
+    #[cfg(feature = "gl")]
     #[serde(skip)]
     pub vbo: Option<glow::Buffer>,
+
+    #[cfg(feature = "gl")]
     #[serde(skip)]
     pub vao: Option<glow::VertexArray>,
 }

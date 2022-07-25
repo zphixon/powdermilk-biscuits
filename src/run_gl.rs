@@ -7,7 +7,7 @@ use glutin::{
     ContextBuilder,
 };
 use std::mem::size_of;
-use tablet_thing::{input::InputHandler, State, StrokeStyle};
+use tablet_thing::{State, StrokeStyle};
 
 const TITLE_UNMODIFIED: &'static str = "hi! <3";
 const TITLE_MODIFIED: &'static str = "hi! <3 (modified)";
@@ -97,7 +97,7 @@ pub fn main() {
     };
 
     let mut cursor_visible = true;
-    let mut input_handler = InputHandler::default();
+    let mut input_handler = tablet_thing::gl::InputHandler::default();
     let mut aa = true;
     let mut stroke_style = glow::LINE_STRIP;
 
