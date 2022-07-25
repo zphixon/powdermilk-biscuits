@@ -66,8 +66,6 @@ pub fn write(path: impl AsRef<std::path::Path>, disk: ToDisk) -> Result<()> {
     let writer = flate2::write::DeflateEncoder::new(file, flate2::Compression::fast());
     bincode::serialize_into(writer, &disk)?;
 
-    let filename = path.as_ref().display();
-
     Ok(())
 }
 
@@ -385,7 +383,8 @@ impl State {
 
     pub fn with_filename(path: impl AsRef<std::path::Path>) -> State {
         let mut this = State::default();
-        this.path = Some(path.as_ref().to_path_buf());
+        let message = format!("Could not open {}", path.as_ref().display());
+        let _ = this.read_file(Some(path)).error_dialog(&message);
         this
     }
 
@@ -448,7 +447,8 @@ impl State {
             Ok(file) => file,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
                 // if it doesn't exist don't try to read it
-                *self = State::with_filename(path);
+                *self = State::default();
+                self.path = Some(path);
                 self.modified = true;
                 return Ok(());
             }
