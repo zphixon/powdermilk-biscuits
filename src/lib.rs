@@ -1,6 +1,8 @@
 pub mod graphics;
 pub mod input;
 
+use std::io::{Read, Write};
+
 use bspline::BSpline;
 use glutin::{
     dpi::PhysicalPosition,
@@ -10,7 +12,7 @@ use graphics::{Color, ColorExt, StrokePoint, StrokePos};
 use serde::{Deserialize, Serialize};
 
 pub fn read_file(path: impl AsRef<std::path::Path>) -> State {
-    fn error(name: std::path::Display, err: impl std::error::Error) {
+    fn error(name: std::path::Display, err: impl std::fmt::Display) {
         let text = format!("Could not open {name}\n{err}");
         rfd::MessageDialog::new()
             .set_title("Error")
@@ -21,7 +23,7 @@ pub fn read_file(path: impl AsRef<std::path::Path>) -> State {
     }
 
     let filename = path.as_ref().display();
-    let file = match std::fs::File::open(&path) {
+    let mut file = match std::fs::File::open(&path) {
         Ok(file) => file,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
             println!("new file {filename}");
@@ -32,6 +34,20 @@ pub fn read_file(path: impl AsRef<std::path::Path>) -> State {
             return State::default();
         }
     };
+
+    let mut magic = [0; 3];
+    match file.read_exact(&mut magic) {
+        Ok(()) => {}
+        Err(e) => {
+            error(filename, e);
+            return State::default();
+        }
+    }
+
+    if magic != [b'P', b'M', b'B'] {
+        error(filename, "Invalid file");
+        return State::default();
+    }
 
     println!("loading {filename}");
     let reader = flate2::read::DeflateDecoder::new(file);
@@ -70,6 +86,11 @@ pub fn write_file(path: impl AsRef<std::path::Path>, state: &State) -> Result<()
         Ok(file) => file,
         Err(e) => return error(path.as_ref().display(), e),
     };
+
+    match file.write_all(&[b'P', b'M', b'B']) {
+        Ok(()) => {}
+        Err(e) => return error(path.as_ref().display(), e),
+    }
 
     let writer = flate2::write::DeflateEncoder::new(file, flate2::Compression::fast());
 
