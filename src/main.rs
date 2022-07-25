@@ -101,7 +101,7 @@ fn main() {
     let mut aa = true;
     let mut stroke_style = glow::LINE_STRIP;
 
-    let filename = std::env::args().nth(1);
+    let mut filename = std::env::args().nth(1);
 
     let mut state = filename
         .as_ref()
@@ -230,8 +230,20 @@ fn main() {
 
                 if !input_handler.shift() && input_handler.just_pressed(S) {
                     if let Some(filename) = filename.as_ref() {
-                        let _ = tablet_thing::write_file(filename, &state);
-                        state.modified = false;
+                        if tablet_thing::write_file(filename, &state).is_ok() {
+                            state.modified = false;
+                        }
+                    } else {
+                        if let Some(path) = rfd::FileDialog::new()
+                            .set_title("Save unnamed file")
+                            .add_filter("PMB", &["pmb"])
+                            .save_file()
+                        {
+                            if tablet_thing::write_file(&path, &state).is_ok() {
+                                state.modified = false;
+                            }
+                            filename = Some(path.display().to_string());
+                        }
                     }
                 }
 
