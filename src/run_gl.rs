@@ -53,7 +53,7 @@ pub fn main() {
         gl.disable(glow::CULL_FACE);
         gl.clear_color(0.0, 0.0, 0.0, 1.0);
 
-        pen_cursor_program = tablet_thing::gl::compile_program(
+        pen_cursor_program = tablet_thing::backend::gl::compile_program(
             &gl,
             "src/shaders/circle.vert",
             "src/shaders/circle.frag",
@@ -75,7 +75,7 @@ pub fn main() {
             &glam::Mat4::IDENTITY.to_cols_array(),
         );
 
-        strokes_program = tablet_thing::gl::compile_program(
+        strokes_program = tablet_thing::backend::gl::compile_program(
             &gl,
             "src/shaders/points.vert",
             "src/shaders/points.frag",
@@ -97,7 +97,7 @@ pub fn main() {
     };
 
     let mut cursor_visible = true;
-    let mut input_handler = tablet_thing::gl::InputHandler::default();
+    let mut input_handler = tablet_thing::backend::gl::InputHandler::default();
     let mut aa = true;
     let mut stroke_style = glow::LINE_STRIP;
 
@@ -307,7 +307,7 @@ pub fn main() {
                 event: WindowEvent::Touch(touch),
                 ..
             } => {
-                use tablet_thing::gl::*;
+                use tablet_thing::backend::gl::*;
 
                 cursor_visible = false;
 
@@ -416,7 +416,7 @@ pub fn main() {
             Event::RedrawRequested(_) => {
                 unsafe {
                     gl.use_program(Some(strokes_program));
-                    let view = tablet_thing::gl::view_matrix(
+                    let view = tablet_thing::backend::gl::view_matrix(
                         state.settings.zoom,
                         state.settings.zoom,
                         context.window().inner_size(),
@@ -524,7 +524,7 @@ pub fn main() {
                             if state.stylus.down() { 1.0 } else { 0.0 },
                         );
 
-                        let view = tablet_thing::gl::view_matrix(
+                        let view = tablet_thing::backend::gl::view_matrix(
                             state.settings.zoom,
                             1.0,
                             context.window().inner_size(),

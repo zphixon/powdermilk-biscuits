@@ -3,13 +3,8 @@ pub mod event;
 pub mod graphics;
 pub mod ui;
 
-#[cfg(feature = "gl")]
-pub mod gl;
-
-#[cfg(feature = "gl")]
-pub use gl as backend_impl;
-
 use crate::{
+    backend::backend_impl,
     event::{Touch, TouchPhase},
     graphics::{Color, ColorExt, PixelPos, StrokePoint, StrokePos},
     ui::ToUi,
@@ -120,7 +115,6 @@ pub struct Stroke {
     #[cfg(feature = "gl")]
     #[serde(skip)]
     pub vbo: Option<glow::Buffer>,
-
     #[cfg(feature = "gl")]
     #[serde(skip)]
     pub vao: Option<glow::VertexArray>,
@@ -674,7 +668,10 @@ impl State {
                         style: self.settings.stroke_style,
                         erased: false,
                         spline: None,
+
+                        #[cfg(feature = "gl")]
                         vbo: None,
+                        #[cfg(feature = "gl")]
                         vao: None,
                     });
                 }

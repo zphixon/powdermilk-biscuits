@@ -22,6 +22,7 @@ glam = { version = '0.21.2', optional = true }
 [features]
 default = ['gl']
 output-spirv = []
+empty-backend = []
 gl = ['glow', 'glam', 'glutin']
 
 [target.'cfg(windows)'.dependencies.glutin]
