@@ -38,6 +38,17 @@ default-features = false
 features = ['x11']
 optional = true
 
+[target.'cfg(windows)'.dependencies.winit]
+path = 'winit2'
+default-features = false
+optional = true
+
+[target.'cfg(unix)'.dependencies.winit]
+path = 'winit2'
+default-features = false
+features = ['x11']
+optional = true
+
 [profile.dev]
 incremental = true
 

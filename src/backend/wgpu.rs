@@ -124,6 +124,7 @@ impl Graphics {
             .await
             .unwrap();
 
+        // segfault on linux here :(
         let (device, queue) = adapter
             .request_device(
                 &DeviceDescriptor {
