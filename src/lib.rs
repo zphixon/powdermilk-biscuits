@@ -552,15 +552,15 @@ impl State {
 
         let ndc_pos = backend_impl::pixel_to_ndc(width, height, location);
         let point = backend_impl::ndc_to_stroke(width, height, self.settings.zoom, ndc_pos);
+        let pos = graphics::xform_point_to_pos(self.settings.origin, point);
         let pressure = force.unwrap_or(1.0);
 
         let inverted = pen_info
             .map(|info| info.inverted)
             .unwrap_or(self.stylus.state.inverted);
 
-        let status = format!(
-            "{pressure:.02} pix={location} -> ndc={ndc_pos} -> str={point}                "
-        );
+        let status =
+            format!("{pressure:.02} pix={location} -> ndc={ndc_pos} -> str={pos}                ");
 
         let state = match phase {
             TouchPhase::Start => {
@@ -605,7 +605,7 @@ impl State {
         };
 
         self.stylus.point = point;
-        self.stylus.pos = graphics::xform_point_to_pos(self.settings.origin, self.stylus.point);
+        self.stylus.pos = pos;
         self.stylus.pressure = pressure as f32;
         self.stylus.state = state;
 
