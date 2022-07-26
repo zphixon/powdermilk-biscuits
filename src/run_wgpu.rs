@@ -106,7 +106,7 @@ async fn run() {
                 input.handle_mouse_button(button, state);
             }
 
-            Event::RedrawRequested(_) => match graphics.render() {
+            Event::RedrawRequested(_) => match graphics.render(&state) {
                 Err(SurfaceError::Lost) => graphics.resize(graphics.size),
                 Err(SurfaceError::OutOfMemory) => {
                     ui::error("Out of memory!");
