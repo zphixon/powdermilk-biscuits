@@ -1,4 +1,4 @@
-use powdermilk_biscuits::{backend::wgpu as backend, ui};
+use crate::{backend::wgpu as backend, ui};
 use wgpu::SurfaceError;
 use winit::{
     dpi::{LogicalPosition, PhysicalSize},
@@ -21,7 +21,7 @@ async fn run() {
             x: 1920. / 2. - 800. / 2.,
             y: 1080. + 1080. / 2. - 600. / 2.,
         })
-        .with_title(powdermilk_biscuits::TITLE_UNMODIFIED)
+        .with_title(crate::TITLE_UNMODIFIED)
         .build(&ev)
         .unwrap();
 
@@ -29,9 +29,9 @@ async fn run() {
         .nth(1)
         .map(|filename| std::path::PathBuf::from(filename))
     {
-        powdermilk_biscuits::State::with_filename(filename)
+        crate::State::with_filename(filename)
     } else {
-        powdermilk_biscuits::State::default()
+        crate::State::default()
     };
 
     let mut graphics = backend::Graphics::new(&window).await;
@@ -209,7 +209,7 @@ async fn run() {
                     }
                     (false, true) => {
                         state.settings.origin = Default::default();
-                        state.settings.zoom = powdermilk_biscuits::DEFAULT_ZOOM;
+                        state.settings.zoom = crate::DEFAULT_ZOOM;
                         window.request_redraw();
                     }
                     _ => {}
@@ -229,8 +229,8 @@ async fn run() {
                         window.set_title(title.as_str());
                     }
                     (Some(path), false) => window.set_title(&path.display().to_string()),
-                    (None, true) => window.set_title(powdermilk_biscuits::TITLE_MODIFIED),
-                    (None, false) => window.set_title(powdermilk_biscuits::TITLE_UNMODIFIED),
+                    (None, true) => window.set_title(crate::TITLE_MODIFIED),
+                    (None, false) => window.set_title(crate::TITLE_UNMODIFIED),
                 }
 
                 if let Some(last) = state.strokes.last_mut() {

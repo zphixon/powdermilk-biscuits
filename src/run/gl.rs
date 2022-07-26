@@ -1,3 +1,4 @@
+use crate::{backend::gl as backend, State, StrokeStyle, TITLE_MODIFIED, TITLE_UNMODIFIED};
 use glow::{Context, HasContext};
 use glutin::{
     dpi::PhysicalSize,
@@ -5,9 +6,6 @@ use glutin::{
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
     ContextBuilder,
-};
-use powdermilk_biscuits::{
-    backend::gl as backend, State, StrokeStyle, TITLE_MODIFIED, TITLE_UNMODIFIED,
 };
 use std::mem::size_of;
 
@@ -177,7 +175,7 @@ pub fn main() {
                     }
                     (false, true) => {
                         state.settings.origin = Default::default();
-                        state.settings.zoom = powdermilk_biscuits::DEFAULT_ZOOM;
+                        state.settings.zoom = crate::DEFAULT_ZOOM;
                         context.window().request_redraw();
                     }
                     _ => {}
@@ -489,10 +487,8 @@ pub fn main() {
                 }
 
                 if !cursor_visible {
-                    let circle = powdermilk_biscuits::graphics::circle_points(
-                        state.settings.brush_size as f32,
-                        32,
-                    );
+                    let circle =
+                        crate::graphics::circle_points(state.settings.brush_size as f32, 32);
                     unsafe {
                         gl.use_program(Some(pen_cursor_program));
                         let vbo = gl.create_buffer().unwrap();
@@ -523,7 +519,7 @@ pub fn main() {
                             if state.stylus.down() { 1.0 } else { 0.0 },
                         );
 
-                        let view = powdermilk_biscuits::backend::gl::view_matrix(
+                        let view = crate::backend::gl::view_matrix(
                             state.settings.zoom,
                             1.0,
                             context.window().inner_size(),

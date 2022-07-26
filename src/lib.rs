@@ -1,6 +1,7 @@
 pub mod backend;
 pub mod event;
 pub mod graphics;
+mod run;
 pub mod ui;
 
 use crate::{
@@ -15,6 +16,10 @@ use std::{
     io::{Read, Write},
     path::PathBuf,
 };
+
+pub fn run() {
+    run::run_impl::main();
+}
 
 pub const TITLE_UNMODIFIED: &'static str = "hi! <3";
 pub const TITLE_MODIFIED: &'static str = "hi! <3 (modified)";

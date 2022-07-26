@@ -1,0 +1,4 @@
+[alias]
+r = ['run', '--release', '--features', 'wgpu']
+rw = ['run', '--release', '--features', 'wgpu']
+rg = ['run', '--release', '--features', 'gl']
