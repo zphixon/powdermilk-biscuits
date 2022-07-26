@@ -1,7 +1,8 @@
 use powdermilk_biscuits::{
     event::{PenInfo, Touch, TouchPhase},
     graphics::{PixelPos, StrokePoint},
-    State, Stroke, StrokeElement,
+    stroke::{Stroke, StrokeElement},
+    State,
 };
 use std::{collections::HashMap, mem::size_of};
 use wgpu::{

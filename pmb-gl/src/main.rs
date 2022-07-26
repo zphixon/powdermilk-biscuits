@@ -6,7 +6,7 @@ use glutin::{
     window::WindowBuilder,
     ContextBuilder,
 };
-use powdermilk_biscuits::{State, StrokeStyle, TITLE_MODIFIED, TITLE_UNMODIFIED};
+use powdermilk_biscuits::{stroke::StrokeStyle, State, TITLE_MODIFIED, TITLE_UNMODIFIED};
 use std::mem::size_of;
 
 fn main() {

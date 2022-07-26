@@ -1,62 +1,21 @@
+pub mod error;
 pub mod event;
 pub mod graphics;
+pub mod stroke;
 pub mod ui;
 
 use crate::{
+    error::{PmbError, Result},
     event::{Touch, TouchPhase},
     graphics::{Color, ColorExt, PixelPos, StrokePoint, StrokePos},
+    stroke::{DiskPart, Stroke, StrokeElement, StrokeStyle},
     ui::ToUi,
 };
-use bspline::BSpline;
 use serde::{Deserialize, Serialize};
 use std::{
     io::{Read, Write},
     path::PathBuf,
 };
-
-pub const TITLE_UNMODIFIED: &'static str = "hi! <3";
-pub const TITLE_MODIFIED: &'static str = "hi! <3 (modified)";
-
-pub trait Backend: std::fmt::Debug + Default {
-    type Ndc: std::fmt::Display + Clone + Copy;
-
-    fn pixel_to_ndc(&self, width: u32, height: u32, pos: PixelPos) -> Self::Ndc;
-    fn ndc_to_pixel(&self, width: u32, height: u32, pos: Self::Ndc) -> PixelPos;
-
-    fn ndc_to_stroke(&self, width: u32, height: u32, zoom: f32, ndc: Self::Ndc) -> StrokePoint;
-    fn stroke_to_ndc(&self, width: u32, height: u32, zoom: f32, point: StrokePoint) -> Self::Ndc;
-}
-
-pub type Result<T> = core::result::Result<T, PmbError>;
-
-#[derive(Debug)]
-pub enum PmbError {
-    MissingHeader,
-    IoError(std::io::Error),
-    BincodeError(bincode::Error),
-}
-
-impl From<std::io::Error> for PmbError {
-    fn from(err: std::io::Error) -> Self {
-        PmbError::IoError(err)
-    }
-}
-
-impl From<bincode::Error> for PmbError {
-    fn from(err: bincode::Error) -> Self {
-        PmbError::BincodeError(err)
-    }
-}
-
-impl std::fmt::Display for PmbError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            PmbError::MissingHeader => write!(f, "Missing PMB header"),
-            PmbError::IoError(err) => write!(f, "{err}"),
-            PmbError::BincodeError(err) => write!(f, "{err}"),
-        }
-    }
-}
 
 pub fn read(mut r: impl Read) -> Result<ToDisk> {
     let mut magic = [0; 3];
@@ -80,116 +39,17 @@ pub fn write(path: impl AsRef<std::path::Path>, disk: ToDisk) -> Result<()> {
     Ok(())
 }
 
-#[derive(Default, Debug, Clone, Copy, Serialize, Deserialize)]
-#[repr(packed)]
-pub struct StrokeElement {
-    pub x: f32,
-    pub y: f32,
-    pub pressure: f32,
-}
+pub const TITLE_UNMODIFIED: &'static str = "hi! <3";
+pub const TITLE_MODIFIED: &'static str = "hi! <3 (modified)";
 
-impl std::ops::Add for StrokeElement {
-    type Output = StrokeElement;
-    fn add(self, rhs: Self) -> Self::Output {
-        StrokeElement {
-            x: self.x + rhs.x,
-            y: self.y + rhs.y,
-            pressure: self.pressure,
-        }
-    }
-}
+pub trait Backend: std::fmt::Debug + Default {
+    type Ndc: std::fmt::Display + Clone + Copy;
 
-impl std::ops::Mul<f32> for StrokeElement {
-    type Output = StrokeElement;
-    fn mul(self, rhs: f32) -> Self::Output {
-        StrokeElement {
-            x: self.x * rhs,
-            y: self.y * rhs,
-            pressure: self.pressure,
-        }
-    }
-}
+    fn pixel_to_ndc(&self, width: u32, height: u32, pos: PixelPos) -> Self::Ndc;
+    fn ndc_to_pixel(&self, width: u32, height: u32, pos: Self::Ndc) -> PixelPos;
 
-#[derive(Default, Debug, Serialize, Deserialize)]
-pub struct DiskPart {
-    pub points: Vec<StrokeElement>,
-    pub color: Color,
-    pub brush_size: f32,
-    pub style: StrokeStyle,
-    pub erased: bool,
-}
-
-#[derive(Debug)]
-pub struct Stroke<S> {
-    pub disk: DiskPart,
-    pub spline: Option<BSpline<StrokeElement, f32>>,
-    pub backend: Option<S>,
-}
-
-impl<S> Default for Stroke<S> {
-    fn default() -> Self {
-        Self {
-            disk: DiskPart::default(),
-            spline: None,
-            backend: None,
-        }
-    }
-}
-
-impl<S> Clone for Stroke<S> {
-    fn clone(&self) -> Self {
-        Stroke {
-            disk: DiskPart {
-                points: self.disk.points.clone(),
-                color: self.disk.color,
-                brush_size: self.disk.brush_size,
-                style: self.disk.style,
-                erased: self.disk.erased,
-            },
-            spline: self.spline.clone(),
-            backend: None,
-        }
-    }
-}
-
-impl<S> Stroke<S> {
-    pub const DEGREE: usize = 3;
-
-    pub fn calculate_spline(&mut self) {
-        if self.disk.points.len() > Self::DEGREE {
-            let points = [self.disk.points.first().cloned().unwrap(); Stroke::<()>::DEGREE]
-                .into_iter()
-                .chain(self.disk.points.iter().cloned())
-                .chain([self.disk.points.last().cloned().unwrap(); Stroke::<()>::DEGREE])
-                .map(|point| point.into())
-                .collect::<Vec<StrokeElement>>();
-
-            let knots = std::iter::repeat(())
-                .take(points.len() + Self::DEGREE + 1)
-                .enumerate()
-                .map(|(i, ())| i as f32)
-                .collect::<Vec<_>>();
-
-            self.spline = Some(BSpline::new(Self::DEGREE, points, knots));
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, evc_derive::EnumVariantCount, Serialize, Deserialize)]
-#[repr(usize)]
-#[allow(dead_code)]
-pub enum StrokeStyle {
-    Lines,
-    Circles,
-    CirclesPressure,
-    Points,
-    Spline,
-}
-
-impl Default for StrokeStyle {
-    fn default() -> Self {
-        StrokeStyle::Lines
-    }
+    fn ndc_to_stroke(&self, width: u32, height: u32, zoom: f32, ndc: Self::Ndc) -> StrokePoint;
+    fn stroke_to_ndc(&self, width: u32, height: u32, zoom: f32, point: StrokePoint) -> Self::Ndc;
 }
 
 #[derive(Debug, Clone, Copy)]
