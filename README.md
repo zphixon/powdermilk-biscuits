@@ -1,6 +1,6 @@
 # Powdermilk Biscuits
 
-![Screenshot of the text "Powdermilk Biscuits" handwritten on a tablet using this program. Each stroke is a different color, and the strokes are rendered using a cubic Bezier interpolator.](eg/pmb.png)
+![Screenshot of the text "Powdermilk Biscuits" handwritten on a tablet using this program. Each stroke is a different color, and the strokes are rendered using a cubic Bezier interpolator.](pmb.png)
 
 Heavens, it's tasty.
 
@@ -66,4 +66,4 @@ Optimizations
 - WGPU
   - We're uploading data for the last stroke every frame, again regardless of whether it's changed
 
-![Gesture state diagram](eg/gesture-state.png)
+![Gesture state diagram](gesture-state.png)
