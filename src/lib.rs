@@ -552,7 +552,7 @@ impl State {
 
         let ndc_pos = backend_impl::pixel_to_ndc(width, height, location);
         let point = backend_impl::ndc_to_stroke(width, height, self.settings.zoom, ndc_pos);
-        let pressure = force.unwrap_or(0.0);
+        let pressure = force.unwrap_or(1.0);
 
         let inverted = pen_info
             .map(|info| info.inverted)
