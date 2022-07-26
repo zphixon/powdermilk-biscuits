@@ -35,6 +35,8 @@ async fn run() {
     };
 
     let mut graphics = backend::Graphics::new(&window).await;
+    graphics.buffer_all_strokes(&mut state);
+
     let mut input = backend::InputHandler::default();
     let mut cursor_visible = true;
 
@@ -106,7 +108,7 @@ async fn run() {
                 input.handle_mouse_button(button, state);
             }
 
-            Event::RedrawRequested(_) => match graphics.render(&state) {
+            Event::RedrawRequested(_) => match graphics.render(&mut state) {
                 Err(SurfaceError::Lost) => graphics.resize(graphics.size),
                 Err(SurfaceError::OutOfMemory) => {
                     ui::error("Out of memory!");
@@ -229,6 +231,10 @@ async fn run() {
                     (Some(path), false) => window.set_title(&path.display().to_string()),
                     (None, true) => window.set_title(powdermilk_biscuits::TITLE_MODIFIED),
                     (None, false) => window.set_title(powdermilk_biscuits::TITLE_UNMODIFIED),
+                }
+
+                if let Some(last) = state.strokes.last_mut() {
+                    graphics.buffer_stroke(last);
                 }
 
                 window.request_redraw();

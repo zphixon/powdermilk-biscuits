@@ -1,15 +1,19 @@
 use crate::{
     event::{PenInfo, Touch, TouchPhase},
     graphics::{PixelPos, StrokePoint},
+    StrokeElement,
 };
-use std::collections::HashMap;
+use std::{collections::HashMap, mem::size_of};
 use wgpu::{
-    Backends, BlendState, Buffer, Color, ColorTargetState, ColorWrites, CommandEncoderDescriptor,
-    Device, DeviceDescriptor, Face, Features, FragmentState, FrontFace, Instance, Limits, LoadOp,
-    MultisampleState, Operations, PipelineLayoutDescriptor, PolygonMode, PowerPreference,
-    PresentMode, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment,
-    RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, Surface,
-    SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor, VertexState,
+    util::{BufferInitDescriptor, DeviceExt},
+    Backends, BlendState, Buffer, BufferAddress, BufferUsages, Color, ColorTargetState,
+    ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor, Face, Features, FragmentState,
+    FrontFace, Instance, Limits, LoadOp, MultisampleState, Operations, PipelineLayoutDescriptor,
+    PolygonMode, PowerPreference, PresentMode, PrimitiveState, PrimitiveTopology, Queue,
+    RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor,
+    RequestAdapterOptions, Surface, SurfaceConfiguration, SurfaceError, TextureUsages,
+    TextureViewDescriptor, VertexAttribute, VertexBufferLayout, VertexFormat, VertexState,
+    VertexStepMode,
 };
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
@@ -22,7 +26,7 @@ use winit::{
 
 #[derive(Debug)]
 pub struct StrokeBackend {
-    pub buffer: Option<Buffer>,
+    pub buffer: Buffer,
 }
 
 impl From<WinitPenInfo> for PenInfo {
@@ -155,7 +159,8 @@ impl Graphics {
 
         surface.configure(&device, &config);
 
-        let shader = device.create_shader_module(wgpu::include_wgsl!("../shaders/triangle.wgsl"));
+        let shader =
+            device.create_shader_module(wgpu::include_wgsl!("../shaders/stroke_line.wgsl"));
 
         let layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("pipeline layout"),
@@ -175,7 +180,22 @@ impl Graphics {
             vertex: VertexState {
                 module: &shader,
                 entry_point: "vmain",
-                buffers: &[],
+                buffers: &[VertexBufferLayout {
+                    array_stride: size_of::<StrokeElement>() as BufferAddress,
+                    step_mode: VertexStepMode::Vertex,
+                    attributes: &[
+                        VertexAttribute {
+                            offset: 0,
+                            shader_location: 0,
+                            format: VertexFormat::Float32x2,
+                        },
+                        VertexAttribute {
+                            offset: 2 * size_of::<f32>() as u64,
+                            shader_location: 1,
+                            format: VertexFormat::Float32,
+                        },
+                    ],
+                }],
             },
             fragment: Some(FragmentState {
                 module: &shader,
@@ -183,7 +203,7 @@ impl Graphics {
                 targets: &cts,
             }),
             primitive: PrimitiveState {
-                topology: PrimitiveTopology::TriangleList,
+                topology: PrimitiveTopology::LineStrip,
                 strip_index_format: None,
                 front_face: FrontFace::Ccw,
                 cull_mode: Some(Face::Back),
@@ -221,7 +241,37 @@ impl Graphics {
         }
     }
 
-    pub fn render(&mut self, state: &crate::State) -> Result<(), SurfaceError> {
+    pub fn buffer_stroke(&mut self, stroke: &mut crate::Stroke) {
+        let points_flat = unsafe {
+            std::slice::from_raw_parts(
+                stroke.points.as_ptr() as *const f32,
+                stroke.points.len() * 3,
+            )
+        };
+
+        let bytes = unsafe {
+            std::slice::from_raw_parts(
+                points_flat.as_ptr() as *const u8,
+                points_flat.len() * size_of::<f32>(),
+            )
+        };
+
+        stroke.backend.replace(StrokeBackend {
+            buffer: self.device.create_buffer_init(&BufferInitDescriptor {
+                label: None,
+                contents: bytes,
+                usage: BufferUsages::VERTEX,
+            }),
+        });
+    }
+
+    pub fn buffer_all_strokes(&mut self, state: &mut crate::State) {
+        for stroke in state.strokes.iter_mut() {
+            self.buffer_stroke(stroke);
+        }
+    }
+
+    pub fn render(&mut self, state: &mut crate::State) -> Result<(), SurfaceError> {
         let output = self.surface.get_current_texture()?;
         let view = output
             .texture
@@ -240,12 +290,7 @@ impl Graphics {
                     view: &view,
                     resolve_target: None,
                     ops: Operations {
-                        load: LoadOp::Clear(Color {
-                            r: state.stylus.pressure as f64,
-                            g: 0.2,
-                            b: 0.3,
-                            a: 1.0,
-                        }),
+                        load: LoadOp::Clear(Color::BLACK),
                         store: true,
                     },
                 })],
@@ -253,7 +298,11 @@ impl Graphics {
             });
 
             pass.set_pipeline(&self.pipeline);
-            pass.draw(0..3, 0..1);
+
+            for stroke in state.strokes.iter() {
+                pass.set_vertex_buffer(0, stroke.backend.as_ref().unwrap().buffer.slice(..));
+                pass.draw(0..stroke.points.len() as u32, 0..1);
+            }
         }
 
         self.queue.submit(Some(encoder.finish()));
