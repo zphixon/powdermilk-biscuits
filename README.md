@@ -35,6 +35,7 @@ will download the submodules [winit](https://github.com/zphixon/winit) and [rfd]
   - Layers?
   - Customization
 - Finger gestures
+- Chunk-based strokes
 
 ## Notes
 

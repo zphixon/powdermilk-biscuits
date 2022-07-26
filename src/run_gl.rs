@@ -52,8 +52,8 @@ pub fn main() {
 
         pen_cursor_program = powdermilk_biscuits::backend::gl::compile_program(
             &gl,
-            "src/shaders/circle.vert",
-            "src/shaders/circle.frag",
+            "src/shaders/cursor.vert",
+            "src/shaders/cursor.frag",
         );
         gl.use_program(Some(pen_cursor_program));
 
@@ -74,8 +74,8 @@ pub fn main() {
 
         strokes_program = powdermilk_biscuits::backend::gl::compile_program(
             &gl,
-            "src/shaders/points.vert",
-            "src/shaders/points.frag",
+            "src/shaders/stroke_line.vert",
+            "src/shaders/stroke_line.frag",
         );
         gl.use_program(Some(strokes_program));
 
