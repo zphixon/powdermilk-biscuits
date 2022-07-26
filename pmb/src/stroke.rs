@@ -1,6 +1,8 @@
 use bspline::BSpline;
 use serde::{Deserialize, Serialize};
 
+use crate::graphics::Color;
+
 #[derive(Default, Debug, Clone, Copy, Serialize, Deserialize)]
 #[repr(packed)]
 pub struct StrokeElement {
@@ -33,18 +35,34 @@ impl std::ops::Mul<f32> for StrokeElement {
 
 #[derive(Default, Debug, Serialize, Deserialize)]
 pub struct DiskPart {
-    pub points: Vec<StrokeElement>,
-    pub color: crate::graphics::Color,
-    pub brush_size: f32,
-    pub style: StrokeStyle,
-    pub erased: bool,
+    points: Vec<StrokeElement>,
+    color: Color,
+    brush_size: f32,
+    style: StrokeStyle,
+    erased: bool,
+}
+
+impl DiskPart {
+    pub fn new(color: Color, brush_size: f32) -> Self {
+        DiskPart {
+            color,
+            brush_size,
+            ..Default::default()
+        }
+    }
+}
+
+impl<S> From<Stroke<S>> for DiskPart {
+    fn from(stroke: Stroke<S>) -> Self {
+        stroke.disk
+    }
 }
 
 #[derive(Debug)]
 pub struct Stroke<S> {
-    pub disk: DiskPart,
-    pub spline: Option<BSpline<StrokeElement, f32>>,
-    pub backend: Option<S>,
+    disk: DiskPart,
+    spline: Option<BSpline<StrokeElement, f32>>,
+    backend: Option<S>,
 }
 
 impl<S> Default for Stroke<S> {
@@ -76,12 +94,90 @@ impl<S> Clone for Stroke<S> {
 impl<S> Stroke<S> {
     pub const DEGREE: usize = 3;
 
+    pub fn with_disk(disk: DiskPart) -> Self {
+        Self {
+            disk,
+            ..Default::default()
+        }
+    }
+
+    pub fn with_points(points: Vec<StrokeElement>, color: Color) -> Self {
+        Self {
+            disk: DiskPart {
+                points,
+                color,
+                ..Default::default()
+            },
+            ..Default::default()
+        }
+    }
+
+    pub unsafe fn as_bytes(&self) -> &[u8] {
+        let points_flat = std::slice::from_raw_parts(
+            self.points().as_ptr() as *const f32,
+            self.points().len() * 3,
+        );
+
+        std::slice::from_raw_parts(
+            points_flat.as_ptr() as *const u8,
+            points_flat.len() * std::mem::size_of::<f32>(),
+        )
+    }
+
+    pub fn new(color: Color, brush_size: f32) -> Self {
+        Self {
+            disk: DiskPart::new(color, brush_size),
+            spline: None,
+            backend: None,
+        }
+    }
+
+    pub fn points(&self) -> &[StrokeElement] {
+        &self.disk.points
+    }
+
+    pub fn points_mut(&mut self) -> &mut Vec<StrokeElement> {
+        &mut self.disk.points
+    }
+
+    pub fn color(&self) -> Color {
+        self.disk.color
+    }
+
+    pub fn brush_size(&self) -> f32 {
+        self.disk.brush_size
+    }
+
+    pub fn erased(&self) -> bool {
+        self.disk.erased
+    }
+
+    pub fn erase(&mut self) {
+        self.disk.erased = true;
+    }
+
+    pub fn backend(&self) -> Option<&S> {
+        self.backend.as_ref()
+    }
+
+    pub fn backend_mut(&mut self) -> &mut Option<S> {
+        &mut self.backend
+    }
+
+    pub fn replace_backend_with<F>(&mut self, mut with: F)
+    where
+        F: FnMut(&[u8]) -> S,
+    {
+        let backend = with(unsafe { self.as_bytes() });
+        self.backend = Some(backend);
+    }
+
     pub fn calculate_spline(&mut self) {
-        if self.disk.points.len() > Self::DEGREE {
-            let points = [self.disk.points.first().cloned().unwrap(); Stroke::<()>::DEGREE]
+        if self.points().len() > Self::DEGREE {
+            let points = [self.points().first().cloned().unwrap(); Stroke::<()>::DEGREE]
                 .into_iter()
-                .chain(self.disk.points.iter().cloned())
-                .chain([self.disk.points.last().cloned().unwrap(); Stroke::<()>::DEGREE])
+                .chain(self.points().iter().cloned())
+                .chain([self.points().last().cloned().unwrap(); Stroke::<()>::DEGREE])
                 .map(|point| point.into())
                 .collect::<Vec<StrokeElement>>();
 

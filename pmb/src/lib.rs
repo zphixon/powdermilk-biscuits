@@ -182,93 +182,73 @@ where
 {
     fn default() -> Self {
         use std::iter::repeat;
-        let mut strokes = vec![Stroke {
-            disk: DiskPart {
-                points: graphics::circle_points(1.0, 50)
-                    .chunks_exact(2)
-                    .map(|arr| StrokeElement {
-                        x: arr[0],
-                        y: arr[1],
+        let mut strokes = vec![Stroke::with_points(
+            graphics::circle_points(1.0, 50)
+                .chunks_exact(2)
+                .map(|arr| StrokeElement {
+                    x: arr[0],
+                    y: arr[1],
+                    pressure: 1.0,
+                })
+                .collect(),
+            Color::WHITE,
+        )];
+
+        strokes.extend(repeat(-25.0).take(50).enumerate().map(|(i, x)| {
+            Stroke::with_points(
+                repeat(-25.0)
+                    .take(50)
+                    .enumerate()
+                    .map(|(j, y)| StrokeElement {
+                        x: i as f32 + x,
+                        y: j as f32 + y,
                         pressure: 1.0,
                     })
                     .collect(),
-                color: Color::WHITE,
-                ..Default::default()
-            },
-            ..Default::default()
-        }];
-
-        strokes.extend(repeat(-25.0).take(50).enumerate().map(|(i, x)| {
-            Stroke {
-                disk: DiskPart {
-                    points: repeat(-25.0)
-                        .take(50)
-                        .enumerate()
-                        .map(|(j, y)| StrokeElement {
-                            x: i as f32 + x,
-                            y: j as f32 + y,
-                            pressure: 1.0,
-                        })
-                        .collect(),
-                    color: Color::grey(0.1),
-                    ..Default::default()
-                },
-                ..Default::default()
-            }
+                Color::grey(0.1),
+            )
         }));
 
         strokes.extend(repeat(-25.0).take(50).enumerate().map(|(i, y)| {
-            Stroke {
-                disk: DiskPart {
-                    points: repeat(-25.0)
-                        .take(50)
-                        .enumerate()
-                        .map(|(j, x)| StrokeElement {
-                            x: j as f32 + x,
-                            y: i as f32 + y,
-                            pressure: 1.0,
-                        })
-                        .collect(),
-                    color: Color::grey(0.1),
-                    ..Default::default()
-                },
-                ..Default::default()
-            }
-        }));
-
-        strokes.push(Stroke {
-            disk: DiskPart {
-                points: repeat(-25.0)
+            Stroke::with_points(
+                repeat(-25.0)
                     .take(50)
                     .enumerate()
-                    .map(|(i, x)| StrokeElement {
-                        x: i as f32 + x,
-                        y: 0.0,
-                        pressure: 1.0,
-                    })
-                    .collect(),
-                color: Color::grey(0.3),
-                ..Default::default()
-            },
-            ..Default::default()
-        });
-
-        strokes.push(Stroke {
-            disk: DiskPart {
-                points: repeat(-25.0)
-                    .take(50)
-                    .enumerate()
-                    .map(|(i, y)| StrokeElement {
-                        x: 0.0,
+                    .map(|(j, x)| StrokeElement {
+                        x: j as f32 + x,
                         y: i as f32 + y,
                         pressure: 1.0,
                     })
                     .collect(),
-                color: Color::grey(0.3),
-                ..Default::default()
-            },
-            ..Default::default()
-        });
+                Color::grey(0.1),
+            )
+        }));
+
+        strokes.push(Stroke::with_points(
+            repeat(-25.0)
+                .take(50)
+                .enumerate()
+                .map(|(i, x)| StrokeElement {
+                    x: i as f32 + x,
+                    y: 0.0,
+                    pressure: 1.0,
+                })
+                .collect(),
+            Color::grey(0.3),
+        ));
+
+        strokes.push(Stroke::with_points(
+            repeat(-25.0)
+                .take(50)
+                .enumerate()
+                .map(|(i, y)| StrokeElement {
+                    x: 0.0,
+                    y: i as f32 + y,
+                    pressure: 1.0,
+                })
+                .collect(),
+            Color::grey(0.3),
+        ));
 
         State {
             stylus: Default::default(),
@@ -379,15 +359,7 @@ where
         // read the new file
         let disk = read(file)?;
 
-        let mut strokes: Vec<_> = disk
-            .strokes
-            .into_iter()
-            .map(|disk| Stroke {
-                disk,
-                backend: None,
-                ..Stroke::default()
-            })
-            .collect();
+        let mut strokes: Vec<_> = disk.strokes.into_iter().map(Stroke::with_disk).collect();
 
         strokes
             .iter_mut()
@@ -422,7 +394,7 @@ where
                 .strokes
                 .clone()
                 .into_iter()
-                .map(|stroke| stroke.disk)
+                .map(DiskPart::from)
                 .collect(),
             settings: self.settings.clone(),
         }
@@ -570,11 +542,11 @@ where
 
             if phase == TouchPhase::Move && self.stylus.down() {
                 for stroke in self.strokes.iter_mut() {
-                    if stroke.disk.erased {
+                    if stroke.erased() {
                         continue;
                     }
 
-                    'inner: for point in stroke.disk.points.iter() {
+                    'inner: for point in stroke.points().iter() {
                         let point_ndc = self.backend.stroke_to_ndc(
                             width,
                             height,
@@ -594,7 +566,7 @@ where
                             * 2.0;
 
                         if dist < self.settings.brush_size as f32 {
-                            stroke.disk.erased = true;
+                            stroke.erase();
                             self.modified = true;
                             break 'inner;
                         }
@@ -605,23 +577,14 @@ where
             match phase {
                 TouchPhase::Start => {
                     self.modified = true;
-                    self.strokes.push(Stroke {
-                        disk: DiskPart {
-                            points: Vec::new(),
-                            color: rand::random(),
-                            brush_size: self.settings.brush_size as f32,
-                            style: self.settings.stroke_style,
-                            erased: false,
-                        },
-                        spline: None,
-                        backend: None,
-                    });
+                    self.strokes
+                        .push(Stroke::new(rand::random(), self.settings.brush_size as f32));
                 }
 
                 TouchPhase::Move => {
                     if let Some(stroke) = self.strokes.last_mut() {
                         if self.stylus.down() {
-                            stroke.disk.points.push(StrokeElement {
+                            stroke.points_mut().push(StrokeElement {
                                 x: self.stylus.pos.x,
                                 y: self.stylus.pos.y,
                                 pressure: self.stylus.pressure,

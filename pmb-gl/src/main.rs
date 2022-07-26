@@ -135,7 +135,7 @@ fn main() {
                 if input_handler.just_pressed(D) {
                     for stroke in state.strokes.iter() {
                         println!("stroke");
-                        for point in stroke.disk.points.iter() {
+                        for point in stroke.points().iter() {
                             let x = point.x;
                             let y = point.y;
                             let pressure = point.pressure;
@@ -429,30 +429,21 @@ fn main() {
                 }
 
                 for stroke in state.strokes.iter_mut() {
-                    if stroke.disk.points.is_empty() || stroke.disk.erased {
+                    if stroke.points().is_empty() || stroke.erased() {
                         continue;
                     }
 
                     unsafe {
-                        let buffers = stroke.backend.get_or_insert_with(|| pmb_gl::StrokeBackend {
-                            vbo: gl.create_buffer().unwrap(),
-                            vao: gl.create_vertex_array().unwrap(),
+                        stroke.replace_backend_with(|bytes| {
+                            let vbo = gl.create_buffer().unwrap();
+                            let vao = gl.create_vertex_array().unwrap();
+
+                            gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
+                            gl.bind_vertex_array(Some(vao));
+                            gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, &bytes, glow::STATIC_DRAW);
+
+                            pmb_gl::StrokeBackend { vbo, vao }
                         });
-
-                        let points_flat = std::slice::from_raw_parts(
-                            stroke.disk.points.as_ptr() as *const f32,
-                            stroke.disk.points.len() * 3,
-                        );
-
-                        let bytes = std::slice::from_raw_parts(
-                            points_flat.as_ptr() as *const u8,
-                            points_flat.len() * size_of::<f32>(),
-                        );
-
-                        gl.bind_buffer(glow::ARRAY_BUFFER, Some(buffers.vbo));
-                        gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, &bytes, glow::STATIC_DRAW);
-
-                        gl.bind_vertex_array(Some(buffers.vao));
 
                         gl.vertex_attrib_pointer_f32(
                             0,
@@ -476,14 +467,14 @@ fn main() {
 
                         gl.uniform_3_f32(
                             Some(&strokes_color),
-                            stroke.disk.color[0] as f32 / 255.0,
-                            stroke.disk.color[1] as f32 / 255.0,
-                            stroke.disk.color[2] as f32 / 255.0,
+                            stroke.color()[0] as f32 / 255.0,
+                            stroke.color()[1] as f32 / 255.0,
+                            stroke.color()[2] as f32 / 255.0,
                         );
 
-                        gl.uniform_1_f32(Some(&strokes_brush_size), stroke.disk.brush_size);
+                        gl.uniform_1_f32(Some(&strokes_brush_size), stroke.brush_size());
 
-                        gl.draw_arrays(stroke_style, 0, stroke.disk.points.len() as i32);
+                        gl.draw_arrays(stroke_style, 0, stroke.points().len() as i32);
                     }
                 }
 

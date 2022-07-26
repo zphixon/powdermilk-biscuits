@@ -257,21 +257,7 @@ impl Graphics {
     }
 
     pub fn buffer_stroke(&mut self, stroke: &mut Stroke<StrokeBackend>) {
-        let points_flat = unsafe {
-            std::slice::from_raw_parts(
-                stroke.disk.points.as_ptr() as *const f32,
-                stroke.disk.points.len() * 3,
-            )
-        };
-
-        let bytes = unsafe {
-            std::slice::from_raw_parts(
-                points_flat.as_ptr() as *const u8,
-                points_flat.len() * size_of::<f32>(),
-            )
-        };
-
-        stroke.backend.replace(StrokeBackend {
+        stroke.replace_backend_with(|bytes| StrokeBackend {
             buffer: self.device.create_buffer_init(&BufferInitDescriptor {
                 label: None,
                 contents: bytes,
@@ -318,8 +304,8 @@ impl Graphics {
             pass.set_pipeline(&self.pipeline);
 
             for stroke in state.strokes.iter() {
-                pass.set_vertex_buffer(0, stroke.backend.as_ref().unwrap().buffer.slice(..));
-                pass.draw(0..stroke.disk.points.len() as u32, 0..1);
+                pass.set_vertex_buffer(0, stroke.backend().unwrap().buffer.slice(..));
+                pass.draw(0..stroke.points().len() as u32, 0..1);
             }
         }
 

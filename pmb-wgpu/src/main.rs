@@ -196,7 +196,7 @@ async fn run() {
                 if input.just_pressed(D) {
                     for stroke in state.strokes.iter() {
                         println!("stroke");
-                        for point in stroke.disk.points.iter() {
+                        for point in stroke.points().iter() {
                             let x = point.x;
                             let y = point.y;
                             let p = point.pressure;
