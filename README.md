@@ -6,18 +6,7 @@ Heavens, it's tasty.
 
 ## Building:
 
-The command
-
-```
-git clone --recurse-submodules https://github.com/zphixon/powdermilk-biscuits
-```
-
-will download the submodules [winit](https://github.com/zphixon/winit) and [rfd](https://github.com/zphixon/rfd) and have them in the correct state but [glutin](https://github.com/rust-windowing/glutin) needs to have its winit dependency manually changed to point to the `winit2` directory by changing the line in `[dependencies]` as follows:
-
-```diff
--winit = { version = "0.26", default-features = false }
-+winit = { path = "../../winit2", default-features = false }
-```
+The build had visited the local mage and is no longer cursed. Just `git clone` and `cargo b --release`!
 
 ## Features:
 
