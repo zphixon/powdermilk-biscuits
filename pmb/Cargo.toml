@@ -1,0 +1,17 @@
+[package]
+name = 'powdermilk-biscuits'
+version = '0.1.0'
+edition = '2021'
+
+[features]
+default = []
+
+[dependencies]
+rand = '0.8.5'
+evc_derive = { path = '../evc_derive' }
+bspline = '1.1.0'
+lyon = '1.0.0'
+bincode = '1.3.3'
+serde = { version = '*', features = ['derive'] }
+flate2 = '1.0.24'
+rfd = { git = 'https://github.com/zphixon/rfd', branch = 'yes-no-cancel' }

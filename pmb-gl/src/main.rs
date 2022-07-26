@@ -1,4 +1,3 @@
-use crate::{backend::gl as backend, State, StrokeStyle, TITLE_MODIFIED, TITLE_UNMODIFIED};
 use glow::{Context, HasContext};
 use glutin::{
     dpi::PhysicalSize,
@@ -7,9 +6,10 @@ use glutin::{
     window::WindowBuilder,
     ContextBuilder,
 };
+use powdermilk_biscuits::{State, StrokeStyle, TITLE_MODIFIED, TITLE_UNMODIFIED};
 use std::mem::size_of;
 
-pub fn main() {
+fn main() {
     // build window and GL context
     let ev = EventLoop::new();
     let builder = WindowBuilder::new()
@@ -51,7 +51,7 @@ pub fn main() {
         gl.clear_color(0.0, 0.0, 0.0, 1.0);
 
         pen_cursor_program =
-            backend::compile_program(&gl, "src/shaders/cursor.vert", "src/shaders/cursor.frag");
+            pmb_gl::compile_program(&gl, "src/shaders/cursor.vert", "src/shaders/cursor.frag");
         gl.use_program(Some(pen_cursor_program));
 
         pen_cursor_erasing = gl
@@ -69,7 +69,7 @@ pub fn main() {
             &glam::Mat4::IDENTITY.to_cols_array(),
         );
 
-        strokes_program = backend::compile_program(
+        strokes_program = pmb_gl::compile_program(
             &gl,
             "src/shaders/stroke_line.vert",
             "src/shaders/stroke_line.frag",
@@ -91,13 +91,14 @@ pub fn main() {
     };
 
     let mut cursor_visible = true;
-    let mut input_handler = backend::InputHandler::default();
+    let mut input_handler = pmb_gl::InputHandler::default();
     let mut aa = true;
     let mut stroke_style = glow::LINE_STRIP;
 
-    let mut state = if let Some(filename) = std::env::args()
-        .nth(1)
-        .map(|file| std::path::PathBuf::from(file))
+    let mut state: State<pmb_gl::GlBackend, pmb_gl::StrokeBackend> = if let Some(filename) =
+        std::env::args()
+            .nth(1)
+            .map(|file| std::path::PathBuf::from(file))
     {
         State::with_filename(filename)
     } else {
@@ -134,7 +135,7 @@ pub fn main() {
                 if input_handler.just_pressed(D) {
                     for stroke in state.strokes.iter() {
                         println!("stroke");
-                        for point in stroke.points.iter() {
+                        for point in stroke.disk.points.iter() {
                             let x = point.x;
                             let y = point.y;
                             let pressure = point.pressure;
@@ -175,7 +176,7 @@ pub fn main() {
                     }
                     (false, true) => {
                         state.settings.origin = Default::default();
-                        state.settings.zoom = crate::DEFAULT_ZOOM;
+                        state.settings.zoom = powdermilk_biscuits::DEFAULT_ZOOM;
                         context.window().request_redraw();
                     }
                     _ => {}
@@ -301,8 +302,6 @@ pub fn main() {
                 event: WindowEvent::Touch(touch),
                 ..
             } => {
-                use backend::*;
-
                 cursor_visible = false;
 
                 // TODO handle fingers
@@ -315,14 +314,14 @@ pub fn main() {
 
                 let PhysicalSize { width, height } = context.window().inner_size();
                 let prev_stylus_gl =
-                    stroke_to_ndc(width, height, state.settings.zoom, state.stylus.point);
-                let prev_stylus = ndc_to_pixel(width, height, prev_stylus_gl);
+                    pmb_gl::stroke_to_ndc(width, height, state.settings.zoom, state.stylus.point);
+                let prev_stylus = pmb_gl::ndc_to_pixel(width, height, prev_stylus_gl);
 
-                state.update(width, height, touch.into());
+                state.update(width, height, pmb_gl::glutin_to_pmb_touch(touch));
 
                 let next_stylus_gl =
-                    stroke_to_ndc(width, height, state.settings.zoom, state.stylus.point);
-                let next_stylus = ndc_to_pixel(width, height, next_stylus_gl);
+                    pmb_gl::stroke_to_ndc(width, height, state.settings.zoom, state.stylus.point);
+                let next_stylus = pmb_gl::ndc_to_pixel(width, height, next_stylus_gl);
 
                 match (
                     input_handler.button_down(MouseButton::Middle),
@@ -386,7 +385,12 @@ pub fn main() {
                 if input_handler.button_down(MouseButton::Left) {
                     let next = input_handler.cursor_pos();
                     let PhysicalSize { width, height } = context.window().inner_size();
-                    state.move_origin(width, height, prev.into(), next.into());
+                    state.move_origin(
+                        width,
+                        height,
+                        pmb_gl::physical_pos_to_pixel_pos(prev),
+                        pmb_gl::physical_pos_to_pixel_pos(next),
+                    );
                     context.window().request_redraw();
                 }
 
@@ -410,7 +414,7 @@ pub fn main() {
             Event::RedrawRequested(_) => {
                 unsafe {
                     gl.use_program(Some(strokes_program));
-                    let view = backend::view_matrix(
+                    let view = pmb_gl::view_matrix(
                         state.settings.zoom,
                         state.settings.zoom,
                         context.window().inner_size(),
@@ -425,22 +429,19 @@ pub fn main() {
                 }
 
                 for stroke in state.strokes.iter_mut() {
-                    if stroke.points.is_empty() || stroke.erased {
+                    if stroke.disk.points.is_empty() || stroke.disk.erased {
                         continue;
                     }
 
                     unsafe {
-                        let buffers =
-                            stroke
-                                .backend
-                                .get_or_insert_with(|| backend::StrokeBackend {
-                                    vbo: gl.create_buffer().unwrap(),
-                                    vao: gl.create_vertex_array().unwrap(),
-                                });
+                        let buffers = stroke.backend.get_or_insert_with(|| pmb_gl::StrokeBackend {
+                            vbo: gl.create_buffer().unwrap(),
+                            vao: gl.create_vertex_array().unwrap(),
+                        });
 
                         let points_flat = std::slice::from_raw_parts(
-                            stroke.points.as_ptr() as *const f32,
-                            stroke.points.len() * 3,
+                            stroke.disk.points.as_ptr() as *const f32,
+                            stroke.disk.points.len() * 3,
                         );
 
                         let bytes = std::slice::from_raw_parts(
@@ -475,20 +476,22 @@ pub fn main() {
 
                         gl.uniform_3_f32(
                             Some(&strokes_color),
-                            stroke.color[0] as f32 / 255.0,
-                            stroke.color[1] as f32 / 255.0,
-                            stroke.color[2] as f32 / 255.0,
+                            stroke.disk.color[0] as f32 / 255.0,
+                            stroke.disk.color[1] as f32 / 255.0,
+                            stroke.disk.color[2] as f32 / 255.0,
                         );
 
-                        gl.uniform_1_f32(Some(&strokes_brush_size), stroke.brush_size);
+                        gl.uniform_1_f32(Some(&strokes_brush_size), stroke.disk.brush_size);
 
-                        gl.draw_arrays(stroke_style, 0, stroke.points.len() as i32);
+                        gl.draw_arrays(stroke_style, 0, stroke.disk.points.len() as i32);
                     }
                 }
 
                 if !cursor_visible {
-                    let circle =
-                        crate::graphics::circle_points(state.settings.brush_size as f32, 32);
+                    let circle = powdermilk_biscuits::graphics::circle_points(
+                        state.settings.brush_size as f32,
+                        32,
+                    );
                     unsafe {
                         gl.use_program(Some(pen_cursor_program));
                         let vbo = gl.create_buffer().unwrap();
@@ -519,7 +522,7 @@ pub fn main() {
                             if state.stylus.down() { 1.0 } else { 0.0 },
                         );
 
-                        let view = crate::backend::gl::view_matrix(
+                        let view = pmb_gl::view_matrix(
                             state.settings.zoom,
                             1.0,
                             context.window().inner_size(),

@@ -1,11 +1,8 @@
-pub mod backend;
 pub mod event;
 pub mod graphics;
-mod run;
 pub mod ui;
 
 use crate::{
-    backend::backend_impl,
     event::{Touch, TouchPhase},
     graphics::{Color, ColorExt, PixelPos, StrokePoint, StrokePos},
     ui::ToUi,
@@ -17,12 +14,18 @@ use std::{
     path::PathBuf,
 };
 
-pub fn run() {
-    run::run_impl::main();
-}
-
 pub const TITLE_UNMODIFIED: &'static str = "hi! <3";
 pub const TITLE_MODIFIED: &'static str = "hi! <3 (modified)";
+
+pub trait Backend: std::fmt::Debug + Default {
+    type Ndc: std::fmt::Display + Clone + Copy;
+
+    fn pixel_to_ndc(&self, width: u32, height: u32, pos: PixelPos) -> Self::Ndc;
+    fn ndc_to_pixel(&self, width: u32, height: u32, pos: Self::Ndc) -> PixelPos;
+
+    fn ndc_to_stroke(&self, width: u32, height: u32, zoom: f32, ndc: Self::Ndc) -> StrokePoint;
+    fn stroke_to_ndc(&self, width: u32, height: u32, zoom: f32, point: StrokePoint) -> Self::Ndc;
+}
 
 pub type Result<T> = core::result::Result<T, PmbError>;
 
@@ -108,51 +111,66 @@ impl std::ops::Mul<f32> for StrokeElement {
 }
 
 #[derive(Default, Debug, Serialize, Deserialize)]
-pub struct Stroke {
+pub struct DiskPart {
     pub points: Vec<StrokeElement>,
     pub color: Color,
     pub brush_size: f32,
     pub style: StrokeStyle,
     pub erased: bool,
-    #[serde(skip)]
-    pub spline: Option<BSpline<StrokeElement, f32>>,
-    #[serde(skip)]
-    pub backend: Option<backend_impl::StrokeBackend>,
 }
 
-impl Clone for Stroke {
+#[derive(Debug)]
+pub struct Stroke<S> {
+    pub disk: DiskPart,
+    pub spline: Option<BSpline<StrokeElement, f32>>,
+    pub backend: Option<S>,
+}
+
+impl<S> Default for Stroke<S> {
+    fn default() -> Self {
+        Self {
+            disk: DiskPart::default(),
+            spline: None,
+            backend: None,
+        }
+    }
+}
+
+impl<S> Clone for Stroke<S> {
     fn clone(&self) -> Self {
         Stroke {
-            points: self.points.clone(),
-            color: self.color,
-            brush_size: self.brush_size,
-            style: self.style,
-            erased: self.erased,
+            disk: DiskPart {
+                points: self.disk.points.clone(),
+                color: self.disk.color,
+                brush_size: self.disk.brush_size,
+                style: self.disk.style,
+                erased: self.disk.erased,
+            },
             spline: self.spline.clone(),
             backend: None,
         }
     }
 }
 
-impl Stroke {
+impl<S> Stroke<S> {
     pub const DEGREE: usize = 3;
 
     pub fn calculate_spline(&mut self) {
-        if self.points.len() > Stroke::DEGREE {
-            let points = [self.points.first().cloned().unwrap(); Stroke::DEGREE]
+        if self.disk.points.len() > Self::DEGREE {
+            let points = [self.disk.points.first().cloned().unwrap(); Stroke::<()>::DEGREE]
                 .into_iter()
-                .chain(self.points.iter().cloned())
-                .chain([self.points.last().cloned().unwrap(); Stroke::DEGREE])
+                .chain(self.disk.points.iter().cloned())
+                .chain([self.disk.points.last().cloned().unwrap(); Stroke::<()>::DEGREE])
                 .map(|point| point.into())
                 .collect::<Vec<StrokeElement>>();
 
             let knots = std::iter::repeat(())
-                .take(points.len() + Stroke::DEGREE + 1)
+                .take(points.len() + Self::DEGREE + 1)
                 .enumerate()
                 .map(|(i, ())| i as f32)
                 .collect::<Vec<_>>();
 
-            self.spline = Some(BSpline::new(Stroke::DEGREE, points, knots));
+            self.spline = Some(BSpline::new(Self::DEGREE, points, knots));
         }
     }
 }
@@ -280,93 +298,115 @@ impl Default for Settings {
 
 #[derive(Serialize, Deserialize)]
 pub struct ToDisk {
-    pub strokes: Vec<Stroke>,
+    pub strokes: Vec<DiskPart>,
     pub settings: Settings,
 }
 
-pub struct State {
+pub struct State<B, S>
+where
+    B: Backend,
+{
     pub stylus: Stylus,
-    pub strokes: Vec<Stroke>,
+    pub strokes: Vec<Stroke<S>>,
     pub gesture_state: GestureState,
     pub settings: Settings,
     pub modified: bool,
     pub path: Option<PathBuf>,
+    pub backend: B,
 }
 
 // Default for State {{{
-impl Default for State {
+impl<B, S> Default for State<B, S>
+where
+    B: Backend,
+{
     fn default() -> Self {
         use std::iter::repeat;
         let mut strokes = vec![Stroke {
-            points: graphics::circle_points(1.0, 50)
-                .chunks_exact(2)
-                .map(|arr| StrokeElement {
-                    x: arr[0],
-                    y: arr[1],
-                    pressure: 1.0,
-                })
-                .collect(),
-            color: Color::WHITE,
+            disk: DiskPart {
+                points: graphics::circle_points(1.0, 50)
+                    .chunks_exact(2)
+                    .map(|arr| StrokeElement {
+                        x: arr[0],
+                        y: arr[1],
+                        pressure: 1.0,
+                    })
+                    .collect(),
+                color: Color::WHITE,
+                ..Default::default()
+            },
             ..Default::default()
         }];
 
         strokes.extend(repeat(-25.0).take(50).enumerate().map(|(i, x)| {
             Stroke {
-                points: repeat(-25.0)
-                    .take(50)
-                    .enumerate()
-                    .map(|(j, y)| StrokeElement {
-                        x: i as f32 + x,
-                        y: j as f32 + y,
-                        pressure: 1.0,
-                    })
-                    .collect(),
-                color: Color::grey(0.1),
+                disk: DiskPart {
+                    points: repeat(-25.0)
+                        .take(50)
+                        .enumerate()
+                        .map(|(j, y)| StrokeElement {
+                            x: i as f32 + x,
+                            y: j as f32 + y,
+                            pressure: 1.0,
+                        })
+                        .collect(),
+                    color: Color::grey(0.1),
+                    ..Default::default()
+                },
                 ..Default::default()
             }
         }));
 
         strokes.extend(repeat(-25.0).take(50).enumerate().map(|(i, y)| {
             Stroke {
-                points: repeat(-25.0)
-                    .take(50)
-                    .enumerate()
-                    .map(|(j, x)| StrokeElement {
-                        x: j as f32 + x,
-                        y: i as f32 + y,
-                        pressure: 1.0,
-                    })
-                    .collect(),
-                color: Color::grey(0.1),
+                disk: DiskPart {
+                    points: repeat(-25.0)
+                        .take(50)
+                        .enumerate()
+                        .map(|(j, x)| StrokeElement {
+                            x: j as f32 + x,
+                            y: i as f32 + y,
+                            pressure: 1.0,
+                        })
+                        .collect(),
+                    color: Color::grey(0.1),
+                    ..Default::default()
+                },
                 ..Default::default()
             }
         }));
 
         strokes.push(Stroke {
-            points: repeat(-25.0)
-                .take(50)
-                .enumerate()
-                .map(|(i, x)| StrokeElement {
-                    x: i as f32 + x,
-                    y: 0.0,
-                    pressure: 1.0,
-                })
-                .collect(),
-            color: Color::grey(0.3),
+            disk: DiskPart {
+                points: repeat(-25.0)
+                    .take(50)
+                    .enumerate()
+                    .map(|(i, x)| StrokeElement {
+                        x: i as f32 + x,
+                        y: 0.0,
+                        pressure: 1.0,
+                    })
+                    .collect(),
+                color: Color::grey(0.3),
+                ..Default::default()
+            },
             ..Default::default()
         });
 
         strokes.push(Stroke {
-            points: repeat(-25.0)
-                .take(50)
-                .enumerate()
-                .map(|(i, y)| StrokeElement {
-                    x: 0.0,
-                    y: i as f32 + y,
-                    pressure: 1.0,
-                })
-                .collect(),
-            color: Color::grey(0.3),
+            disk: DiskPart {
+                points: repeat(-25.0)
+                    .take(50)
+                    .enumerate()
+                    .map(|(i, y)| StrokeElement {
+                        x: 0.0,
+                        y: i as f32 + y,
+                        pressure: 1.0,
+                    })
+                    .collect(),
+                color: Color::grey(0.3),
+                ..Default::default()
+            },
             ..Default::default()
         });
 
@@ -377,6 +417,7 @@ impl Default for State {
             settings: Default::default(),
             modified: false,
             path: None,
+            backend: Default::default(),
         }
     }
 }
@@ -391,14 +432,17 @@ pub const MAX_BRUSH: usize = 20;
 pub const MIN_BRUSH: usize = 1;
 pub const BRUSH_DELTA: usize = 1;
 
-impl State {
-    pub fn modified() -> State {
+impl<B, S> State<B, S>
+where
+    B: Backend,
+{
+    pub fn modified() -> Self {
         let mut this = State::default();
         this.modified = true;
         this
     }
 
-    pub fn with_filename(path: impl AsRef<std::path::Path>) -> State {
+    pub fn with_filename(path: impl AsRef<std::path::Path>) -> Self {
         let mut this = State::default();
         let message = format!("Could not open {}", path.as_ref().display());
         let _ = this.read_file(Some(path)).error_dialog(&message);
@@ -473,14 +517,23 @@ impl State {
         };
 
         // read the new file
-        let mut disk = read(file)?;
+        let disk = read(file)?;
 
-        // if successful, update the state
-        for stroke in disk.strokes.iter_mut() {
-            stroke.calculate_spline();
-        }
+        let mut strokes: Vec<_> = disk
+            .strokes
+            .into_iter()
+            .map(|disk| Stroke {
+                disk,
+                backend: None,
+                ..Stroke::default()
+            })
+            .collect();
 
-        self.strokes = disk.strokes;
+        strokes
+            .iter_mut()
+            .for_each(|stroke| stroke.calculate_spline());
+
+        self.strokes = strokes;
         self.settings = disk.settings;
         self.modified = false;
         self.path = Some(path);
@@ -505,7 +558,12 @@ impl State {
 
     pub fn to_disk(&self) -> ToDisk {
         ToDisk {
-            strokes: self.strokes.clone(),
+            strokes: self
+                .strokes
+                .clone()
+                .into_iter()
+                .map(|stroke| stroke.disk)
+                .collect(),
             settings: self.settings.clone(),
         }
     }
@@ -521,14 +579,16 @@ impl State {
     }
 
     pub fn move_origin(&mut self, width: u32, height: u32, prev: PixelPos, next: PixelPos) {
-        use backend_impl::*;
-
-        let prev_ndc = pixel_to_ndc(width, height, prev);
-        let prev_stroke = ndc_to_stroke(width, height, self.settings.zoom, prev_ndc);
+        let prev_ndc = self.backend.pixel_to_ndc(width, height, prev);
+        let prev_stroke = self
+            .backend
+            .ndc_to_stroke(width, height, self.settings.zoom, prev_ndc);
         let prev_xformed = graphics::xform_point_to_pos(self.settings.origin, prev_stroke);
 
-        let next_ndc = pixel_to_ndc(width, height, next);
-        let next_stroke = ndc_to_stroke(width, height, self.settings.zoom, next_ndc);
+        let next_ndc = self.backend.pixel_to_ndc(width, height, next);
+        let next_stroke = self
+            .backend
+            .ndc_to_stroke(width, height, self.settings.zoom, next_ndc);
         let next_xformed = graphics::xform_point_to_pos(self.settings.origin, next_stroke);
 
         let dx = next_xformed.x - prev_xformed.x;
@@ -564,8 +624,10 @@ impl State {
             ..
         } = touch;
 
-        let ndc_pos = backend_impl::pixel_to_ndc(width, height, location);
-        let point = backend_impl::ndc_to_stroke(width, height, self.settings.zoom, ndc_pos);
+        let ndc_pos = self.backend.pixel_to_ndc(width, height, location);
+        let point = self
+            .backend
+            .ndc_to_stroke(width, height, self.settings.zoom, ndc_pos);
         let pos = graphics::xform_point_to_pos(self.settings.origin, point);
         let pressure = force.unwrap_or(1.0);
 
@@ -632,10 +694,8 @@ impl State {
     }
 
     fn handle_update(&mut self, width: u32, height: u32, phase: TouchPhase) {
-        use backend_impl::*;
-
         if self.stylus.inverted() {
-            let stylus_ndc = stroke_to_ndc(
+            let stylus_ndc = self.backend.stroke_to_ndc(
                 width,
                 height,
                 self.settings.zoom,
@@ -644,18 +704,18 @@ impl State {
                     y: self.stylus.pos.y,
                 },
             );
-            let stylus_pix = ndc_to_pixel(width, height, stylus_ndc);
+            let stylus_pix = self.backend.ndc_to_pixel(width, height, stylus_ndc);
             let stylus_pix_x = stylus_pix.x as f32;
             let stylus_pix_y = stylus_pix.y as f32;
 
             if phase == TouchPhase::Move && self.stylus.down() {
                 for stroke in self.strokes.iter_mut() {
-                    if stroke.erased {
+                    if stroke.disk.erased {
                         continue;
                     }
 
-                    'inner: for point in stroke.points.iter() {
-                        let point_ndc = stroke_to_ndc(
+                    'inner: for point in stroke.disk.points.iter() {
+                        let point_ndc = self.backend.stroke_to_ndc(
                             width,
                             height,
                             self.settings.zoom,
@@ -664,7 +724,7 @@ impl State {
                                 y: point.y,
                             },
                         );
-                        let point_pix = ndc_to_pixel(width, height, point_ndc);
+                        let point_pix = self.backend.ndc_to_pixel(width, height, point_ndc);
                         let point_pix_x = point_pix.x as f32;
                         let point_pix_y = point_pix.y as f32;
 
@@ -674,7 +734,7 @@ impl State {
                             * 2.0;
 
                         if dist < self.settings.brush_size as f32 {
-                            stroke.erased = true;
+                            stroke.disk.erased = true;
                             self.modified = true;
                             break 'inner;
                         }
@@ -686,11 +746,13 @@ impl State {
                 TouchPhase::Start => {
                     self.modified = true;
                     self.strokes.push(Stroke {
-                        points: Vec::new(),
-                        color: rand::random(),
-                        brush_size: self.settings.brush_size as f32,
-                        style: self.settings.stroke_style,
-                        erased: false,
+                        disk: DiskPart {
+                            points: Vec::new(),
+                            color: rand::random(),
+                            brush_size: self.settings.brush_size as f32,
+                            style: self.settings.stroke_style,
+                            erased: false,
+                        },
                         spline: None,
                         backend: None,
                     });
@@ -699,7 +761,7 @@ impl State {
                 TouchPhase::Move => {
                     if let Some(stroke) = self.strokes.last_mut() {
                         if self.stylus.down() {
-                            stroke.points.push(StrokeElement {
+                            stroke.disk.points.push(StrokeElement {
                                 x: self.stylus.pos.x,
                                 y: self.stylus.pos.y,
                                 pressure: self.stylus.pressure,

@@ -1,7 +1,7 @@
-use crate::{
+use powdermilk_biscuits::{
     event::{PenInfo, Touch, TouchPhase},
     graphics::{PixelPos, StrokePoint},
-    StrokeElement,
+    State, Stroke, StrokeElement,
 };
 use std::{collections::HashMap, mem::size_of};
 use wgpu::{
@@ -24,49 +24,64 @@ use winit::{
     window::Window,
 };
 
+#[derive(Debug, Default)]
+pub struct WgpuBackend;
+
+impl powdermilk_biscuits::Backend for WgpuBackend {
+    type Ndc = WgpuNdc;
+
+    fn pixel_to_ndc(&self, width: u32, height: u32, pos: PixelPos) -> Self::Ndc {
+        pixel_to_ndc(width, height, pos)
+    }
+
+    fn ndc_to_pixel(&self, width: u32, height: u32, pos: Self::Ndc) -> PixelPos {
+        ndc_to_pixel(width, height, pos)
+    }
+
+    fn ndc_to_stroke(&self, width: u32, height: u32, zoom: f32, ndc: Self::Ndc) -> StrokePoint {
+        ndc_to_stroke(width, height, zoom, ndc)
+    }
+
+    fn stroke_to_ndc(&self, width: u32, height: u32, zoom: f32, point: StrokePoint) -> Self::Ndc {
+        stroke_to_ndc(width, height, zoom, point)
+    }
+}
+
 #[derive(Debug)]
 pub struct StrokeBackend {
     pub buffer: Buffer,
 }
 
-impl From<WinitPenInfo> for PenInfo {
-    fn from(pen_info: WinitPenInfo) -> Self {
-        PenInfo {
-            barrel: pen_info.barrel,
-            inverted: pen_info.inverted,
-            eraser: pen_info.eraser,
-        }
+pub fn physical_pos_to_pixel_pos(pos: PhysicalPosition<f64>) -> PixelPos {
+    PixelPos {
+        x: pos.x as f32,
+        y: pos.y as f32,
     }
 }
 
-impl From<WinitTouchPhase> for TouchPhase {
-    fn from(phase: WinitTouchPhase) -> Self {
-        match phase {
-            WinitTouchPhase::Started => TouchPhase::Start,
-            WinitTouchPhase::Moved => TouchPhase::Move,
-            WinitTouchPhase::Ended => TouchPhase::End,
-            WinitTouchPhase::Cancelled => TouchPhase::Cancel,
-        }
+pub fn glutin_to_pmb_pen_info(pen_info: WinitPenInfo) -> PenInfo {
+    PenInfo {
+        barrel: pen_info.barrel,
+        inverted: pen_info.inverted,
+        eraser: pen_info.eraser,
     }
 }
 
-impl From<WinitTouch> for Touch {
-    fn from(touch: WinitTouch) -> Self {
-        Touch {
-            force: touch.force.map(|force| force.normalized()),
-            phase: touch.phase.into(),
-            location: touch.location.into(),
-            pen_info: touch.pen_info.map(|pen_info| pen_info.into()),
-        }
+pub fn glutin_to_pmb_touch_phase(phase: WinitTouchPhase) -> TouchPhase {
+    match phase {
+        WinitTouchPhase::Started => TouchPhase::Start,
+        WinitTouchPhase::Moved => TouchPhase::Move,
+        WinitTouchPhase::Ended => TouchPhase::End,
+        WinitTouchPhase::Cancelled => TouchPhase::Cancel,
     }
 }
 
-impl From<PhysicalPosition<f64>> for PixelPos {
-    fn from(pp: PhysicalPosition<f64>) -> Self {
-        PixelPos {
-            x: pp.x as f32,
-            y: pp.y as f32,
-        }
+pub fn glutin_to_pmb_touch(touch: WinitTouch) -> Touch {
+    Touch {
+        force: touch.force.map(|f| f.normalized()),
+        phase: glutin_to_pmb_touch_phase(touch.phase),
+        location: physical_pos_to_pixel_pos(touch.location),
+        pen_info: touch.pen_info.map(glutin_to_pmb_pen_info),
     }
 }
 
@@ -159,8 +174,7 @@ impl Graphics {
 
         surface.configure(&device, &config);
 
-        let shader =
-            device.create_shader_module(wgpu::include_wgsl!("../shaders/stroke_line.wgsl"));
+        let shader = device.create_shader_module(wgpu::include_wgsl!("shaders/stroke_line.wgsl"));
 
         let layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("pipeline layout"),
@@ -241,11 +255,11 @@ impl Graphics {
         }
     }
 
-    pub fn buffer_stroke(&mut self, stroke: &mut crate::Stroke) {
+    pub fn buffer_stroke(&mut self, stroke: &mut Stroke<StrokeBackend>) {
         let points_flat = unsafe {
             std::slice::from_raw_parts(
-                stroke.points.as_ptr() as *const f32,
-                stroke.points.len() * 3,
+                stroke.disk.points.as_ptr() as *const f32,
+                stroke.disk.points.len() * 3,
             )
         };
 
@@ -265,13 +279,16 @@ impl Graphics {
         });
     }
 
-    pub fn buffer_all_strokes(&mut self, state: &mut crate::State) {
+    pub fn buffer_all_strokes(&mut self, state: &mut State<WgpuBackend, StrokeBackend>) {
         for stroke in state.strokes.iter_mut() {
             self.buffer_stroke(stroke);
         }
     }
 
-    pub fn render(&mut self, state: &mut crate::State) -> Result<(), SurfaceError> {
+    pub fn render(
+        &mut self,
+        state: &mut State<WgpuBackend, StrokeBackend>,
+    ) -> Result<(), SurfaceError> {
         let output = self.surface.get_current_texture()?;
         let view = output
             .texture
@@ -301,7 +318,7 @@ impl Graphics {
 
             for stroke in state.strokes.iter() {
                 pass.set_vertex_buffer(0, stroke.backend.as_ref().unwrap().buffer.slice(..));
-                pass.draw(0..stroke.points.len() as u32, 0..1);
+                pass.draw(0..stroke.disk.points.len() as u32, 0..1);
             }
         }
 

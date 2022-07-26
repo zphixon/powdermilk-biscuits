@@ -1,0 +1,23 @@
+[package]
+name = 'pmb-wgpu'
+version = '0.1.0'
+edition = '2021'
+
+[dependencies]
+env_logger = '0.9.0'
+log = '*'
+glam = '0.21.2'
+wgpu = '0.13.1'
+futures = '0.3.21'
+powdermilk-biscuits = { path = '../pmb' }
+
+[target.'cfg(windows)'.dependencies.winit]
+git = 'https://github.com/zphixon/winit'
+branch = 'pen-info'
+default-features = false
+
+[target.'cfg(unix)'.dependencies.winit]
+git = 'https://github.com/zphixon/winit'
+branch = 'pen-info'
+default-features = false
+features = ['x11']

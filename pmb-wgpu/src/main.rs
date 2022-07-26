@@ -1,4 +1,4 @@
-use crate::{backend::wgpu as backend, ui};
+use powdermilk_biscuits::{ui, State};
 use wgpu::SurfaceError;
 use winit::{
     dpi::{LogicalPosition, PhysicalSize},
@@ -10,7 +10,7 @@ use winit::{
     window::WindowBuilder,
 };
 
-pub fn main() {
+fn main() {
     futures::executor::block_on(run());
 }
 
@@ -21,23 +21,24 @@ async fn run() {
             x: 1920. / 2. - 800. / 2.,
             y: 1080. + 1080. / 2. - 600. / 2.,
         })
-        .with_title(crate::TITLE_UNMODIFIED)
+        .with_title(powdermilk_biscuits::TITLE_UNMODIFIED)
         .build(&ev)
         .unwrap();
 
-    let mut state = if let Some(filename) = std::env::args()
-        .nth(1)
-        .map(|filename| std::path::PathBuf::from(filename))
+    let mut state: State<pmb_wgpu::WgpuBackend, pmb_wgpu::StrokeBackend> = if let Some(filename) =
+        std::env::args()
+            .nth(1)
+            .map(|filename| std::path::PathBuf::from(filename))
     {
-        crate::State::with_filename(filename)
+        State::with_filename(filename)
     } else {
-        crate::State::default()
+        State::default()
     };
 
-    let mut graphics = backend::Graphics::new(&window).await;
+    let mut graphics = pmb_wgpu::Graphics::new(&window).await;
     graphics.buffer_all_strokes(&mut state);
 
-    let mut input = backend::InputHandler::default();
+    let mut input = pmb_wgpu::InputHandler::default();
     let mut cursor_visible = true;
 
     ev.run(move |event, _, flow| {
@@ -143,7 +144,12 @@ async fn run() {
                 if input.button_down(MouseButton::Left) {
                     let next = input.cursor_pos();
                     let PhysicalSize { width, height } = window.inner_size();
-                    state.move_origin(width, height, prev.into(), next.into());
+                    state.move_origin(
+                        width,
+                        height,
+                        pmb_wgpu::physical_pos_to_pixel_pos(prev),
+                        pmb_wgpu::physical_pos_to_pixel_pos(next),
+                    );
                     window.request_redraw();
                 }
 
@@ -168,14 +174,14 @@ async fn run() {
 
                 let PhysicalSize { width, height } = window.inner_size();
                 let prev_ndc =
-                    backend::stroke_to_ndc(width, height, state.settings.zoom, state.stylus.point);
-                let prev_pix = backend::ndc_to_pixel(width, height, prev_ndc);
+                    pmb_wgpu::stroke_to_ndc(width, height, state.settings.zoom, state.stylus.point);
+                let prev_pix = pmb_wgpu::ndc_to_pixel(width, height, prev_ndc);
 
-                state.update(width, height, touch.into());
+                state.update(width, height, pmb_wgpu::glutin_to_pmb_touch(touch));
 
                 let next_ndc =
-                    backend::stroke_to_ndc(width, height, state.settings.zoom, state.stylus.point);
-                let next_pix = backend::ndc_to_pixel(width, height, next_ndc);
+                    pmb_wgpu::stroke_to_ndc(width, height, state.settings.zoom, state.stylus.point);
+                let next_pix = pmb_wgpu::ndc_to_pixel(width, height, next_ndc);
 
                 match (input.button_down(MouseButton::Middle), input.control()) {
                     (true, false) => state.move_origin(width, height, prev_pix, next_pix),
@@ -190,7 +196,7 @@ async fn run() {
                 if input.just_pressed(D) {
                     for stroke in state.strokes.iter() {
                         println!("stroke");
-                        for point in stroke.points.iter() {
+                        for point in stroke.disk.points.iter() {
                             let x = point.x;
                             let y = point.y;
                             let p = point.pressure;
@@ -209,7 +215,7 @@ async fn run() {
                     }
                     (false, true) => {
                         state.settings.origin = Default::default();
-                        state.settings.zoom = crate::DEFAULT_ZOOM;
+                        state.settings.zoom = powdermilk_biscuits::DEFAULT_ZOOM;
                         window.request_redraw();
                     }
                     _ => {}
@@ -229,8 +235,8 @@ async fn run() {
                         window.set_title(title.as_str());
                     }
                     (Some(path), false) => window.set_title(&path.display().to_string()),
-                    (None, true) => window.set_title(crate::TITLE_MODIFIED),
-                    (None, false) => window.set_title(crate::TITLE_UNMODIFIED),
+                    (None, true) => window.set_title(powdermilk_biscuits::TITLE_MODIFIED),
+                    (None, false) => window.set_title(powdermilk_biscuits::TITLE_UNMODIFIED),
                 }
 
                 if let Some(last) = state.strokes.last_mut() {

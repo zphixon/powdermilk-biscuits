@@ -1,7 +1,3 @@
-use crate::{
-    event::{PenInfo, Touch, TouchPhase},
-    graphics::{PixelPos, StrokePoint},
-};
 use glow::HasContext;
 use glutin::{
     dpi::{PhysicalPosition, PhysicalSize},
@@ -10,7 +6,34 @@ use glutin::{
         TouchPhase as GlutinTouchPhase, VirtualKeyCode,
     },
 };
+use powdermilk_biscuits::{
+    event::{PenInfo, Touch, TouchPhase},
+    graphics::{PixelPos, StrokePoint},
+};
 use std::collections::HashMap;
+
+#[derive(Debug, Default)]
+pub struct GlBackend {}
+
+impl powdermilk_biscuits::Backend for GlBackend {
+    type Ndc = GlPos;
+
+    fn pixel_to_ndc(&self, width: u32, height: u32, pos: PixelPos) -> Self::Ndc {
+        pixel_to_ndc(width, height, pos)
+    }
+
+    fn ndc_to_pixel(&self, width: u32, height: u32, pos: Self::Ndc) -> PixelPos {
+        ndc_to_pixel(width, height, pos)
+    }
+
+    fn ndc_to_stroke(&self, width: u32, height: u32, zoom: f32, ndc: Self::Ndc) -> StrokePoint {
+        ndc_to_stroke(width, height, zoom, ndc)
+    }
+
+    fn stroke_to_ndc(&self, width: u32, height: u32, zoom: f32, point: StrokePoint) -> Self::Ndc {
+        stroke_to_ndc(width, height, zoom, point)
+    }
+}
 
 #[derive(Debug)]
 pub struct StrokeBackend {
@@ -18,35 +41,36 @@ pub struct StrokeBackend {
     pub vao: glow::VertexArray,
 }
 
-impl From<GlutinPenInfo> for PenInfo {
-    fn from(pen_info: GlutinPenInfo) -> Self {
-        PenInfo {
-            barrel: pen_info.barrel,
-            inverted: pen_info.inverted,
-            eraser: pen_info.eraser,
-        }
+pub fn physical_pos_to_pixel_pos(pos: PhysicalPosition<f64>) -> PixelPos {
+    PixelPos {
+        x: pos.x as f32,
+        y: pos.y as f32,
     }
 }
 
-impl From<GlutinTouchPhase> for TouchPhase {
-    fn from(phase: GlutinTouchPhase) -> Self {
-        match phase {
-            GlutinTouchPhase::Started => TouchPhase::Start,
-            GlutinTouchPhase::Moved => TouchPhase::Move,
-            GlutinTouchPhase::Ended => TouchPhase::End,
-            GlutinTouchPhase::Cancelled => TouchPhase::Cancel,
-        }
+pub fn glutin_to_pmb_pen_info(pen_info: GlutinPenInfo) -> PenInfo {
+    PenInfo {
+        barrel: pen_info.barrel,
+        inverted: pen_info.inverted,
+        eraser: pen_info.eraser,
     }
 }
 
-impl From<GlutinTouch> for Touch {
-    fn from(touch: GlutinTouch) -> Self {
-        Touch {
-            force: touch.force.map(|f| f.normalized()),
-            phase: touch.phase.into(),
-            location: touch.location.into(),
-            pen_info: touch.pen_info.map(|p| p.into()),
-        }
+pub fn glutin_to_pmb_touch_phase(phase: GlutinTouchPhase) -> TouchPhase {
+    match phase {
+        GlutinTouchPhase::Started => TouchPhase::Start,
+        GlutinTouchPhase::Moved => TouchPhase::Move,
+        GlutinTouchPhase::Ended => TouchPhase::End,
+        GlutinTouchPhase::Cancelled => TouchPhase::Cancel,
+    }
+}
+
+pub fn glutin_to_pmb_touch(touch: GlutinTouch) -> Touch {
+    Touch {
+        force: touch.force.map(|f| f.normalized()),
+        phase: glutin_to_pmb_touch_phase(touch.phase),
+        location: physical_pos_to_pixel_pos(touch.location),
+        pen_info: touch.pen_info.map(glutin_to_pmb_pen_info),
     }
 }
 
@@ -63,15 +87,6 @@ pub fn view_matrix(
         glam::Quat::IDENTITY,
         glam::vec3(xform.x, xform.y, 0.0),
     )
-}
-
-impl From<PhysicalPosition<f64>> for PixelPos {
-    fn from(pp: PhysicalPosition<f64>) -> Self {
-        PixelPos {
-            x: pp.x as f32,
-            y: pp.y as f32,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy)]

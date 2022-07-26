@@ -1,54 +1,10 @@
-[package]
-name = 'powdermilk-biscuits'
-version = '0.1.0'
-edition = '2021'
-build = 'build.rs'
-
-[features]
-default = ['wgpu']
-output-spirv = ['gl']
-gl = ['glow', 'glam', 'glutin']
-wgpu = ['dep:wgpu', 'winit', 'futures']
-
-[dependencies]
-env_logger = '0.9.0'
-log = '*'
-rand = '0.8.5'
-evc_derive = { path = 'evc_derive' }
-image = { version = '0.24.2', default-features = false, features = ['png'] }
-bspline = '1.1.0'
-lyon = '1.0.0'
-bincode = '1.3.3'
-serde = { version = '*', features = ['derive'] }
-flate2 = '1.0.24'
-rfd = { path = 'rfd' }
-glow = { version = '0.11.2', optional = true }
-glam = { version = '0.21.2', optional = true }
-wgpu = { version = '0.13.1', optional = true }
-winit = { path = 'winit2', optional = true }
-futures = { version = '0.3.21', optional = true }
-
-[target.'cfg(windows)'.dependencies.glutin]
-path = 'glutin/glutin'
-default-features = false
-optional = true
-
-[target.'cfg(unix)'.dependencies.glutin]
-path = 'glutin/glutin'
-default-features = false
-features = ['x11']
-optional = true
-
-[target.'cfg(windows)'.dependencies.winit]
-path = 'winit2'
-default-features = false
-optional = true
-
-[target.'cfg(unix)'.dependencies.winit]
-path = 'winit2'
-default-features = false
-features = ['x11']
-optional = true
+[workspace]
+resolver = '2'
+members = [
+    'pmb',
+    'pmb-gl',
+    'pmb-wgpu',
+]
 
 [profile.dev]
 incremental = true
