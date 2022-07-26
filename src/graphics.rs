@@ -52,9 +52,9 @@ pub struct StrokePos {
     pub y: f32,
 }
 
-pub fn xform_point_to_pos(gis: StrokePoint, stroke: StrokePoint) -> StrokePos {
-    let x = stroke.x - gis.x;
-    let y = stroke.y - gis.y;
+pub fn xform_point_to_pos(origin: StrokePoint, stroke: StrokePoint) -> StrokePos {
+    let x = stroke.x - origin.x;
+    let y = stroke.y - origin.y;
     StrokePos { x, y }
 }
 
