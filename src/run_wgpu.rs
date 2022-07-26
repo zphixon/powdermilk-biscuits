@@ -185,6 +185,10 @@ async fn run() {
             Event::MainEventsCleared => {
                 use VirtualKeyCode::*;
 
+                if input.just_pressed(Space) {
+                    graphics.use_color_pipeline = !graphics.use_color_pipeline;
+                }
+
                 if input.just_pressed(D) {
                     for stroke in state.strokes.iter() {
                         println!("stroke");

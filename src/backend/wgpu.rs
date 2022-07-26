@@ -110,6 +110,8 @@ pub struct Graphics {
     pub config: SurfaceConfiguration,
     pub size: Size,
     pub pipeline: RenderPipeline,
+    pub color_pipeline: RenderPipeline,
+    pub use_color_pipeline: bool,
 }
 
 impl Graphics {
@@ -158,7 +160,13 @@ impl Graphics {
             push_constant_ranges: &[],
         });
 
-        let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
+        let cts = [Some(ColorTargetState {
+            format: config.format,
+            blend: Some(BlendState::REPLACE),
+            write_mask: ColorWrites::ALL,
+        })];
+
+        let desc = RenderPipelineDescriptor {
             label: Some("pipeline"),
             layout: Some(&layout),
             vertex: VertexState {
@@ -169,11 +177,7 @@ impl Graphics {
             fragment: Some(FragmentState {
                 module: &shader,
                 entry_point: "fmain",
-                targets: &[Some(ColorTargetState {
-                    format: config.format,
-                    blend: Some(BlendState::REPLACE),
-                    write_mask: ColorWrites::ALL,
-                })],
+                targets: &cts,
             }),
             primitive: PrimitiveState {
                 topology: PrimitiveTopology::TriangleList,
@@ -191,7 +195,14 @@ impl Graphics {
                 alpha_to_coverage_enabled: false,
             },
             multiview: None,
-        });
+        };
+
+        let mut desc2 = desc.clone();
+        desc2.vertex.entry_point = "vmain2";
+        desc2.fragment.as_mut().unwrap().entry_point = "fmain2";
+
+        let pipeline = device.create_render_pipeline(&desc);
+        let color_pipeline = device.create_render_pipeline(&desc2);
 
         Graphics {
             surface,
@@ -200,6 +211,8 @@ impl Graphics {
             config,
             size,
             pipeline,
+            color_pipeline,
+            use_color_pipeline: false,
         }
     }
 
@@ -242,7 +255,13 @@ impl Graphics {
                 })],
                 depth_stencil_attachment: None,
             });
-            pass.set_pipeline(&self.pipeline);
+
+            if self.use_color_pipeline {
+                pass.set_pipeline(&self.color_pipeline);
+            } else {
+                pass.set_pipeline(&self.pipeline);
+            }
+
             pass.draw(0..3, 0..1);
         }
 
