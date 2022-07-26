@@ -52,6 +52,12 @@ pub struct StrokePos {
     pub y: f32,
 }
 
+pub fn xform_point_to_pos(gis: StrokePoint, stroke: StrokePoint) -> StrokePos {
+    let x = stroke.x - gis.x;
+    let y = stroke.y - gis.y;
+    StrokePos { x, y }
+}
+
 impl Display for PixelPos {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:.02},{:.02}", self.x, self.y)

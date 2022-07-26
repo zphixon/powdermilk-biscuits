@@ -5,10 +5,11 @@ edition = '2021'
 build = 'build.rs'
 
 [features]
-default = ['gl']
+default = ['wgpu']
 output-spirv = []
 empty-backend = []
 gl = ['glow', 'glam', 'glutin']
+wgpu = ['dep:wgpu', 'winit', 'futures']
 
 [dependencies]
 rand = '0.8.5'
@@ -22,6 +23,9 @@ flate2 = '1.0.24'
 rfd = { path = 'rfd' }
 glow = { version = '0.11.2', optional = true }
 glam = { version = '0.21.2', optional = true }
+wgpu = { version = '0.13.1', optional = true }
+winit = { path = 'winit2', optional = true }
+futures = { version = '0.3.21', optional = true }
 
 [target.'cfg(windows)'.dependencies.glutin]
 path = 'glutin/glutin'
@@ -33,3 +37,9 @@ path = 'glutin/glutin'
 default-features = false
 features = ['x11']
 optional = true
+
+[profile.dev]
+incremental = true
+
+[profile.release]
+incremental = true

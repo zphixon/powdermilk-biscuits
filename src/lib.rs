@@ -16,6 +16,9 @@ use std::{
     path::PathBuf,
 };
 
+pub const TITLE_UNMODIFIED: &'static str = "hi! <3";
+pub const TITLE_MODIFIED: &'static str = "hi! <3 (modified)";
+
 pub type Result<T> = core::result::Result<T, PmbError>;
 
 #[derive(Debug)]
@@ -508,11 +511,11 @@ impl State {
 
         let prev_ndc = pixel_to_ndc(width, height, prev);
         let prev_stroke = ndc_to_stroke(width, height, self.settings.zoom, prev_ndc);
-        let prev_xformed = xform_point_to_pos(self.settings.origin, prev_stroke);
+        let prev_xformed = graphics::xform_point_to_pos(self.settings.origin, prev_stroke);
 
         let next_ndc = pixel_to_ndc(width, height, next);
         let next_stroke = ndc_to_stroke(width, height, self.settings.zoom, next_ndc);
-        let next_xformed = xform_point_to_pos(self.settings.origin, next_stroke);
+        let next_xformed = graphics::xform_point_to_pos(self.settings.origin, next_stroke);
 
         let dx = next_xformed.x - prev_xformed.x;
         let dy = next_xformed.y - prev_xformed.y;
@@ -555,10 +558,19 @@ impl State {
             .map(|info| info.inverted)
             .unwrap_or(self.stylus.state.inverted);
 
+        let status = format!(
+            "{pressure:.02} pix={location} -> ndc={ndc_pos} -> str={point}                "
+        );
+
         let state = match phase {
             TouchPhase::Start => {
                 if pen_info.is_none() && self.gesture_state.touch() {
                     self.undo_stroke();
+                }
+
+                if !self.gesture_state.active() {
+                    print!("{status}");
+                    std::io::stdout().flush().unwrap();
                 }
 
                 StylusState {
@@ -568,11 +580,19 @@ impl State {
             }
 
             TouchPhase::Move => {
+                if !self.gesture_state.active() && self.stylus.down() {
+                    print!("\r{status}");
+                }
+
                 self.stylus.state.inverted = inverted;
                 self.stylus.state
             }
 
             TouchPhase::End | TouchPhase::Cancel => {
+                if !self.gesture_state.active() {
+                    println!();
+                }
+
                 if pen_info.is_none() {
                     self.gesture_state.release();
                 }
@@ -585,7 +605,7 @@ impl State {
         };
 
         self.stylus.point = point;
-        self.stylus.pos = backend_impl::xform_point_to_pos(self.settings.origin, self.stylus.point);
+        self.stylus.pos = graphics::xform_point_to_pos(self.settings.origin, self.stylus.point);
         self.stylus.pressure = pressure as f32;
         self.stylus.state = state;
 

@@ -1,6 +1,6 @@
 use crate::{
     event::{PenInfo, Touch, TouchPhase},
-    graphics::{PixelPos, StrokePoint, StrokePos},
+    graphics::{PixelPos, StrokePoint},
 };
 use glow::HasContext;
 use glutin::{
@@ -100,12 +100,6 @@ pub fn stroke_to_ndc(width: u32, height: u32, zoom: f32, point: StrokePoint) -> 
         x: point.x * zoom / width as f32,
         y: point.y * zoom / height as f32,
     }
-}
-
-pub fn xform_point_to_pos(gis: StrokePoint, stroke: StrokePoint) -> StrokePos {
-    let x = stroke.x - gis.x;
-    let y = stroke.y - gis.y;
-    StrokePos { x, y }
 }
 
 use std::fmt::{Display, Formatter};

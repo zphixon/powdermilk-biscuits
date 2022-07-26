@@ -6,11 +6,8 @@ use glutin::{
     window::WindowBuilder,
     ContextBuilder,
 };
-use powdermilk_biscuits::{State, StrokeStyle};
+use powdermilk_biscuits::{State, StrokeStyle, TITLE_MODIFIED, TITLE_UNMODIFIED};
 use std::mem::size_of;
-
-const TITLE_UNMODIFIED: &'static str = "hi! <3";
-const TITLE_MODIFIED: &'static str = "hi! <3 (modified)";
 
 pub fn main() {
     // build window and GL context
