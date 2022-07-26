@@ -5,27 +5,27 @@ use std::{
     str,
 };
 
-enum ShaderKind {
+enum GlShaderKind {
     Vertex,
     Fragment,
 }
 
-impl TryFrom<&str> for ShaderKind {
+impl TryFrom<&str> for GlShaderKind {
     type Error = ();
     fn try_from(s: &str) -> Result<Self, ()> {
         match s {
-            "frag" | "fs" => Ok(ShaderKind::Fragment),
-            "vert" | "vs" => Ok(ShaderKind::Vertex),
+            "frag" | "fs" => Ok(GlShaderKind::Fragment),
+            "vert" | "vs" => Ok(GlShaderKind::Vertex),
             _ => Err(()),
         }
     }
 }
 
-impl Into<&'static str> for ShaderKind {
+impl Into<&'static str> for GlShaderKind {
     fn into(self) -> &'static str {
         match self {
-            ShaderKind::Vertex => "vert",
-            ShaderKind::Fragment => "frag",
+            GlShaderKind::Vertex => "vert",
+            GlShaderKind::Fragment => "frag",
         }
     }
 }
@@ -79,36 +79,43 @@ fn main() -> Result<(), BuildError> {
             .extension()
             .map(|os_str| os_str.to_str().unwrap())
         {
-            if let Ok(kind) = ShaderKind::try_from(extension) {
-                if cfg!(feature = "output-spirv") {
-                    let binary_filename = format!(
-                        "{}_{}.spv",
-                        source_path.file_stem().unwrap().to_str().unwrap(),
-                        <ShaderKind as Into<&'static str>>::into(kind),
-                    );
-                    let mut binary_path = target_dir.clone();
-                    binary_path.push(binary_filename);
+            if cfg!(feature = "gl") {
+                if let Ok(kind) = GlShaderKind::try_from(extension) {
+                    if cfg!(feature = "output-spirv") {
+                        let binary_filename = format!(
+                            "{}_{}.spv",
+                            source_path.file_stem().unwrap().to_str().unwrap(),
+                            <GlShaderKind as Into<&'static str>>::into(kind),
+                        );
+                        let mut binary_path = target_dir.clone();
+                        binary_path.push(binary_filename);
 
-                    let output = Command::new("glslangValidator")
-                        .arg("-G")
-                        .arg("--target-env")
-                        .arg("opengl")
-                        .arg(source_path_str)
-                        .arg("-o")
-                        .arg(binary_path.to_str().unwrap())
-                        .output()?;
+                        let output = Command::new("glslangValidator")
+                            .arg("-G")
+                            .arg("--target-env")
+                            .arg("opengl")
+                            .arg(source_path_str)
+                            .arg("-o")
+                            .arg(binary_path.to_str().unwrap())
+                            .output()?;
 
-                    if !output.status.success() {
-                        print_message(output)?;
+                        if !output.status.success() {
+                            print_message(output)?;
+                        }
+                    } else {
+                        let output = Command::new("glslangValidator")
+                            .arg(source_path_str)
+                            .output()?;
+
+                        if !output.status.success() {
+                            print_message(output)?;
+                        }
                     }
-                } else {
-                    let output = Command::new("glslangValidator")
-                        .arg(source_path_str)
-                        .output()?;
-
-                    if !output.status.success() {
-                        print_message(output)?;
-                    }
+                }
+            } else if cfg!(feature = "wgpu") && extension == "wgsl" {
+                let output = Command::new("naga").arg(source_path_str).output()?;
+                if !output.status.success() {
+                    print_message(output)?;
                 }
             }
         }

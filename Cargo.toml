@@ -6,7 +6,7 @@ build = 'build.rs'
 
 [features]
 default = ['wgpu']
-output-spirv = []
+output-spirv = ['gl']
 empty-backend = []
 gl = ['glow', 'glam', 'glutin']
 wgpu = ['dep:wgpu', 'winit', 'futures']
