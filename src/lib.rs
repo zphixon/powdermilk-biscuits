@@ -102,7 +102,7 @@ impl std::ops::Mul<f32> for StrokeElement {
     }
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Default, Debug, Serialize, Deserialize)]
 pub struct Stroke {
     pub points: Vec<StrokeElement>,
     pub color: Color,
@@ -111,13 +111,22 @@ pub struct Stroke {
     pub erased: bool,
     #[serde(skip)]
     pub spline: Option<BSpline<StrokeElement, f32>>,
+    #[serde(skip)]
+    pub backend: Option<backend_impl::StrokeBackend>,
+}
 
-    #[cfg(feature = "gl")]
-    #[serde(skip)]
-    pub vbo: Option<glow::Buffer>,
-    #[cfg(feature = "gl")]
-    #[serde(skip)]
-    pub vao: Option<glow::VertexArray>,
+impl Clone for Stroke {
+    fn clone(&self) -> Self {
+        Stroke {
+            points: self.points.clone(),
+            color: self.color,
+            brush_size: self.brush_size,
+            style: self.style,
+            erased: self.erased,
+            spline: self.spline.clone(),
+            backend: None,
+        }
+    }
 }
 
 impl Stroke {
@@ -678,11 +687,7 @@ impl State {
                         style: self.settings.stroke_style,
                         erased: false,
                         spline: None,
-
-                        #[cfg(feature = "gl")]
-                        vbo: None,
-                        #[cfg(feature = "gl")]
-                        vao: None,
+                        backend: None,
                     });
                 }
 

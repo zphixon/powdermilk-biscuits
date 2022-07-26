@@ -12,6 +12,12 @@ use glutin::{
 };
 use std::collections::HashMap;
 
+#[derive(Debug)]
+pub struct StrokeBackend {
+    pub vbo: glow::Buffer,
+    pub vao: glow::VertexArray,
+}
+
 impl From<GlutinPenInfo> for PenInfo {
     fn from(pen_info: GlutinPenInfo) -> Self {
         PenInfo {

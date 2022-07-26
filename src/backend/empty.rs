@@ -15,3 +15,6 @@ pub fn stroke_to_ndc(_width: u32, _height: u32, _zoom: f32, _point: StrokePoint)
 pub fn xform_point_to_pos(_origin: StrokePoint, _stroke: StrokePoint) -> StrokePos {
     Default::default()
 }
+
+#[derive(Debug)]
+pub struct StrokeBackend;

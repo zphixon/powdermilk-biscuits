@@ -4,8 +4,8 @@ use crate::{
 };
 use std::collections::HashMap;
 use wgpu::{
-    Backends, BlendState, Color, ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device,
-    DeviceDescriptor, Face, Features, FragmentState, FrontFace, Instance, Limits, LoadOp,
+    Backends, BlendState, Buffer, Color, ColorTargetState, ColorWrites, CommandEncoderDescriptor,
+    Device, DeviceDescriptor, Face, Features, FragmentState, FrontFace, Instance, Limits, LoadOp,
     MultisampleState, Operations, PipelineLayoutDescriptor, PolygonMode, PowerPreference,
     PresentMode, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment,
     RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, Surface,
@@ -19,6 +19,11 @@ use winit::{
     },
     window::Window,
 };
+
+#[derive(Debug)]
+pub struct StrokeBackend {
+    pub buffer: Option<Buffer>,
+}
 
 impl From<WinitPenInfo> for PenInfo {
     fn from(pen_info: WinitPenInfo) -> Self {

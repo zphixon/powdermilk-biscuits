@@ -6,7 +6,9 @@ use glutin::{
     window::WindowBuilder,
     ContextBuilder,
 };
-use powdermilk_biscuits::{State, StrokeStyle, TITLE_MODIFIED, TITLE_UNMODIFIED};
+use powdermilk_biscuits::{
+    backend::gl as backend, State, StrokeStyle, TITLE_MODIFIED, TITLE_UNMODIFIED,
+};
 use std::mem::size_of;
 
 pub fn main() {
@@ -50,11 +52,8 @@ pub fn main() {
         gl.disable(glow::CULL_FACE);
         gl.clear_color(0.0, 0.0, 0.0, 1.0);
 
-        pen_cursor_program = powdermilk_biscuits::backend::gl::compile_program(
-            &gl,
-            "src/shaders/cursor.vert",
-            "src/shaders/cursor.frag",
-        );
+        pen_cursor_program =
+            backend::compile_program(&gl, "src/shaders/cursor.vert", "src/shaders/cursor.frag");
         gl.use_program(Some(pen_cursor_program));
 
         pen_cursor_erasing = gl
@@ -72,7 +71,7 @@ pub fn main() {
             &glam::Mat4::IDENTITY.to_cols_array(),
         );
 
-        strokes_program = powdermilk_biscuits::backend::gl::compile_program(
+        strokes_program = backend::compile_program(
             &gl,
             "src/shaders/stroke_line.vert",
             "src/shaders/stroke_line.frag",
@@ -94,7 +93,7 @@ pub fn main() {
     };
 
     let mut cursor_visible = true;
-    let mut input_handler = powdermilk_biscuits::backend::gl::InputHandler::default();
+    let mut input_handler = backend::InputHandler::default();
     let mut aa = true;
     let mut stroke_style = glow::LINE_STRIP;
 
@@ -304,7 +303,7 @@ pub fn main() {
                 event: WindowEvent::Touch(touch),
                 ..
             } => {
-                use powdermilk_biscuits::backend::gl::*;
+                use backend::*;
 
                 cursor_visible = false;
 
@@ -413,7 +412,7 @@ pub fn main() {
             Event::RedrawRequested(_) => {
                 unsafe {
                     gl.use_program(Some(strokes_program));
-                    let view = powdermilk_biscuits::backend::gl::view_matrix(
+                    let view = backend::view_matrix(
                         state.settings.zoom,
                         state.settings.zoom,
                         context.window().inner_size(),
@@ -433,12 +432,13 @@ pub fn main() {
                     }
 
                     unsafe {
-                        let vbo = stroke
-                            .vbo
-                            .get_or_insert_with(|| gl.create_buffer().unwrap());
-                        let vao = stroke
-                            .vao
-                            .get_or_insert_with(|| gl.create_vertex_array().unwrap());
+                        let buffers =
+                            stroke
+                                .backend
+                                .get_or_insert_with(|| backend::StrokeBackend {
+                                    vbo: gl.create_buffer().unwrap(),
+                                    vao: gl.create_vertex_array().unwrap(),
+                                });
 
                         let points_flat = std::slice::from_raw_parts(
                             stroke.points.as_ptr() as *const f32,
@@ -450,10 +450,10 @@ pub fn main() {
                             points_flat.len() * size_of::<f32>(),
                         );
 
-                        gl.bind_buffer(glow::ARRAY_BUFFER, Some(*vbo));
+                        gl.bind_buffer(glow::ARRAY_BUFFER, Some(buffers.vbo));
                         gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, &bytes, glow::STATIC_DRAW);
 
-                        gl.bind_vertex_array(Some(*vao));
+                        gl.bind_vertex_array(Some(buffers.vao));
 
                         gl.vertex_attrib_pointer_f32(
                             0,
