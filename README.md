@@ -60,4 +60,10 @@ Finger/stylus interaction:
   - Gesture for each number of fingers
   - Tap gestures
 
+Optimizations
+- OpenGL
+  - We're uploading data for every stroke on every frame, regardless of whether they're changed
+- WGPU
+  - We're uploading data for the last stroke every frame, again regardless of whether it's changed
+
 ![Gesture state diagram](eg/gesture-state.png)

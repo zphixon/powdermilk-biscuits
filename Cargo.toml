@@ -12,6 +12,8 @@ gl = ['glow', 'glam', 'glutin']
 wgpu = ['dep:wgpu', 'winit', 'futures']
 
 [dependencies]
+env_logger = '0.9.0'
+log = '*'
 rand = '0.8.5'
 evc_derive = { path = 'evc_derive' }
 image = '0.24.2'

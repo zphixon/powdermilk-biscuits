@@ -2,6 +2,7 @@
 mod run_gl;
 #[cfg(feature = "gl")]
 fn main() {
+    env_logger::init();
     run_gl::main();
 }
 
@@ -9,6 +10,7 @@ fn main() {
 mod run_wgpu;
 #[cfg(feature = "wgpu")]
 fn main() {
+    env_logger::init();
     run_wgpu::main();
 }
 
