@@ -28,20 +28,24 @@ impl ColorExt for Color {
     }
 }
 
-pub fn circle_points(radius: f32, num_segments: usize) -> Vec<f32> {
-    let mut segments = Vec::with_capacity(num_segments);
+pub fn circle_points(radius: f32, num_points: usize) -> Vec<f32> {
+    let mut points = Vec::with_capacity(num_points + 2);
 
-    let mut angle = 0.0;
-    let segments_f32 = num_segments as f32;
-    for _ in 0..num_segments {
-        let d_theta = std::f32::consts::TAU / segments_f32;
-        angle += d_theta;
-        let (x, y) = angle.sin_cos();
-        segments.push(x * radius);
-        segments.push(y * radius);
+    let dtheta = std::f32::consts::TAU / (num_points) as f32;
+    let mut theta: f32 = 0.;
+
+    for _ in 0..num_points + 1 {
+        let (sin, cos) = theta.sin_cos();
+        points.push(cos * radius);
+        points.push(sin * radius);
+
+        theta += dtheta;
     }
 
-    segments
+    points.push(radius);
+    points.push(0.);
+
+    points
 }
 
 #[derive(Default, Debug, Clone, Copy)]
