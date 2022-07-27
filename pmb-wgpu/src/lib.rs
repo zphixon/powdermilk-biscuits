@@ -6,18 +6,17 @@ use powdermilk_biscuits::{
 };
 use std::{collections::HashMap, mem::size_of};
 use wgpu::{
-    util::{BufferInitDescriptor, DeviceExt, StagingBelt},
+    util::{BufferInitDescriptor, DeviceExt},
     Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
     BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BlendState, Buffer,
-    BufferAddress, BufferBindingType, BufferSize, BufferUsages, Color as WgpuColor,
-    ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor,
-    DynamicOffset, Face, Features, FragmentState, FrontFace, Instance, Limits, LoadOp,
-    MultisampleState, Operations, PipelineLayoutDescriptor, PolygonMode, PowerPreference,
-    PresentMode, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment,
-    RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions,
-    ShaderStages, Surface, SurfaceConfiguration, SurfaceError, TextureUsages,
-    TextureViewDescriptor, VertexAttribute, VertexBufferLayout, VertexFormat, VertexState,
-    VertexStepMode,
+    BufferAddress, BufferBindingType, BufferUsages, Color as WgpuColor, ColorTargetState,
+    ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor, Face, Features, FragmentState,
+    FrontFace, Instance, Limits, LoadOp, MultisampleState, Operations, PipelineLayoutDescriptor,
+    PolygonMode, PowerPreference, PresentMode, PrimitiveState, PrimitiveTopology,
+    PushConstantRange, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline,
+    RenderPipelineDescriptor, RequestAdapterOptions, ShaderStages, Surface, SurfaceConfiguration,
+    SurfaceError, TextureUsages, TextureViewDescriptor, VertexAttribute, VertexBufferLayout,
+    VertexFormat, VertexState, VertexStepMode,
 };
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
@@ -141,9 +140,6 @@ pub struct Graphics {
     pub view_bind_layout: BindGroupLayout,
     pub view_bind_group: BindGroup,
     pub view_uniform_buffer: Buffer,
-    pub color_bind_layout: BindGroupLayout,
-    pub color_bind_group: BindGroup,
-    pub color_uniform_buffer: Buffer,
 }
 
 impl Graphics {
@@ -161,13 +157,16 @@ impl Graphics {
             .await
             .unwrap();
 
+        let mut limits = Limits::default();
+        limits.max_push_constant_size = 128;
+
         // segfault on linux here :(
         let (device, queue) = adapter
             .request_device(
                 &DeviceDescriptor {
                     label: None,
-                    features: Features::empty(),
-                    limits: Limits::default(),
+                    features: Features::PUSH_CONSTANTS,
+                    limits,
                 },
                 None,
             )
@@ -215,39 +214,13 @@ impl Graphics {
             }],
         });
 
-        let color_bind_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("color bl"),
-            entries: &[BindGroupLayoutEntry {
-                binding: 0,
-                visibility: ShaderStages::VERTEX,
-                ty: BindingType::Buffer {
-                    ty: BufferBindingType::Uniform,
-                    has_dynamic_offset: true,
-                    min_binding_size: None,
-                },
-                count: None,
-            }],
-        });
-
-        let color_uniform_buffer = device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("color ub"),
-            contents: bytemuck::cast_slice(&PmbColor::WHITE.to_float()),
-            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-        });
-
-        let color_bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("color bg"),
-            layout: &color_bind_layout,
-            entries: &[BindGroupEntry {
-                binding: 0,
-                resource: color_uniform_buffer.as_entire_binding(),
-            }],
-        });
-
         let layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("pipeline layout"),
-            bind_group_layouts: &[&view_bind_layout, &color_bind_layout],
-            push_constant_ranges: &[],
+            bind_group_layouts: &[&view_bind_layout],
+            push_constant_ranges: &[PushConstantRange {
+                stages: ShaderStages::VERTEX,
+                range: 0..12,
+            }],
         });
 
         let cts = [Some(ColorTargetState {
@@ -314,9 +287,6 @@ impl Graphics {
             view_bind_layout,
             view_bind_group,
             view_uniform_buffer,
-            color_bind_layout,
-            color_bind_group,
-            color_uniform_buffer,
         }
     }
 
@@ -372,50 +342,6 @@ impl Graphics {
             0,
             bytemuck::cast_slice(&view.to_cols_array()),
         );
-
-        let colors: Vec<f32> = state
-            .strokes
-            .iter()
-            .flat_map(|stroke| stroke.color().to_float())
-            .collect();
-
-        let offsets: Vec<DynamicOffset> = std::iter::repeat(())
-            .enumerate()
-            .take(state.strokes.len())
-            .map(|(i, _)| i as DynamicOffset)
-            .collect();
-
-        self.color_bind_layout = self
-            .device
-            .create_bind_group_layout(&BindGroupLayoutDescriptor {
-                label: Some("color bl"),
-                entries: &[BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: ShaderStages::VERTEX,
-                    ty: BindingType::Buffer {
-                        ty: BufferBindingType::Uniform,
-                        has_dynamic_offset: true,
-                        min_binding_size: BufferSize::new(std::mem::size_of::<[f32; 3]>() as _),
-                    },
-                    count: None,
-                }],
-            });
-
-        self.color_uniform_buffer = self.device.create_buffer_init(&BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::cast_slice(&colors),
-            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-        });
-
-        self.color_bind_group = self.device.create_bind_group(&BindGroupDescriptor {
-            label: None,
-            layout: &self.color_bind_layout,
-            entries: &[BindGroupEntry {
-                binding: 0,
-                resource: self.color_uniform_buffer.as_entire_binding(),
-            }],
-        });
-
         self.queue.submit(None);
 
         let mut encoder = self
@@ -441,11 +367,11 @@ impl Graphics {
             pass.set_pipeline(&self.pipeline);
             pass.set_bind_group(0, &self.view_bind_group, &[]);
 
-            for (i, stroke) in state.strokes.iter().enumerate() {
-                pass.set_bind_group(
-                    1,
-                    &self.color_bind_group,
-                    &[i as u32 * self.device.limits().min_uniform_buffer_offset_alignment],
+            for stroke in state.strokes.iter() {
+                pass.set_push_constants(
+                    ShaderStages::VERTEX,
+                    0,
+                    bytemuck::cast_slice(&stroke.color().to_float()),
                 );
 
                 pass.set_vertex_buffer(0, stroke.backend().unwrap().buffer.slice(..));

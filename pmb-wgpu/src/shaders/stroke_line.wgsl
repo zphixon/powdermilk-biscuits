@@ -10,7 +10,9 @@ struct Frag {
 };
 
 @group(0) @binding(0) var<uniform> view: mat4x4<f32>;
-@group(1) @binding(0) var<uniform> color: vec3<f32>;
+
+// non-standard xd
+var<push_constant> color: vec3<f32>;
 
 @vertex fn vmain(in: Vert) -> Frag {
   var out: Frag;
@@ -23,5 +25,5 @@ struct Frag {
 }
 
 @fragment fn fmain(in: Frag) -> @location(0) vec4<f32> {
-  return vec4<f32>(in.color, in.pressure);
+  return vec4<f32>(in.color, 1.0);
 }
