@@ -6,7 +6,7 @@ Heavens, it's tasty.
 
 ## Building:
 
-The build had visited the local mage and is no longer cursed. Just `git clone` and `cargo b --release`!
+The build has visited the local mage and is no longer cursed. Just `git clone` and `cargo b --release`!
 
 ## Features:
 
