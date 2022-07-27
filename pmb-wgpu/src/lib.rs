@@ -1,20 +1,22 @@
 use powdermilk_biscuits::{
     event::{PenInfo, Touch, TouchPhase},
-    graphics::{PixelPos, StrokePoint},
+    graphics::{Color as PmbColor, ColorExt, PixelPos, StrokePoint},
     stroke::{Stroke, StrokeElement},
     State,
 };
 use std::{collections::HashMap, mem::size_of};
 use wgpu::{
-    util::{BufferInitDescriptor, DeviceExt},
-    Backends, BlendState, Buffer, BufferAddress, BufferUsages, Color, ColorTargetState,
-    ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor, Face, Features, FragmentState,
-    FrontFace, Instance, Limits, LoadOp, MultisampleState, Operations, PipelineLayoutDescriptor,
-    PolygonMode, PowerPreference, PresentMode, PrimitiveState, PrimitiveTopology, Queue,
-    RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor,
-    RequestAdapterOptions, Surface, SurfaceConfiguration, SurfaceError, TextureUsages,
-    TextureViewDescriptor, VertexAttribute, VertexBufferLayout, VertexFormat, VertexState,
-    VertexStepMode,
+    util::{BufferInitDescriptor, DeviceExt, StagingBelt},
+    Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
+    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BlendState, Buffer,
+    BufferAddress, BufferBindingType, BufferSize, BufferUsages, Color as WgpuColor,
+    ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor, Face,
+    Features, FragmentState, FrontFace, Instance, Limits, LoadOp, MultisampleState, Operations,
+    PipelineLayoutDescriptor, PolygonMode, PowerPreference, PresentMode, PrimitiveState,
+    PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline,
+    RenderPipelineDescriptor, RequestAdapterOptions, ShaderStages, Surface, SurfaceConfiguration,
+    SurfaceError, TextureUsages, TextureViewDescriptor, VertexAttribute, VertexBufferLayout,
+    VertexFormat, VertexState, VertexStepMode,
 };
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
@@ -135,6 +137,12 @@ pub struct Graphics {
     pub config: SurfaceConfiguration,
     pub size: Size,
     pub pipeline: RenderPipeline,
+    pub view_bind_layout: BindGroupLayout,
+    pub view_bind_group: BindGroup,
+    pub view_uniform_buffer: Buffer,
+    pub color_bind_layout: BindGroupLayout,
+    pub color_bind_group: BindGroup,
+    pub color_uniform_buffer: Buffer,
 }
 
 impl Graphics {
@@ -177,9 +185,67 @@ impl Graphics {
 
         let shader = device.create_shader_module(wgpu::include_wgsl!("shaders/stroke_line.wgsl"));
 
+        let view_bind_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("view bl"),
+            entries: &[BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStages::VERTEX,
+                ty: BindingType::Buffer {
+                    ty: BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
+
+        let view_uniform_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("view ub"),
+            contents: bytemuck::cast_slice(&glam::Mat4::IDENTITY.to_cols_array()),
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+        });
+
+        let view_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("view bg"),
+            layout: &view_bind_layout,
+            entries: &[BindGroupEntry {
+                binding: 0,
+                resource: view_uniform_buffer.as_entire_binding(),
+            }],
+        });
+
+        let color_bind_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("color bl"),
+            entries: &[BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStages::VERTEX,
+                ty: BindingType::Buffer {
+                    ty: BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
+
+        let color_uniform_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("color ub"),
+            contents: bytemuck::cast_slice(&PmbColor::WHITE.to_float()),
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+        });
+
+        let color_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("color bg"),
+            layout: &color_bind_layout,
+            entries: &[BindGroupEntry {
+                binding: 0,
+                resource: color_uniform_buffer.as_entire_binding(),
+            }],
+        });
+
         let layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("pipeline layout"),
-            bind_group_layouts: &[],
+            bind_group_layouts: &[&view_bind_layout, &color_bind_layout],
             push_constant_ranges: &[],
         });
 
@@ -244,6 +310,12 @@ impl Graphics {
             config,
             size,
             pipeline,
+            view_bind_layout,
+            view_bind_group,
+            view_uniform_buffer,
+            color_bind_layout,
+            color_bind_group,
+            color_uniform_buffer,
         }
     }
 
@@ -275,6 +347,7 @@ impl Graphics {
     pub fn render(
         &mut self,
         state: &mut State<WgpuBackend, StrokeBackend>,
+        size: PhysicalSize<u32>,
     ) -> Result<(), SurfaceError> {
         let output = self.surface.get_current_texture()?;
         let view = output
@@ -294,7 +367,7 @@ impl Graphics {
                     view: &view,
                     resolve_target: None,
                     ops: Operations {
-                        load: LoadOp::Clear(Color::BLACK),
+                        load: LoadOp::Clear(WgpuColor::BLACK),
                         store: true,
                     },
                 })],
@@ -302,6 +375,26 @@ impl Graphics {
             });
 
             pass.set_pipeline(&self.pipeline);
+            pass.set_bind_group(0, &self.view_bind_group, &[]);
+            pass.set_bind_group(1, &self.color_bind_group, &[]);
+
+            let PhysicalSize { width, height } = size;
+            let xform = stroke_to_ndc(width, height, state.settings.zoom, state.settings.origin);
+            let view = glam::Mat4::from_scale_rotation_translation(
+                glam::vec3(
+                    state.settings.zoom / width as f32,
+                    state.settings.zoom / height as f32,
+                    1.0,
+                ),
+                glam::Quat::IDENTITY,
+                glam::vec3(xform.x, xform.y, 0.0),
+            );
+
+            self.queue.write_buffer(
+                &self.view_uniform_buffer,
+                0,
+                bytemuck::cast_slice(&view.to_cols_array()),
+            );
 
             for stroke in state.strokes.iter() {
                 pass.set_vertex_buffer(0, stroke.backend().unwrap().buffer.slice(..));

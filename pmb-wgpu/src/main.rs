@@ -11,6 +11,7 @@ use winit::{
 };
 
 fn main() {
+    env_logger::init();
     futures::executor::block_on(run());
 }
 
@@ -109,7 +110,7 @@ async fn run() {
                 input.handle_mouse_button(button, state);
             }
 
-            Event::RedrawRequested(_) => match graphics.render(&mut state) {
+            Event::RedrawRequested(_) => match graphics.render(&mut state, window.inner_size()) {
                 Err(SurfaceError::Lost) => graphics.resize(graphics.size),
                 Err(SurfaceError::OutOfMemory) => {
                     ui::error("Out of memory!");

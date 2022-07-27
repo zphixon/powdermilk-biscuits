@@ -14,9 +14,19 @@ pub trait ColorExt {
             (level * 0xff as f32) as u8,
         ]
     }
+
+    fn to_float(&self) -> [f32; 3];
 }
 
-impl ColorExt for Color {}
+impl ColorExt for Color {
+    fn to_float(&self) -> [f32; 3] {
+        [
+            self[0] as f32 / 255.,
+            self[1] as f32 / 255.,
+            self[2] as f32 / 255.,
+        ]
+    }
+}
 
 pub fn circle_points(radius: f32, num_segments: usize) -> Vec<f32> {
     let mut segments = Vec::with_capacity(num_segments);
