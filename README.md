@@ -49,10 +49,19 @@ Finger/stylus interaction:
   - Gesture for each number of fingers
   - Tap gestures
 
-Optimizations
-- OpenGL
-  - We're uploading data for every stroke on every frame, regardless of whether they're changed
-- WGPU
-  - We're uploading data for the last stroke every frame, again regardless of whether it's changed
-
 ![Gesture state diagram](gesture-state.png)
+
+Optimizations:
+- For both backends, we're checking every stroke every frame whether it's been buffered or not
+
+Keybinds:
+- c: clear strokes
+- d: print strokes
+- a: toggle antialiasing
+- p: change GL primitives
+- ctrl+z: undo stroke
+- z: reset origin and zoom
+- e: invert stylus state
+- ctrl+o: read file
+- ctrl+s: save file
+- shift+s: save as image
