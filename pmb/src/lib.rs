@@ -42,6 +42,10 @@ pub fn write(path: impl AsRef<std::path::Path>, disk: ToDisk) -> Result<()> {
 pub const TITLE_UNMODIFIED: &'static str = "hi! <3";
 pub const TITLE_MODIFIED: &'static str = "hi! <3 (modified)";
 
+pub trait StrokeBackend {
+    fn dirty(&mut self);
+}
+
 pub trait Backend: std::fmt::Debug + Default {
     type Ndc: std::fmt::Display + Clone + Copy;
 
@@ -165,6 +169,7 @@ pub struct ToDisk {
 pub struct State<B, S>
 where
     B: Backend,
+    S: StrokeBackend,
 {
     pub stylus: Stylus,
     pub strokes: Vec<Stroke<S>>,
@@ -179,6 +184,7 @@ where
 impl<B, S> Default for State<B, S>
 where
     B: Backend,
+    S: StrokeBackend,
 {
     fn default() -> Self {
         use std::iter::repeat;
@@ -275,6 +281,7 @@ pub const BRUSH_DELTA: usize = 1;
 impl<B, S> State<B, S>
 where
     B: Backend,
+    S: StrokeBackend,
 {
     pub fn modified() -> Self {
         let mut this = State::default();
@@ -589,6 +596,10 @@ where
                                 y: self.stylus.pos.y,
                                 pressure: self.stylus.pressure,
                             });
+
+                            if let Some(backend) = stroke.backend_mut().as_mut() {
+                                backend.dirty();
+                            }
 
                             stroke.calculate_spline();
                         }

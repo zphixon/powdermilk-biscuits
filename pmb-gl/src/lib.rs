@@ -41,6 +41,10 @@ pub struct StrokeBackend {
     pub vao: glow::VertexArray,
 }
 
+impl powdermilk_biscuits::StrokeBackend for StrokeBackend {
+    fn dirty(&mut self) {}
+}
+
 pub fn physical_pos_to_pixel_pos(pos: PhysicalPosition<f64>) -> PixelPos {
     PixelPos {
         x: pos.x as f32,

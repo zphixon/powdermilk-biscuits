@@ -53,6 +53,13 @@ impl powdermilk_biscuits::Backend for WgpuBackend {
 #[derive(Debug)]
 pub struct StrokeBackend {
     pub buffer: Buffer,
+    pub dirty: bool,
+}
+
+impl powdermilk_biscuits::StrokeBackend for StrokeBackend {
+    fn dirty(&mut self) {
+        self.dirty = true;
+    }
 }
 
 pub fn physical_pos_to_pixel_pos(pos: PhysicalPosition<f64>) -> PixelPos {
@@ -306,12 +313,15 @@ impl Graphics {
                 contents: bytes,
                 usage: BufferUsages::VERTEX,
             }),
+            dirty: false,
         });
     }
 
     pub fn buffer_all_strokes(&mut self, state: &mut State<WgpuBackend, StrokeBackend>) {
         for stroke in state.strokes.iter_mut() {
-            self.buffer_stroke(stroke);
+            if stroke.backend().map(|b| b.dirty).unwrap_or(true) {
+                self.buffer_stroke(stroke);
+            }
         }
     }
 
@@ -320,6 +330,8 @@ impl Graphics {
         state: &mut State<WgpuBackend, StrokeBackend>,
         size: PhysicalSize<u32>,
     ) -> Result<(), SurfaceError> {
+        self.buffer_all_strokes(state);
+
         let output = self.surface.get_current_texture()?;
         let surface_view = output
             .texture

@@ -246,10 +246,6 @@ async fn run() {
                     (None, false) => window.set_title(powdermilk_biscuits::TITLE_UNMODIFIED),
                 }
 
-                if let Some(last) = state.strokes.last_mut() {
-                    graphics.buffer_stroke(last);
-                }
-
                 window.request_redraw();
             }
 
