@@ -12,6 +12,7 @@ wgpu = '0.13.1'
 futures = '0.3.21'
 bytemuck = '1.11.0'
 powdermilk-biscuits = { path = '../pmb' }
+smaa = '0.7.0'
 
 [target.'cfg(windows)'.dependencies.winit]
 git = 'https://github.com/zphixon/winit'

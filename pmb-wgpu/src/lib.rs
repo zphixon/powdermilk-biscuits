@@ -15,8 +15,8 @@ use wgpu::{
     PolygonMode, PowerPreference, PresentMode, PrimitiveState, PrimitiveTopology,
     PushConstantRange, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline,
     RenderPipelineDescriptor, RequestAdapterOptions, ShaderStages, Surface, SurfaceConfiguration,
-    SurfaceError, TextureUsages, TextureViewDescriptor, VertexAttribute, VertexBufferLayout,
-    VertexFormat, VertexState, VertexStepMode,
+    SurfaceError, TextureFormat, TextureUsages, TextureViewDescriptor, VertexAttribute,
+    VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
 };
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
@@ -160,10 +160,12 @@ pub type Size = PhysicalSize<u32>;
 
 pub struct Graphics {
     pub surface: Surface,
+    pub surface_format: TextureFormat,
     pub device: Device,
     pub queue: Queue,
     pub config: SurfaceConfiguration,
     pub size: Size,
+    pub smaa_target: smaa::SmaaTarget,
     pub stroke_pipeline: RenderPipeline,
     pub stroke_view_bind_layout: BindGroupLayout,
     pub stroke_view_bind_group: BindGroup,
@@ -206,9 +208,11 @@ impl Graphics {
             .await
             .unwrap();
 
+        let surface_format = surface.get_supported_formats(&adapter)[0];
+
         let config = SurfaceConfiguration {
             usage: TextureUsages::RENDER_ATTACHMENT,
-            format: surface.get_supported_formats(&adapter)[0],
+            format: surface_format,
             width: size.width,
             height: size.height,
             present_mode: PresentMode::Fifo,
@@ -400,12 +404,23 @@ impl Graphics {
 
         let cursor_pipeline = device.create_render_pipeline(&cursor_desc);
 
+        let smaa_target = smaa::SmaaTarget::new(
+            &device,
+            &queue,
+            size.width,
+            size.height,
+            surface_format,
+            smaa::SmaaMode::Smaa1X,
+        );
+
         Graphics {
             surface,
+            surface_format,
             device,
             queue,
             config,
             size,
+            smaa_target,
             stroke_pipeline,
             stroke_view_bind_layout,
             stroke_view_bind_group,
@@ -424,6 +439,14 @@ impl Graphics {
             self.config.width = new_size.width;
             self.config.height = new_size.height;
             self.surface.configure(&self.device, &self.config);
+            self.smaa_target = smaa::SmaaTarget::new(
+                &self.device,
+                &self.queue,
+                new_size.width,
+                new_size.height,
+                self.surface_format,
+                smaa::SmaaMode::Smaa1X,
+            );
         }
     }
 
@@ -452,13 +475,6 @@ impl Graphics {
         size: PhysicalSize<u32>,
         cursor_visible: bool,
     ) -> Result<(), SurfaceError> {
-        self.buffer_all_strokes(state);
-
-        let output = self.surface.get_current_texture()?;
-        let surface_view = output
-            .texture
-            .create_view(&TextureViewDescriptor::default());
-
         let stroke_view = view_matrix(
             state.settings.zoom,
             state.settings.zoom,
@@ -485,7 +501,17 @@ impl Graphics {
             bytemuck::cast_slice(&cursor_view.to_cols_array()),
         );
 
+        self.buffer_all_strokes(state);
+
         self.queue.submit(None);
+
+        let output = self.surface.get_current_texture()?;
+        let surface_view = output
+            .texture
+            .create_view(&TextureViewDescriptor::default());
+        let smaa_frame = self
+            .smaa_target
+            .start_frame(&self.device, &self.queue, &surface_view);
 
         let mut encoder = self
             .device
@@ -497,7 +523,7 @@ impl Graphics {
             let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
                 label: Some("render pass"),
                 color_attachments: &[Some(RenderPassColorAttachment {
-                    view: &surface_view,
+                    view: &smaa_frame,
                     resolve_target: None,
                     ops: Operations {
                         load: LoadOp::Clear(WgpuColor::BLACK),
@@ -530,7 +556,7 @@ impl Graphics {
             let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
                 label: Some("cursor"),
                 color_attachments: &[Some(RenderPassColorAttachment {
-                    view: &surface_view,
+                    view: &smaa_frame,
                     resolve_target: None,
                     ops: Operations {
                         load: LoadOp::Load,
@@ -553,6 +579,8 @@ impl Graphics {
         }
 
         self.queue.submit(Some(encoder.finish()));
+
+        smaa_frame.resolve();
         output.present();
 
         Ok(())
