@@ -1,6 +1,7 @@
 pub mod error;
 pub mod event;
 pub mod graphics;
+pub mod input;
 pub mod stroke;
 pub mod ui;
 

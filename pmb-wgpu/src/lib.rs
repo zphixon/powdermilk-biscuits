@@ -1,10 +1,11 @@
 use powdermilk_biscuits::{
     event::{PenInfo, Touch, TouchPhase},
     graphics::{ColorExt, PixelPos, StrokePoint},
+    input::{ElementState, Keycode, MouseButton},
     stroke::{Stroke, StrokeElement},
     State,
 };
-use std::{collections::HashMap, mem::size_of};
+use std::mem::size_of;
 use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
     Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
@@ -21,8 +22,9 @@ use wgpu::{
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
     event::{
-        ElementState, MouseButton, PenInfo as WinitPenInfo, Touch as WinitTouch,
-        TouchPhase as WinitTouchPhase, VirtualKeyCode,
+        ElementState as WinitElementState, MouseButton as WinitMouseButton,
+        PenInfo as WinitPenInfo, Touch as WinitTouch, TouchPhase as WinitTouchPhase,
+        VirtualKeyCode as WinitKeycode,
     },
     window::Window,
 };
@@ -107,12 +109,58 @@ pub fn glutin_to_pmb_touch_phase(phase: WinitTouchPhase) -> TouchPhase {
     }
 }
 
-pub fn glutin_to_pmb_touch(touch: WinitTouch) -> Touch {
+pub fn winit_to_pmb_touch(touch: WinitTouch) -> Touch {
     Touch {
         force: touch.force.map(|f| f.normalized()),
         phase: glutin_to_pmb_touch_phase(touch.phase),
         location: physical_pos_to_pixel_pos(touch.location),
         pen_info: touch.pen_info.map(glutin_to_pmb_pen_info),
+    }
+}
+
+pub fn winit_to_pmb_keycode(code: WinitKeycode) -> Keycode {
+    macro_rules! codes {
+        ($($code:ident),*) => {
+            $(if code == WinitKeycode::$code {
+                return Keycode::$code;
+            })*
+        };
+    }
+
+    #[rustfmt::skip]
+    codes!(
+        Key1, Key2, Key3, Key4, Key5, Key6, Key7, Key8, Key9, Key0, A, B, C, D, E, F, G, H, I, J,
+        K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z, Escape, F1, F2, F3, F4, F5, F6, F7, F8, F9,
+        F10, F11, F12, F13, F14, F15, F16, F17, F18, F19, F20, F21, F22, F23, F24, Snapshot,
+        Scroll, Pause, Insert, Home, Delete, End, PageDown, PageUp, Left, Up, Right, Down, Back,
+        Return, Space, Compose, Caret, Numlock, Numpad0, Numpad1, Numpad2, Numpad3, Numpad4,
+        Numpad5, Numpad6, Numpad7, Numpad8, Numpad9, NumpadAdd, NumpadDivide, NumpadDecimal,
+        NumpadComma, NumpadEnter, NumpadEquals, NumpadMultiply, NumpadSubtract, AbntC1, AbntC2,
+        Apostrophe, Apps, Asterisk, At, Ax, Backslash, Calculator, Capital, Colon, Comma, Convert,
+        Equals, Grave, Kana, Kanji, LAlt, LBracket, LControl, LShift, LWin, Mail, MediaSelect,
+        MediaStop, Minus, Mute, MyComputer, NavigateForward, NavigateBackward, NextTrack,
+        NoConvert, OEM102, Period, PlayPause, Plus, Power, PrevTrack, RAlt, RBracket, RControl,
+        RShift, RWin, Semicolon, Slash, Sleep, Stop, Sysrq, Tab, Underline, Unlabeled, VolumeDown,
+        VolumeUp, Wake, WebBack, WebFavorites, WebForward, WebHome, WebRefresh, WebSearch, WebStop,
+        Yen, Copy, Paste, Cut
+    );
+
+    panic!("unmatched keycode: {code:?}");
+}
+
+pub fn winit_to_pmb_key_state(state: WinitElementState) -> ElementState {
+    match state {
+        WinitElementState::Pressed => ElementState::Pressed,
+        WinitElementState::Released => ElementState::Released,
+    }
+}
+
+pub fn winit_to_pmb_mouse_button(button: WinitMouseButton) -> MouseButton {
+    match button {
+        WinitMouseButton::Left => MouseButton::Left,
+        WinitMouseButton::Right => MouseButton::Right,
+        WinitMouseButton::Middle => MouseButton::Middle,
+        WinitMouseButton::Other(b) => MouseButton::Other(b as usize),
     }
 }
 
@@ -602,87 +650,5 @@ impl Graphics {
         output.present();
 
         Ok(())
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum KeyState {
-    Downstroke,
-    Held,
-    Released,
-}
-
-impl KeyState {
-    pub fn is_down(&self) -> bool {
-        use KeyState::*;
-        matches!(self, Downstroke | Held)
-    }
-
-    pub fn just_pressed(&self) -> bool {
-        use KeyState::*;
-        matches!(self, Downstroke)
-    }
-}
-
-#[derive(Default)]
-pub struct InputHandler {
-    keys: HashMap<VirtualKeyCode, KeyState>,
-    buttons: HashMap<MouseButton, KeyState>,
-    cursor_pos: PhysicalPosition<f64>,
-}
-
-fn cycle_state(key_state: KeyState, element_state: ElementState) -> KeyState {
-    match (key_state, element_state) {
-        (KeyState::Released, ElementState::Pressed) => KeyState::Downstroke,
-        (_, ElementState::Released) => KeyState::Released,
-        (_, ElementState::Pressed) => KeyState::Held,
-    }
-}
-
-impl InputHandler {
-    pub fn handle_mouse_move(&mut self, cursor_pos: PhysicalPosition<f64>) {
-        self.cursor_pos = cursor_pos;
-    }
-
-    pub fn handle_mouse_button(&mut self, button: MouseButton, state: ElementState) {
-        let button_state = self.buttons.entry(button).or_insert(KeyState::Released);
-        let next_state = cycle_state(*button_state, state);
-        *button_state = next_state;
-    }
-
-    pub fn cursor_pos(&self) -> PhysicalPosition<f64> {
-        self.cursor_pos
-    }
-
-    pub fn button_down(&mut self, button: MouseButton) -> bool {
-        self.buttons.contains_key(&button) && self.buttons[&button].is_down()
-    }
-
-    pub fn button_just_pressed(&mut self, button: MouseButton) -> bool {
-        self.buttons.contains_key(&button) && self.buttons[&button].just_pressed()
-    }
-
-    pub fn handle_key(&mut self, key: VirtualKeyCode, state: ElementState) {
-        let key_state = self.keys.entry(key).or_insert(KeyState::Released);
-        let next_state = cycle_state(*key_state, state);
-        *key_state = next_state;
-    }
-
-    pub fn is_down(&self, key: VirtualKeyCode) -> bool {
-        self.keys.contains_key(&key) && self.keys[&key].is_down()
-    }
-
-    pub fn just_pressed(&self, key: VirtualKeyCode) -> bool {
-        self.keys.contains_key(&key) && self.keys[&key].just_pressed()
-    }
-
-    pub fn shift(&self) -> bool {
-        use VirtualKeyCode::{LShift, RShift};
-        self.is_down(LShift) || self.is_down(RShift)
-    }
-
-    pub fn control(&self) -> bool {
-        use VirtualKeyCode::{LControl, RControl};
-        self.is_down(LControl) || self.is_down(RControl)
     }
 }

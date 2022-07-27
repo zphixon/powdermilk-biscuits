@@ -1,11 +1,11 @@
-use powdermilk_biscuits::{ui, State};
+use powdermilk_biscuits::{
+    input::{InputHandler, MouseButton},
+    ui, State,
+};
 use wgpu::SurfaceError;
 use winit::{
     dpi::{LogicalPosition, PhysicalSize},
-    event::{
-        ElementState, Event, KeyboardInput, MouseButton, MouseScrollDelta, VirtualKeyCode,
-        WindowEvent,
-    },
+    event::{ElementState, Event, KeyboardInput, MouseScrollDelta, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
@@ -39,7 +39,7 @@ async fn run() {
     let mut graphics = pmb_wgpu::Graphics::new(&window).await;
     graphics.buffer_all_strokes(&mut state);
 
-    let mut input = pmb_wgpu::InputHandler::default();
+    let mut input = InputHandler::default();
     let mut cursor_visible = true;
 
     ev.run(move |event, _, flow| {
@@ -113,6 +113,8 @@ async fn run() {
                 event: WindowEvent::MouseInput { state, button, .. },
                 ..
             } => {
+                let button = pmb_wgpu::winit_to_pmb_mouse_button(button);
+                let state = pmb_wgpu::winit_to_pmb_key_state(state);
                 input.handle_mouse_button(button, state);
             }
 
@@ -140,6 +142,8 @@ async fn run() {
                     },
                 ..
             } => {
+                let key = pmb_wgpu::winit_to_pmb_keycode(key);
+                let state = pmb_wgpu::winit_to_pmb_key_state(state);
                 input.handle_key(key, state);
             }
 
@@ -148,17 +152,12 @@ async fn run() {
                 ..
             } => {
                 let prev = input.cursor_pos();
-                input.handle_mouse_move(position);
+                input.handle_mouse_move(pmb_wgpu::physical_pos_to_pixel_pos(position));
 
                 if input.button_down(MouseButton::Left) {
                     let next = input.cursor_pos();
                     let PhysicalSize { width, height } = window.inner_size();
-                    state.move_origin(
-                        width,
-                        height,
-                        pmb_wgpu::physical_pos_to_pixel_pos(prev),
-                        pmb_wgpu::physical_pos_to_pixel_pos(next),
-                    );
+                    state.move_origin(width, height, prev, next);
                     window.request_redraw();
                 }
 
@@ -177,7 +176,7 @@ async fn run() {
                 window.set_cursor_visible(false);
 
                 let prev_y = input.cursor_pos().y as f32;
-                input.handle_mouse_move(touch.location);
+                input.handle_mouse_move(pmb_wgpu::physical_pos_to_pixel_pos(touch.location));
                 let next_y = input.cursor_pos().y as f32;
                 let dy = next_y - prev_y;
 
@@ -186,7 +185,7 @@ async fn run() {
                     pmb_wgpu::stroke_to_ndc(width, height, state.settings.zoom, state.stylus.point);
                 let prev_pix = pmb_wgpu::ndc_to_pixel(width, height, prev_ndc);
 
-                state.update(width, height, pmb_wgpu::glutin_to_pmb_touch(touch));
+                state.update(width, height, pmb_wgpu::winit_to_pmb_touch(touch));
 
                 let next_ndc =
                     pmb_wgpu::stroke_to_ndc(width, height, state.settings.zoom, state.stylus.point);
@@ -200,7 +199,7 @@ async fn run() {
             }
 
             Event::MainEventsCleared => {
-                use VirtualKeyCode::*;
+                use powdermilk_biscuits::input::Keycode::*;
 
                 if input.just_pressed(D) {
                     for stroke in state.strokes.iter() {

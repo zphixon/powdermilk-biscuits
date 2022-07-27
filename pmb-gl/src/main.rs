@@ -1,13 +1,15 @@
 use glow::{Context, HasContext};
 use glutin::{
     dpi::PhysicalSize,
-    event::{Event, KeyboardInput, MouseButton, MouseScrollDelta, VirtualKeyCode, WindowEvent},
+    event::{Event, KeyboardInput, MouseScrollDelta, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
     ContextBuilder,
 };
 use pmb_gl::StrokeBackend;
-use powdermilk_biscuits::{stroke::StrokeStyle, State, TITLE_MODIFIED, TITLE_UNMODIFIED};
+use powdermilk_biscuits::{
+    input::MouseButton, stroke::StrokeStyle, State, TITLE_MODIFIED, TITLE_UNMODIFIED,
+};
 use std::mem::size_of;
 
 fn main() {
@@ -92,7 +94,7 @@ fn main() {
     };
 
     let mut cursor_visible = true;
-    let mut input_handler = pmb_gl::InputHandler::default();
+    let mut input_handler = powdermilk_biscuits::input::InputHandler::default();
     let mut aa = true;
     let mut stroke_style = glow::LINE_STRIP;
 
@@ -125,7 +127,10 @@ fn main() {
                     },
                 ..
             } if key != VirtualKeyCode::Escape => {
-                use VirtualKeyCode::*;
+                use powdermilk_biscuits::input::Keycode::*;
+                let key = pmb_gl::glutin_to_pmb_keycode(key);
+                let key_state = pmb_gl::glutin_to_pmb_key_state(key_state);
+
                 input_handler.handle_key(key, key_state);
 
                 if input_handler.just_pressed(C) {
@@ -310,7 +315,7 @@ fn main() {
 
                 // TODO handle fingers
                 let prev_cursor_y = input_handler.cursor_pos().y as f32;
-                input_handler.handle_mouse_move(touch.location);
+                input_handler.handle_mouse_move(pmb_gl::physical_pos_to_pixel_pos(touch.location));
                 let next_cursor_y = input_handler.cursor_pos().y as f32;
                 let cursor_dy = next_cursor_y - prev_cursor_y;
 
@@ -376,6 +381,8 @@ fn main() {
                 event: WindowEvent::MouseInput { state, button, .. },
                 ..
             } => {
+                let button = pmb_gl::glutin_to_pmb_mouse_button(button);
+                let state = pmb_gl::glutin_to_pmb_key_state(state);
                 input_handler.handle_mouse_button(button, state);
             }
 
@@ -384,17 +391,12 @@ fn main() {
                 ..
             } => {
                 let prev = input_handler.cursor_pos();
-                input_handler.handle_mouse_move(position);
+                input_handler.handle_mouse_move(pmb_gl::physical_pos_to_pixel_pos(position));
 
                 if input_handler.button_down(MouseButton::Left) {
                     let next = input_handler.cursor_pos();
                     let PhysicalSize { width, height } = context.window().inner_size();
-                    state.move_origin(
-                        width,
-                        height,
-                        pmb_gl::physical_pos_to_pixel_pos(prev),
-                        pmb_gl::physical_pos_to_pixel_pos(next),
-                    );
+                    state.move_origin(width, height, prev, next);
                     context.window().request_redraw();
                 }
 
