@@ -165,6 +165,7 @@ pub struct Graphics {
     pub queue: Queue,
     pub config: SurfaceConfiguration,
     pub size: Size,
+    pub aa: bool,
     pub smaa_target: smaa::SmaaTarget,
     pub stroke_pipeline: RenderPipeline,
     pub stroke_view_bind_layout: BindGroupLayout,
@@ -420,6 +421,7 @@ impl Graphics {
             queue,
             config,
             size,
+            aa: true,
             smaa_target,
             stroke_pipeline,
             stroke_view_bind_layout,
@@ -505,82 +507,98 @@ impl Graphics {
 
         self.queue.submit(None);
 
+        macro_rules! render {
+            ($frame:expr, $end:expr) => {
+                let mut encoder = self
+                    .device
+                    .create_command_encoder(&CommandEncoderDescriptor {
+                        label: Some("encoder"),
+                    });
+
+                {
+                    let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
+                        label: Some("render pass"),
+                        color_attachments: &[Some(RenderPassColorAttachment {
+                            view: $frame,
+                            resolve_target: None,
+                            ops: Operations {
+                                load: LoadOp::Clear(WgpuColor::BLACK),
+                                store: true,
+                            },
+                        })],
+                        depth_stencil_attachment: None,
+                    });
+
+                    pass.set_pipeline(&self.stroke_pipeline);
+                    pass.set_bind_group(0, &self.stroke_view_bind_group, &[]);
+
+                    for stroke in state.strokes.iter() {
+                        if stroke.erased() || stroke.points().is_empty() {
+                            continue;
+                        }
+
+                        pass.set_push_constants(
+                            ShaderStages::VERTEX,
+                            0,
+                            bytemuck::cast_slice(&stroke.color().to_float()),
+                        );
+
+                        pass.set_vertex_buffer(0, stroke.backend().unwrap().buffer.slice(..));
+                        pass.draw(0..stroke.points().len() as u32, 0..1);
+                    }
+                }
+
+                if !cursor_visible {
+                    let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
+                        label: Some("cursor"),
+                        color_attachments: &[Some(RenderPassColorAttachment {
+                            view: $frame,
+                            resolve_target: None,
+                            ops: Operations {
+                                load: LoadOp::Load,
+                                store: true,
+                            },
+                        })],
+                        depth_stencil_attachment: None,
+                    });
+
+                    let info_buffer = [
+                        if state.stylus.down() { 1.0f32 } else { 0. },
+                        if state.stylus.inverted() { 1. } else { 0. },
+                    ];
+
+                    pass.set_pipeline(&self.cursor_pipeline);
+                    pass.set_bind_group(0, &self.cursor_bind_group, &[]);
+                    pass.set_push_constants(
+                        ShaderStages::VERTEX,
+                        0,
+                        bytemuck::cast_slice(&info_buffer),
+                    );
+                    pass.set_vertex_buffer(0, self.cursor_buffer.slice(..));
+                    pass.draw(0..(NUM_SEGMENTS + 1) as u32, 0..1);
+                }
+
+                self.queue.submit(Some(encoder.finish()));
+                let _ = $end;
+            };
+        }
+
         let output = self.surface.get_current_texture()?;
         let surface_view = output
             .texture
             .create_view(&TextureViewDescriptor::default());
-        let smaa_frame = self
-            .smaa_target
-            .start_frame(&self.device, &self.queue, &surface_view);
 
-        let mut encoder = self
-            .device
-            .create_command_encoder(&CommandEncoderDescriptor {
-                label: Some("encoder"),
+        if self.aa {
+            let smaa_frame = self
+                .smaa_target
+                .start_frame(&self.device, &self.queue, &surface_view);
+            render!(&smaa_frame, {
+                smaa_frame.resolve();
             });
-
-        {
-            let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
-                label: Some("render pass"),
-                color_attachments: &[Some(RenderPassColorAttachment {
-                    view: &smaa_frame,
-                    resolve_target: None,
-                    ops: Operations {
-                        load: LoadOp::Clear(WgpuColor::BLACK),
-                        store: true,
-                    },
-                })],
-                depth_stencil_attachment: None,
-            });
-
-            pass.set_pipeline(&self.stroke_pipeline);
-            pass.set_bind_group(0, &self.stroke_view_bind_group, &[]);
-
-            for stroke in state.strokes.iter() {
-                if stroke.erased() || stroke.points().is_empty() {
-                    continue;
-                }
-
-                pass.set_push_constants(
-                    ShaderStages::VERTEX,
-                    0,
-                    bytemuck::cast_slice(&stroke.color().to_float()),
-                );
-
-                pass.set_vertex_buffer(0, stroke.backend().unwrap().buffer.slice(..));
-                pass.draw(0..stroke.points().len() as u32, 0..1);
-            }
+        } else {
+            render!(&surface_view, {});
         }
 
-        if !cursor_visible {
-            let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
-                label: Some("cursor"),
-                color_attachments: &[Some(RenderPassColorAttachment {
-                    view: &smaa_frame,
-                    resolve_target: None,
-                    ops: Operations {
-                        load: LoadOp::Load,
-                        store: true,
-                    },
-                })],
-                depth_stencil_attachment: None,
-            });
-
-            let info_buffer = [
-                if state.stylus.down() { 1.0f32 } else { 0. },
-                if state.stylus.inverted() { 1. } else { 0. },
-            ];
-
-            pass.set_pipeline(&self.cursor_pipeline);
-            pass.set_bind_group(0, &self.cursor_bind_group, &[]);
-            pass.set_push_constants(ShaderStages::VERTEX, 0, bytemuck::cast_slice(&info_buffer));
-            pass.set_vertex_buffer(0, self.cursor_buffer.slice(..));
-            pass.draw(0..(NUM_SEGMENTS + 1) as u32, 0..1);
-        }
-
-        self.queue.submit(Some(encoder.finish()));
-
-        smaa_frame.resolve();
         output.present();
 
         Ok(())

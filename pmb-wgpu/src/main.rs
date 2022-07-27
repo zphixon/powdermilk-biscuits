@@ -238,6 +238,10 @@ async fn run() {
                     state.increase_brush();
                 }
 
+                if input.just_pressed(A) {
+                    graphics.aa = !graphics.aa;
+                }
+
                 match (state.path.as_ref(), state.modified) {
                     (Some(path), true) => {
                         let title = format!("{} (modified)", path.display());
