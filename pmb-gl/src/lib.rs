@@ -39,10 +39,17 @@ impl powdermilk_biscuits::Backend for GlBackend {
 pub struct StrokeBackend {
     pub vbo: glow::Buffer,
     pub vao: glow::VertexArray,
+    pub dirty: bool,
 }
 
 impl powdermilk_biscuits::StrokeBackend for StrokeBackend {
-    fn dirty(&mut self) {}
+    fn make_dirty(&mut self) {
+        self.dirty = true;
+    }
+
+    fn is_dirty(&self) -> bool {
+        self.dirty
+    }
 }
 
 pub fn physical_pos_to_pixel_pos(pos: PhysicalPosition<f64>) -> PixelPos {

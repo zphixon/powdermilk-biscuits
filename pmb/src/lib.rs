@@ -42,10 +42,6 @@ pub fn write(path: impl AsRef<std::path::Path>, disk: ToDisk) -> Result<()> {
 pub const TITLE_UNMODIFIED: &'static str = "hi! <3";
 pub const TITLE_MODIFIED: &'static str = "hi! <3 (modified)";
 
-pub trait StrokeBackend {
-    fn dirty(&mut self);
-}
-
 pub trait Backend: std::fmt::Debug + Default {
     type Ndc: std::fmt::Display + Clone + Copy;
 
@@ -54,6 +50,11 @@ pub trait Backend: std::fmt::Debug + Default {
 
     fn ndc_to_stroke(&self, width: u32, height: u32, zoom: f32, ndc: Self::Ndc) -> StrokePoint;
     fn stroke_to_ndc(&self, width: u32, height: u32, zoom: f32, point: StrokePoint) -> Self::Ndc;
+}
+
+pub trait StrokeBackend: std::fmt::Debug {
+    fn make_dirty(&mut self);
+    fn is_dirty(&self) -> bool;
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -598,7 +599,7 @@ where
                             });
 
                             if let Some(backend) = stroke.backend_mut().as_mut() {
-                                backend.dirty();
+                                backend.make_dirty();
                             }
 
                             stroke.calculate_spline();

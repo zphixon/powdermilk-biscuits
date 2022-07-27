@@ -1,7 +1,6 @@
+use crate::{graphics::Color, StrokeBackend};
 use bspline::BSpline;
 use serde::{Deserialize, Serialize};
-
-use crate::graphics::Color;
 
 #[derive(Default, Debug, Clone, Copy, Serialize, Deserialize)]
 #[repr(packed)]
@@ -52,7 +51,10 @@ impl DiskPart {
     }
 }
 
-impl<S> From<Stroke<S>> for DiskPart {
+impl<S> From<Stroke<S>> for DiskPart
+where
+    S: StrokeBackend,
+{
     fn from(stroke: Stroke<S>) -> Self {
         stroke.disk
     }
@@ -65,7 +67,10 @@ pub struct Stroke<S> {
     backend: Option<S>,
 }
 
-impl<S> Default for Stroke<S> {
+impl<S> Default for Stroke<S>
+where
+    S: StrokeBackend,
+{
     fn default() -> Self {
         Self {
             disk: DiskPart::default(),
@@ -75,7 +80,10 @@ impl<S> Default for Stroke<S> {
     }
 }
 
-impl<S> Clone for Stroke<S> {
+impl<S> Clone for Stroke<S>
+where
+    S: StrokeBackend,
+{
     fn clone(&self) -> Self {
         Stroke {
             disk: DiskPart {
@@ -93,7 +101,12 @@ impl<S> Clone for Stroke<S> {
 
 impl<S> Stroke<S> {
     pub const DEGREE: usize = 3;
+}
 
+impl<S> Stroke<S>
+where
+    S: StrokeBackend,
+{
     pub fn with_disk(disk: DiskPart) -> Self {
         Self {
             disk,
@@ -170,6 +183,10 @@ impl<S> Stroke<S> {
     {
         let backend = with(unsafe { self.as_bytes() });
         self.backend = Some(backend);
+    }
+
+    pub fn is_dirty(&self) -> bool {
+        self.backend().map(|b| b.is_dirty()).unwrap_or(true)
     }
 
     pub fn calculate_spline(&mut self) {

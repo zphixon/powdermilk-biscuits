@@ -57,8 +57,12 @@ pub struct StrokeBackend {
 }
 
 impl powdermilk_biscuits::StrokeBackend for StrokeBackend {
-    fn dirty(&mut self) {
+    fn make_dirty(&mut self) {
         self.dirty = true;
+    }
+
+    fn is_dirty(&self) -> bool {
+        self.dirty
     }
 }
 
@@ -319,7 +323,7 @@ impl Graphics {
 
     pub fn buffer_all_strokes(&mut self, state: &mut State<WgpuBackend, StrokeBackend>) {
         for stroke in state.strokes.iter_mut() {
-            if stroke.backend().map(|b| b.dirty).unwrap_or(true) {
+            if stroke.is_dirty() {
                 self.buffer_stroke(stroke);
             }
         }

@@ -6,6 +6,7 @@ use glutin::{
     window::WindowBuilder,
     ContextBuilder,
 };
+use pmb_gl::StrokeBackend;
 use powdermilk_biscuits::{stroke::StrokeStyle, State, TITLE_MODIFIED, TITLE_UNMODIFIED};
 use std::mem::size_of;
 
@@ -432,21 +433,39 @@ fn main() {
                 }
 
                 for stroke in state.strokes.iter_mut() {
+                    unsafe {
+                        if stroke.is_dirty() {
+                            stroke.replace_backend_with(|bytes| {
+                                let vbo = gl.create_buffer().unwrap();
+                                let vao = gl.create_vertex_array().unwrap();
+
+                                gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
+                                gl.bind_vertex_array(Some(vao));
+                                gl.buffer_data_u8_slice(
+                                    glow::ARRAY_BUFFER,
+                                    &bytes,
+                                    glow::STATIC_DRAW,
+                                );
+
+                                pmb_gl::StrokeBackend {
+                                    vbo,
+                                    vao,
+                                    dirty: false,
+                                }
+                            });
+                        }
+                    }
+                }
+
+                for stroke in state.strokes.iter() {
                     if stroke.points().is_empty() || stroke.erased() {
                         continue;
                     }
 
                     unsafe {
-                        stroke.replace_backend_with(|bytes| {
-                            let vbo = gl.create_buffer().unwrap();
-                            let vao = gl.create_vertex_array().unwrap();
-
-                            gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
-                            gl.bind_vertex_array(Some(vao));
-                            gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, &bytes, glow::STATIC_DRAW);
-
-                            pmb_gl::StrokeBackend { vbo, vao }
-                        });
+                        let StrokeBackend { vbo, vao, .. } = stroke.backend().unwrap();
+                        gl.bind_buffer(glow::ARRAY_BUFFER, Some(*vbo));
+                        gl.bind_vertex_array(Some(*vao));
 
                         gl.vertex_attrib_pointer_f32(
                             0,
