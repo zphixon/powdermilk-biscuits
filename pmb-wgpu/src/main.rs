@@ -47,17 +47,7 @@ async fn run() {
 
         match event {
             Event::WindowEvent {
-                event:
-                    WindowEvent::CloseRequested
-                    | WindowEvent::KeyboardInput {
-                        input:
-                            KeyboardInput {
-                                state: ElementState::Pressed,
-                                virtual_keycode: Some(VirtualKeyCode::Escape),
-                                ..
-                            },
-                        ..
-                    },
+                event: WindowEvent::CloseRequested,
                 ..
             } => {
                 if state.modified {
@@ -70,6 +60,22 @@ async fn run() {
                 } else {
                     *flow = ControlFlow::Exit;
                 }
+            }
+
+            Event::WindowEvent {
+                event:
+                    WindowEvent::KeyboardInput {
+                        input:
+                            KeyboardInput {
+                                state: ElementState::Pressed,
+                                virtual_keycode: Some(VirtualKeyCode::Escape),
+                                ..
+                            },
+                        ..
+                    },
+                ..
+            } => {
+                *flow = ControlFlow::Exit;
             }
 
             Event::WindowEvent {
