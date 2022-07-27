@@ -264,7 +264,7 @@ impl Graphics {
             format: surface_format,
             width: size.width,
             height: size.height,
-            present_mode: PresentMode::Fifo,
+            present_mode: PresentMode::Immediate,
         };
 
         surface.configure(&device, &config);
