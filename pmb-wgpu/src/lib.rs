@@ -10,13 +10,14 @@ use wgpu::{
     Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
     BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BlendState, Buffer,
     BufferAddress, BufferBindingType, BufferSize, BufferUsages, Color as WgpuColor,
-    ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor, Face,
-    Features, FragmentState, FrontFace, Instance, Limits, LoadOp, MultisampleState, Operations,
-    PipelineLayoutDescriptor, PolygonMode, PowerPreference, PresentMode, PrimitiveState,
-    PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline,
-    RenderPipelineDescriptor, RequestAdapterOptions, ShaderStages, Surface, SurfaceConfiguration,
-    SurfaceError, TextureUsages, TextureViewDescriptor, VertexAttribute, VertexBufferLayout,
-    VertexFormat, VertexState, VertexStepMode,
+    ColorTargetState, ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor,
+    DynamicOffset, Face, Features, FragmentState, FrontFace, Instance, Limits, LoadOp,
+    MultisampleState, Operations, PipelineLayoutDescriptor, PolygonMode, PowerPreference,
+    PresentMode, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment,
+    RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions,
+    ShaderStages, Surface, SurfaceConfiguration, SurfaceError, TextureUsages,
+    TextureViewDescriptor, VertexAttribute, VertexBufferLayout, VertexFormat, VertexState,
+    VertexStepMode,
 };
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
@@ -221,7 +222,7 @@ impl Graphics {
                 visibility: ShaderStages::VERTEX,
                 ty: BindingType::Buffer {
                     ty: BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
+                    has_dynamic_offset: true,
                     min_binding_size: None,
                 },
                 count: None,
@@ -350,9 +351,72 @@ impl Graphics {
         size: PhysicalSize<u32>,
     ) -> Result<(), SurfaceError> {
         let output = self.surface.get_current_texture()?;
-        let view = output
+        let surface_view = output
             .texture
             .create_view(&TextureViewDescriptor::default());
+
+        let PhysicalSize { width, height } = size;
+        let xform = stroke_to_ndc(width, height, state.settings.zoom, state.settings.origin);
+        let view = glam::Mat4::from_scale_rotation_translation(
+            glam::vec3(
+                state.settings.zoom / width as f32,
+                state.settings.zoom / height as f32,
+                1.0,
+            ),
+            glam::Quat::IDENTITY,
+            glam::vec3(xform.x, xform.y, 0.0),
+        );
+
+        self.queue.write_buffer(
+            &self.view_uniform_buffer,
+            0,
+            bytemuck::cast_slice(&view.to_cols_array()),
+        );
+
+        let colors: Vec<f32> = state
+            .strokes
+            .iter()
+            .flat_map(|stroke| stroke.color().to_float())
+            .collect();
+
+        let offsets: Vec<DynamicOffset> = std::iter::repeat(())
+            .enumerate()
+            .take(state.strokes.len())
+            .map(|(i, _)| i as DynamicOffset)
+            .collect();
+
+        self.color_bind_layout = self
+            .device
+            .create_bind_group_layout(&BindGroupLayoutDescriptor {
+                label: Some("color bl"),
+                entries: &[BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStages::VERTEX,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Uniform,
+                        has_dynamic_offset: true,
+                        min_binding_size: BufferSize::new(std::mem::size_of::<[f32; 3]>() as _),
+                    },
+                    count: None,
+                }],
+            });
+
+        self.color_uniform_buffer = self.device.create_buffer_init(&BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(&colors),
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+        });
+
+        self.color_bind_group = self.device.create_bind_group(&BindGroupDescriptor {
+            label: None,
+            layout: &self.color_bind_layout,
+            entries: &[BindGroupEntry {
+                binding: 0,
+                resource: self.color_uniform_buffer.as_entire_binding(),
+            }],
+        });
+
+        self.queue.submit(None);
 
         let mut encoder = self
             .device
@@ -364,7 +428,7 @@ impl Graphics {
             let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
                 label: Some("render pass"),
                 color_attachments: &[Some(RenderPassColorAttachment {
-                    view: &view,
+                    view: &surface_view,
                     resolve_target: None,
                     ops: Operations {
                         load: LoadOp::Clear(WgpuColor::BLACK),
@@ -376,27 +440,14 @@ impl Graphics {
 
             pass.set_pipeline(&self.pipeline);
             pass.set_bind_group(0, &self.view_bind_group, &[]);
-            pass.set_bind_group(1, &self.color_bind_group, &[]);
 
-            let PhysicalSize { width, height } = size;
-            let xform = stroke_to_ndc(width, height, state.settings.zoom, state.settings.origin);
-            let view = glam::Mat4::from_scale_rotation_translation(
-                glam::vec3(
-                    state.settings.zoom / width as f32,
-                    state.settings.zoom / height as f32,
-                    1.0,
-                ),
-                glam::Quat::IDENTITY,
-                glam::vec3(xform.x, xform.y, 0.0),
-            );
+            for (i, stroke) in state.strokes.iter().enumerate() {
+                pass.set_bind_group(
+                    1,
+                    &self.color_bind_group,
+                    &[i as u32 * self.device.limits().min_uniform_buffer_offset_alignment],
+                );
 
-            self.queue.write_buffer(
-                &self.view_uniform_buffer,
-                0,
-                bytemuck::cast_slice(&view.to_cols_array()),
-            );
-
-            for stroke in state.strokes.iter() {
                 pass.set_vertex_buffer(0, stroke.backend().unwrap().buffer.slice(..));
                 pass.draw(0..stroke.points().len() as u32, 0..1);
             }
