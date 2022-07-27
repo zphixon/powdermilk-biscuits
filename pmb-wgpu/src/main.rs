@@ -116,14 +116,16 @@ async fn run() {
                 input.handle_mouse_button(button, state);
             }
 
-            Event::RedrawRequested(_) => match graphics.render(&mut state, window.inner_size()) {
-                Err(SurfaceError::Lost) => graphics.resize(graphics.size),
-                Err(SurfaceError::OutOfMemory) => {
-                    ui::error("Out of memory!");
-                    *flow = ControlFlow::Exit;
+            Event::RedrawRequested(_) => {
+                match graphics.render(&mut state, window.inner_size(), cursor_visible) {
+                    Err(SurfaceError::Lost) => graphics.resize(graphics.size),
+                    Err(SurfaceError::OutOfMemory) => {
+                        ui::error("Out of memory!");
+                        *flow = ControlFlow::Exit;
+                    }
+                    _ => {}
                 }
-                _ => {}
-            },
+            }
 
             Event::WindowEvent {
                 event:

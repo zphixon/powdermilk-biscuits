@@ -27,6 +27,8 @@ use winit::{
     window::Window,
 };
 
+const NUM_SEGMENTS: usize = 50;
+
 #[derive(Debug, Default)]
 pub struct WgpuBackend;
 
@@ -48,6 +50,21 @@ impl powdermilk_biscuits::Backend for WgpuBackend {
     fn stroke_to_ndc(&self, width: u32, height: u32, zoom: f32, point: StrokePoint) -> Self::Ndc {
         stroke_to_ndc(width, height, zoom, point)
     }
+}
+
+pub fn view_matrix(
+    zoom: f32,
+    scale: f32,
+    size: PhysicalSize<u32>,
+    origin: StrokePoint,
+) -> glam::Mat4 {
+    let PhysicalSize { width, height } = size;
+    let xform = stroke_to_ndc(width, height, zoom, origin);
+    glam::Mat4::from_scale_rotation_translation(
+        glam::vec3(scale / width as f32, scale / height as f32, 1.0),
+        glam::Quat::IDENTITY,
+        glam::vec3(xform.x, xform.y, 0.0),
+    )
 }
 
 #[derive(Debug)]
@@ -147,10 +164,17 @@ pub struct Graphics {
     pub queue: Queue,
     pub config: SurfaceConfiguration,
     pub size: Size,
-    pub pipeline: RenderPipeline,
-    pub view_bind_layout: BindGroupLayout,
-    pub view_bind_group: BindGroup,
-    pub view_uniform_buffer: Buffer,
+    pub stroke_pipeline: RenderPipeline,
+    pub stroke_view_bind_layout: BindGroupLayout,
+    pub stroke_view_bind_group: BindGroup,
+    pub stroke_view_uniform_buffer: Buffer,
+    pub cursor_buffer: Buffer,
+    pub cursor_pipeline: RenderPipeline,
+    pub cursor_bind_layout: BindGroupLayout,
+    pub cursor_bind_group: BindGroup,
+    pub cursor_view_uniform_buffer: Buffer,
+    pub cursor_pen_down_uniform_buffer: Buffer,
+    pub cursor_erasing_uniform_buffer: Buffer,
 }
 
 impl Graphics {
@@ -194,9 +218,10 @@ impl Graphics {
 
         surface.configure(&device, &config);
 
-        let shader = device.create_shader_module(wgpu::include_wgsl!("shaders/stroke_line.wgsl"));
+        let stroke_shader =
+            device.create_shader_module(wgpu::include_wgsl!("shaders/stroke_line.wgsl"));
 
-        let view_bind_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+        let stroke_view_bind_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("view bl"),
             entries: &[BindGroupLayoutEntry {
                 binding: 0,
@@ -210,24 +235,24 @@ impl Graphics {
             }],
         });
 
-        let view_uniform_buffer = device.create_buffer_init(&BufferInitDescriptor {
+        let stroke_view_uniform_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("view ub"),
             contents: bytemuck::cast_slice(&glam::Mat4::IDENTITY.to_cols_array()),
             usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
         });
 
-        let view_bind_group = device.create_bind_group(&BindGroupDescriptor {
+        let stroke_view_bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("view bg"),
-            layout: &view_bind_layout,
+            layout: &stroke_view_bind_layout,
             entries: &[BindGroupEntry {
                 binding: 0,
-                resource: view_uniform_buffer.as_entire_binding(),
+                resource: stroke_view_uniform_buffer.as_entire_binding(),
             }],
         });
 
-        let layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+        let stroke_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("pipeline layout"),
-            bind_group_layouts: &[&view_bind_layout],
+            bind_group_layouts: &[&stroke_view_bind_layout],
             push_constant_ranges: &[PushConstantRange {
                 stages: ShaderStages::VERTEX,
                 range: 0..12,
@@ -240,11 +265,11 @@ impl Graphics {
             write_mask: ColorWrites::ALL,
         })];
 
-        let desc = RenderPipelineDescriptor {
-            label: Some("pipeline"),
-            layout: Some(&layout),
+        let stroke_desc = RenderPipelineDescriptor {
+            label: Some("stroke pipeline"),
+            layout: Some(&stroke_layout),
             vertex: VertexState {
-                module: &shader,
+                module: &stroke_shader,
                 entry_point: "vmain",
                 buffers: &[VertexBufferLayout {
                     array_stride: size_of::<StrokeElement>() as BufferAddress,
@@ -264,7 +289,7 @@ impl Graphics {
                 }],
             },
             fragment: Some(FragmentState {
-                module: &shader,
+                module: &stroke_shader,
                 entry_point: "fmain",
                 targets: &cts,
             }),
@@ -286,7 +311,140 @@ impl Graphics {
             multiview: None,
         };
 
-        let pipeline = device.create_render_pipeline(&desc);
+        let stroke_pipeline = device.create_render_pipeline(&stroke_desc);
+
+        let default_cursor = powdermilk_biscuits::graphics::circle_points(
+            powdermilk_biscuits::DEFAULT_BRUSH as f32,
+            NUM_SEGMENTS,
+        );
+
+        let cursor_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("cursor points"),
+            contents: bytemuck::cast_slice(default_cursor.as_slice()),
+            usage: BufferUsages::VERTEX,
+        });
+
+        let cursor_shader = device.create_shader_module(wgpu::include_wgsl!("shaders/cursor.wgsl"));
+
+        let cursor_bind_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("cursor"),
+            entries: &[
+                BindGroupLayoutEntry {
+                    binding: 0,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    visibility: ShaderStages::VERTEX,
+                    count: None,
+                },
+                BindGroupLayoutEntry {
+                    binding: 1,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    visibility: ShaderStages::VERTEX,
+                    count: None,
+                },
+                BindGroupLayoutEntry {
+                    binding: 2,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    visibility: ShaderStages::VERTEX,
+                    count: None,
+                },
+            ],
+        });
+
+        let cursor_view_uniform_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(&glam::Mat4::IDENTITY.to_cols_array()),
+            usage: BufferUsages::VERTEX | BufferUsages::COPY_DST | BufferUsages::UNIFORM,
+        });
+
+        let cursor_pen_down_uniform_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(&[0.]),
+            usage: BufferUsages::VERTEX | BufferUsages::COPY_DST | BufferUsages::UNIFORM,
+        });
+
+        let cursor_erasing_uniform_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(&[0.]),
+            usage: BufferUsages::VERTEX | BufferUsages::COPY_DST | BufferUsages::UNIFORM,
+        });
+
+        let cursor_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("cursor"),
+            bind_group_layouts: &[&cursor_bind_layout],
+            push_constant_ranges: &[],
+        });
+
+        let cursor_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: None,
+            layout: &cursor_bind_layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: cursor_view_uniform_buffer.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: cursor_pen_down_uniform_buffer.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 2,
+                    resource: cursor_erasing_uniform_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let cursor_desc = RenderPipelineDescriptor {
+            label: Some("cursor pipeline"),
+            layout: Some(&cursor_layout),
+            vertex: VertexState {
+                module: &cursor_shader,
+                entry_point: "vmain",
+                buffers: &[VertexBufferLayout {
+                    array_stride: (size_of::<f32>() * 2) as BufferAddress,
+                    step_mode: VertexStepMode::Vertex,
+                    attributes: &[VertexAttribute {
+                        offset: 0,
+                        shader_location: 0,
+                        format: VertexFormat::Float32x2,
+                    }],
+                }],
+            },
+            fragment: Some(FragmentState {
+                module: &cursor_shader,
+                entry_point: "fmain",
+                targets: &cts,
+            }),
+            primitive: PrimitiveState {
+                topology: PrimitiveTopology::LineStrip,
+                strip_index_format: None,
+                front_face: FrontFace::Ccw,
+                cull_mode: Some(Face::Back),
+                polygon_mode: PolygonMode::Fill,
+                unclipped_depth: false,
+                conservative: false,
+            },
+            depth_stencil: None,
+            multisample: MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            multiview: None,
+        };
+
+        let cursor_pipeline = device.create_render_pipeline(&cursor_desc);
 
         Graphics {
             surface,
@@ -294,10 +452,17 @@ impl Graphics {
             queue,
             config,
             size,
-            pipeline,
-            view_bind_layout,
-            view_bind_group,
-            view_uniform_buffer,
+            stroke_pipeline,
+            stroke_view_bind_layout,
+            stroke_view_bind_group,
+            stroke_view_uniform_buffer,
+            cursor_buffer,
+            cursor_pipeline,
+            cursor_bind_layout,
+            cursor_bind_group,
+            cursor_view_uniform_buffer,
+            cursor_pen_down_uniform_buffer,
+            cursor_erasing_uniform_buffer,
         }
     }
 
@@ -333,6 +498,7 @@ impl Graphics {
         &mut self,
         state: &mut State<WgpuBackend, StrokeBackend>,
         size: PhysicalSize<u32>,
+        cursor_visible: bool,
     ) -> Result<(), SurfaceError> {
         self.buffer_all_strokes(state);
 
@@ -341,23 +507,44 @@ impl Graphics {
             .texture
             .create_view(&TextureViewDescriptor::default());
 
-        let PhysicalSize { width, height } = size;
-        let xform = stroke_to_ndc(width, height, state.settings.zoom, state.settings.origin);
-        let view = glam::Mat4::from_scale_rotation_translation(
-            glam::vec3(
-                state.settings.zoom / width as f32,
-                state.settings.zoom / height as f32,
-                1.0,
-            ),
-            glam::Quat::IDENTITY,
-            glam::vec3(xform.x, xform.y, 0.0),
+        let stroke_view = view_matrix(
+            state.settings.zoom,
+            state.settings.zoom,
+            size,
+            state.settings.origin,
+        );
+
+        let cursor_view = view_matrix(
+            state.settings.zoom,
+            state.settings.brush_size as f32,
+            size,
+            state.stylus.point,
         );
 
         self.queue.write_buffer(
-            &self.view_uniform_buffer,
+            &self.stroke_view_uniform_buffer,
             0,
-            bytemuck::cast_slice(&view.to_cols_array()),
+            bytemuck::cast_slice(&stroke_view.to_cols_array()),
         );
+
+        self.queue.write_buffer(
+            &self.cursor_view_uniform_buffer,
+            0,
+            bytemuck::cast_slice(&cursor_view.to_cols_array()),
+        );
+
+        self.queue.write_buffer(
+            &self.cursor_pen_down_uniform_buffer,
+            0,
+            bytemuck::cast_slice(&[if state.stylus.down() { 1. } else { 0. }]),
+        );
+
+        self.queue.write_buffer(
+            &self.cursor_erasing_uniform_buffer,
+            0,
+            bytemuck::cast_slice(&[if state.stylus.inverted() { 1. } else { 0. }]),
+        );
+
         self.queue.submit(None);
 
         let mut encoder = self
@@ -380,8 +567,8 @@ impl Graphics {
                 depth_stencil_attachment: None,
             });
 
-            pass.set_pipeline(&self.pipeline);
-            pass.set_bind_group(0, &self.view_bind_group, &[]);
+            pass.set_pipeline(&self.stroke_pipeline);
+            pass.set_bind_group(0, &self.stroke_view_bind_group, &[]);
 
             for stroke in state.strokes.iter() {
                 if stroke.erased() || stroke.points().is_empty() {
@@ -397,6 +584,26 @@ impl Graphics {
                 pass.set_vertex_buffer(0, stroke.backend().unwrap().buffer.slice(..));
                 pass.draw(0..stroke.points().len() as u32, 0..1);
             }
+        }
+
+        if !cursor_visible {
+            let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
+                label: Some("cursor"),
+                color_attachments: &[Some(RenderPassColorAttachment {
+                    view: &surface_view,
+                    resolve_target: None,
+                    ops: Operations {
+                        load: LoadOp::Load,
+                        store: true,
+                    },
+                })],
+                depth_stencil_attachment: None,
+            });
+
+            pass.set_pipeline(&self.cursor_pipeline);
+            pass.set_bind_group(0, &self.cursor_bind_group, &[]);
+            pass.set_vertex_buffer(0, self.cursor_buffer.slice(..));
+            pass.draw(0..NUM_SEGMENTS as u32, 0..1);
         }
 
         self.queue.submit(Some(encoder.finish()));
