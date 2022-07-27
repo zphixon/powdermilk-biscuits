@@ -1,7 +1,4 @@
-use powdermilk_biscuits::{
-    input::{InputHandler, MouseButton},
-    ui, State,
-};
+use powdermilk_biscuits::{ui, State};
 use wgpu::SurfaceError;
 use winit::{
     dpi::{LogicalPosition, PhysicalSize},
@@ -39,7 +36,6 @@ async fn run() {
     let mut graphics = pmb_wgpu::Graphics::new(&window).await;
     graphics.buffer_all_strokes(&mut state);
 
-    let mut input = InputHandler::default();
     let mut cursor_visible = true;
 
     ev.run(move |event, _, flow| {
@@ -110,12 +106,18 @@ async fn run() {
             }
 
             Event::WindowEvent {
-                event: WindowEvent::MouseInput { state, button, .. },
+                event:
+                    WindowEvent::MouseInput {
+                        state: key_state,
+                        button,
+                        ..
+                    },
                 ..
             } => {
                 let button = pmb_wgpu::winit_to_pmb_mouse_button(button);
-                let state = pmb_wgpu::winit_to_pmb_key_state(state);
-                input.handle_mouse_button(button, state);
+                let key_state = pmb_wgpu::winit_to_pmb_key_state(key_state);
+                state.handle_mouse_button(button, key_state);
+                window.request_redraw();
             }
 
             Event::RedrawRequested(_) => {
@@ -134,7 +136,7 @@ async fn run() {
                     WindowEvent::KeyboardInput {
                         input:
                             KeyboardInput {
-                                state,
+                                state: key_state,
                                 virtual_keycode: Some(key),
                                 ..
                             },
@@ -143,23 +145,20 @@ async fn run() {
                 ..
             } => {
                 let key = pmb_wgpu::winit_to_pmb_keycode(key);
-                let state = pmb_wgpu::winit_to_pmb_key_state(state);
-                input.handle_key(key, state);
+                let key_state = pmb_wgpu::winit_to_pmb_key_state(key_state);
+                state.handle_key(key, key_state);
             }
 
             Event::WindowEvent {
                 event: WindowEvent::CursorMoved { position, .. },
                 ..
             } => {
-                let prev = input.cursor_pos();
-                input.handle_mouse_move(pmb_wgpu::physical_pos_to_pixel_pos(position));
-
-                if input.button_down(MouseButton::Left) {
-                    let next = input.cursor_pos();
-                    let PhysicalSize { width, height } = window.inner_size();
-                    state.move_origin(width, height, prev, next);
-                    window.request_redraw();
-                }
+                let PhysicalSize { width, height } = window.inner_size();
+                state.handle_cursor_move(
+                    width,
+                    height,
+                    pmb_wgpu::physical_pos_to_pixel_pos(position),
+                );
 
                 if !cursor_visible {
                     cursor_visible = true;
@@ -175,69 +174,15 @@ async fn run() {
                 cursor_visible = false;
                 window.set_cursor_visible(false);
 
-                let prev_y = input.cursor_pos().y as f32;
-                input.handle_mouse_move(pmb_wgpu::physical_pos_to_pixel_pos(touch.location));
-                let next_y = input.cursor_pos().y as f32;
-                let dy = next_y - prev_y;
-
                 let PhysicalSize { width, height } = window.inner_size();
-                let prev_ndc =
-                    pmb_wgpu::stroke_to_ndc(width, height, state.settings.zoom, state.stylus.point);
-                let prev_pix = pmb_wgpu::ndc_to_pixel(width, height, prev_ndc);
-
-                state.update(width, height, pmb_wgpu::winit_to_pmb_touch(touch));
-
-                let next_ndc =
-                    pmb_wgpu::stroke_to_ndc(width, height, state.settings.zoom, state.stylus.point);
-                let next_pix = pmb_wgpu::ndc_to_pixel(width, height, next_ndc);
-
-                match (input.button_down(MouseButton::Middle), input.control()) {
-                    (true, false) => state.move_origin(width, height, prev_pix, next_pix),
-                    (true, true) => state.change_zoom(dy),
-                    _ => {}
-                }
+                state.handle_touch(pmb_wgpu::winit_to_pmb_touch(touch), width, height);
             }
 
             Event::MainEventsCleared => {
-                use powdermilk_biscuits::input::Keycode::*;
-
-                if input.just_pressed(D) {
-                    for stroke in state.strokes.iter() {
-                        println!("stroke");
-                        for point in stroke.points().iter() {
-                            let x = point.x;
-                            let y = point.y;
-                            let p = point.pressure;
-                            println!("{x}, {y}, {p}");
-                        }
-                    }
-                    println!("brush={}", state.settings.brush_size);
-                    println!("zoom={:.02}", state.settings.zoom);
-                    println!("origin={}", state.settings.origin);
-                }
-
-                match (input.control(), input.just_pressed(Z)) {
-                    (true, true) => {
-                        state.undo_stroke();
-                        window.request_redraw();
-                    }
-                    (false, true) => {
-                        state.settings.origin = Default::default();
-                        state.settings.zoom = powdermilk_biscuits::DEFAULT_ZOOM;
-                        window.request_redraw();
-                    }
-                    _ => {}
-                }
-
-                if input.just_pressed(LBracket) {
-                    state.decrease_brush();
-                }
-
-                if input.just_pressed(RBracket) {
-                    state.increase_brush();
-                }
-
-                if input.just_pressed(A) {
+                if state
+                    .input
+                    .just_pressed(powdermilk_biscuits::input::Keycode::A)
+                {
                     graphics.aa = !graphics.aa;
                 }
 

@@ -1,7 +1,7 @@
 use crate::PixelPos;
 use std::collections::HashMap;
 
-#[derive(Eq, Hash, PartialEq, Clone, Copy)]
+#[derive(Eq, Hash, PartialEq, Clone, Copy, Debug)]
 #[rustfmt::skip]
 pub enum Keycode {
     Key1, Key2, Key3, Key4, Key5, Key6, Key7, Key8, Key9, Key0, A, B, C, D, E, F, G, H, I, J, K, L,
@@ -68,11 +68,11 @@ fn cycle_state(key_state: KeyState, element_state: ElementState) -> KeyState {
 }
 
 impl InputHandler {
-    pub fn handle_mouse_move(&mut self, cursor_pos: PixelPos) {
+    pub(super) fn handle_mouse_move(&mut self, cursor_pos: PixelPos) {
         self.cursor_pos = cursor_pos;
     }
 
-    pub fn handle_mouse_button(&mut self, button: MouseButton, state: ElementState) {
+    pub(super) fn handle_mouse_button(&mut self, button: MouseButton, state: ElementState) {
         let button_state = self.buttons.entry(button).or_insert(KeyState::Released);
         let next_state = cycle_state(*button_state, state);
         *button_state = next_state;
@@ -90,7 +90,7 @@ impl InputHandler {
         self.buttons.contains_key(&button) && self.buttons[&button].just_pressed()
     }
 
-    pub fn handle_key(&mut self, key: Keycode, state: ElementState) {
+    pub(super) fn handle_key(&mut self, key: Keycode, state: ElementState) {
         let key_state = self.keys.entry(key).or_insert(KeyState::Released);
         let next_state = cycle_state(*key_state, state);
         *key_state = next_state;

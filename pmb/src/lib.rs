@@ -179,6 +179,7 @@ where
     pub settings: Settings,
     pub modified: bool,
     pub path: Option<PathBuf>,
+    pub input: input::InputHandler,
     pub backend: B,
 }
 
@@ -262,6 +263,7 @@ where
             stylus: Default::default(),
             strokes,
             gesture_state: GestureState::NoInput,
+            input: Default::default(),
             settings: Default::default(),
             modified: false,
             path: None,
@@ -296,6 +298,143 @@ where
         let message = format!("Could not open {}", path.as_ref().display());
         let _ = this.read_file(Some(path)).error_dialog(&message);
         this
+    }
+
+    pub fn handle_key(&mut self, key: input::Keycode, state: input::ElementState) {
+        use input::Keycode::*;
+        self.input.handle_key(key, state);
+
+        macro_rules! just_pressed {
+            ($key:ident) => {
+                just_pressed!($key, false, false)
+            };
+
+            (ctrl + $key:ident) => {
+                just_pressed!($key, true, false)
+            };
+
+            (shift + $key:ident) => {
+                just_pressed!($key, false, true)
+            };
+
+            (ctrl + shift + $key:ident) => {
+                just_pressed!($key, true, true)
+            };
+
+            ($key:ident, $ctrl:expr, $shift:expr) => {
+                self.input.just_pressed($key)
+                    && if $ctrl {
+                        self.input.control()
+                    } else {
+                        !self.input.control()
+                    }
+                    && if $shift {
+                        self.input.shift()
+                    } else {
+                        !self.input.shift()
+                    }
+            };
+        }
+
+        if just_pressed!(RBracket) {
+            self.increase_brush();
+        }
+
+        if just_pressed!(LBracket) {
+            self.decrease_brush();
+        }
+
+        if just_pressed!(C) {
+            self.clear_strokes();
+        }
+
+        if just_pressed!(D) {
+            for stroke in self.strokes.iter() {
+                println!("stroke");
+                for point in stroke.points().iter() {
+                    let x = point.x;
+                    let y = point.y;
+                    let p = point.pressure;
+                    println!("{x}, {y}, {p}");
+                }
+            }
+            println!("brush={}", self.settings.brush_size);
+            println!("zoom={:.02}", self.settings.zoom);
+            println!("origin={}", self.settings.origin);
+        }
+
+        if just_pressed!(ctrl + Z) {
+            self.undo_stroke();
+        }
+
+        if just_pressed!(ctrl + S) {
+            let _ = self.save_file();
+        }
+
+        if just_pressed!(Z) {
+            self.reset_view();
+        }
+
+        if just_pressed!(E) {
+            self.stylus.state.inverted = !self.stylus.state.inverted;
+        }
+
+        if just_pressed!(ctrl + O) {
+            let _ = self.read_file(Option::<&str>::None);
+        }
+    }
+
+    pub fn reset_view(&mut self) {
+        self.settings.zoom = DEFAULT_ZOOM;
+        self.settings.origin = Default::default();
+    }
+
+    pub fn handle_mouse_move(&mut self, location: PixelPos) {
+        self.input.handle_mouse_move(location);
+    }
+
+    pub fn handle_touch(&mut self, touch: Touch, width: u32, height: u32) {
+        let prev_y = self.input.cursor_pos().y;
+        self.handle_mouse_move(touch.location);
+        let next_y = self.input.cursor_pos().y;
+        let dy = next_y - prev_y;
+
+        let prev_ndc =
+            self.backend
+                .stroke_to_ndc(width, height, self.settings.zoom, self.stylus.point);
+        let prev_stylus = self.backend.ndc_to_pixel(width, height, prev_ndc);
+
+        self.update_stylus(width, height, touch);
+
+        let next_ndc =
+            self.backend
+                .stroke_to_ndc(width, height, self.settings.zoom, self.stylus.point);
+        let next_stylus = self.backend.ndc_to_pixel(width, height, next_ndc);
+
+        match (
+            self.input.button_down(input::MouseButton::Middle),
+            self.input.control(),
+        ) {
+            (true, false) => {
+                self.move_origin(width, height, prev_stylus, next_stylus);
+            }
+            (true, true) => self.change_zoom(dy),
+            _ => {}
+        }
+    }
+
+    pub fn handle_cursor_move(&mut self, width: u32, height: u32, position: PixelPos) {
+        let prev = self.input.cursor_pos();
+        self.input.handle_mouse_move(position);
+
+        if self.input.button_down(input::MouseButton::Left) {
+            let next = self.input.cursor_pos();
+            self.move_origin(width, height, prev, next);
+        }
+    }
+
+    pub fn handle_mouse_button(&mut self, button: input::MouseButton, state: input::ElementState) {
+        self.input.handle_mouse_button(button, state);
     }
 
     // returns whether to exit or overwrite state
@@ -419,7 +558,7 @@ where
         self.settings.brush_size = self.settings.brush_size.clamp(MIN_BRUSH, MAX_BRUSH);
     }
 
-    pub fn move_origin(&mut self, width: u32, height: u32, prev: PixelPos, next: PixelPos) {
+    fn move_origin(&mut self, width: u32, height: u32, prev: PixelPos, next: PixelPos) {
         let prev_ndc = self.backend.pixel_to_ndc(width, height, prev);
         let prev_stroke = self
             .backend
@@ -446,7 +585,7 @@ where
         self.settings.zoom = self.settings.zoom.clamp(MIN_ZOOM, MAX_ZOOM);
     }
 
-    pub fn clear_strokes(&mut self) {
+    fn clear_strokes(&mut self) {
         self.modified = true;
         std::mem::take(&mut self.strokes);
     }
@@ -456,7 +595,7 @@ where
         self.strokes.pop();
     }
 
-    pub fn update(&mut self, width: u32, height: u32, touch: Touch) {
+    fn update_stylus(&mut self, width: u32, height: u32, touch: Touch) {
         let Touch {
             force,
             phase,

@@ -7,9 +7,7 @@ use glutin::{
     ContextBuilder,
 };
 use pmb_gl::StrokeBackend;
-use powdermilk_biscuits::{
-    input::MouseButton, stroke::StrokeStyle, State, TITLE_MODIFIED, TITLE_UNMODIFIED,
-};
+use powdermilk_biscuits::{State, TITLE_MODIFIED, TITLE_UNMODIFIED};
 use std::mem::size_of;
 
 fn main() {
@@ -94,7 +92,6 @@ fn main() {
     };
 
     let mut cursor_visible = true;
-    let mut input_handler = powdermilk_biscuits::input::InputHandler::default();
     let mut aa = true;
     let mut stroke_style = glow::LINE_STRIP;
 
@@ -131,29 +128,9 @@ fn main() {
                 let key = pmb_gl::glutin_to_pmb_keycode(key);
                 let key_state = pmb_gl::glutin_to_pmb_key_state(key_state);
 
-                input_handler.handle_key(key, key_state);
+                state.handle_key(key, key_state);
 
-                if input_handler.just_pressed(C) {
-                    state.clear_strokes();
-                    context.window().request_redraw();
-                }
-
-                if input_handler.just_pressed(D) {
-                    for stroke in state.strokes.iter() {
-                        println!("stroke");
-                        for point in stroke.points().iter() {
-                            let x = point.x;
-                            let y = point.y;
-                            let pressure = point.pressure;
-                            println!("{x}, {y}, {pressure}");
-                        }
-                    }
-                    println!("brush={}", state.settings.brush_size);
-                    println!("zoom={:.02}", state.settings.zoom);
-                    println!("origin={}", state.settings.origin);
-                }
-
-                if input_handler.just_pressed(A) {
+                if state.input.just_pressed(A) {
                     aa = !aa;
 
                     if aa {
@@ -161,90 +138,17 @@ fn main() {
                     } else {
                         unsafe { gl.disable(glow::MULTISAMPLE) };
                     }
-
-                    context.window().request_redraw();
                 }
 
-                if input_handler.just_pressed(P) {
+                if state.input.just_pressed(P) {
                     stroke_style = match stroke_style {
                         glow::LINE_STRIP => glow::POINTS,
                         glow::POINTS => glow::LINE_STRIP,
                         _ => glow::LINE_STRIP,
                     };
-
-                    context.window().request_redraw();
                 }
 
-                match (input_handler.control(), input_handler.just_pressed(Z)) {
-                    (true, true) => {
-                        state.undo_stroke();
-                        context.window().request_redraw();
-                    }
-                    (false, true) => {
-                        state.settings.origin = Default::default();
-                        state.settings.zoom = powdermilk_biscuits::DEFAULT_ZOOM;
-                        context.window().request_redraw();
-                    }
-                    _ => {}
-                }
-
-                if input_handler.just_pressed(Key1)
-                    || input_handler.just_pressed(Key2)
-                    || input_handler.just_pressed(Key3)
-                    || input_handler.just_pressed(Key4)
-                    || input_handler.just_pressed(Key5)
-                    || input_handler.just_pressed(Key6)
-                    || input_handler.just_pressed(Key7)
-                    || input_handler.just_pressed(Key8)
-                    || input_handler.just_pressed(Key9)
-                    || input_handler.just_pressed(Key0)
-                {
-                    state.settings.stroke_style = unsafe {
-                        std::mem::transmute(
-                            match key {
-                                Key1 => 0,
-                                Key2 => 1,
-                                Key3 => 2,
-                                Key4 => 3,
-                                Key5 => 4,
-                                Key6 => 5,
-                                Key7 => 6,
-                                Key8 => 7,
-                                Key9 => 8,
-                                Key0 => 9,
-                                _ => unreachable!(),
-                            } % StrokeStyle::NUM_VARIANTS,
-                        )
-                    };
-                    context.window().request_redraw();
-
-                    println!("stroke style {:?}", state.settings.stroke_style);
-                }
-
-                if input_handler.just_pressed(R) {
-                    state.settings.use_individual_style = !state.settings.use_individual_style;
-                    context.window().request_redraw();
-                }
-
-                if input_handler.just_pressed(E) {
-                    state.stylus.state.inverted = !state.stylus.state.inverted;
-                    context.window().request_redraw();
-                }
-
-                // TODO probably move all the filename handling to State
-                if input_handler.control() && input_handler.just_pressed(O) {
-                    let _ = state.read_file(Option::<&str>::None);
-                    context.window().request_redraw();
-                }
-
-                if !input_handler.shift()
-                    && input_handler.control()
-                    && input_handler.just_pressed(S)
-                {
-                    let _ = state.save_file();
-                }
-
-                if input_handler.shift() && input_handler.just_pressed(S) {
+                if state.input.shift() && state.input.just_pressed(S) {
                     let num_string = std::fs::read_to_string("img/num.txt").expect("read num.txt");
                     let num = num_string.trim().parse::<usize>().expect("parse num.txt");
                     let filename = format!("img/strokes{num}.png");
@@ -273,6 +177,8 @@ fn main() {
                     std::fs::write("img/num.txt", format!("{next_num}")).unwrap();
                     println!("wrote image as {filename}");
                 }
+
+                context.window().request_redraw();
             }
 
             Event::WindowEvent {
@@ -312,36 +218,10 @@ fn main() {
                 ..
             } => {
                 cursor_visible = false;
-
-                // TODO handle fingers
-                let prev_cursor_y = input_handler.cursor_pos().y as f32;
-                input_handler.handle_mouse_move(pmb_gl::physical_pos_to_pixel_pos(touch.location));
-                let next_cursor_y = input_handler.cursor_pos().y as f32;
-                let cursor_dy = next_cursor_y - prev_cursor_y;
-
-                context.window().set_cursor_visible(cursor_visible);
+                context.window().set_cursor_visible(false);
 
                 let PhysicalSize { width, height } = context.window().inner_size();
-                let prev_stylus_gl =
-                    pmb_gl::stroke_to_ndc(width, height, state.settings.zoom, state.stylus.point);
-                let prev_stylus = pmb_gl::ndc_to_pixel(width, height, prev_stylus_gl);
-
-                state.update(width, height, pmb_gl::glutin_to_pmb_touch(touch));
-
-                let next_stylus_gl =
-                    pmb_gl::stroke_to_ndc(width, height, state.settings.zoom, state.stylus.point);
-                let next_stylus = pmb_gl::ndc_to_pixel(width, height, next_stylus_gl);
-
-                match (
-                    input_handler.button_down(MouseButton::Middle),
-                    input_handler.control(),
-                ) {
-                    (true, false) => {
-                        state.move_origin(width, height, prev_stylus, next_stylus);
-                    }
-                    (true, true) => state.change_zoom(cursor_dy),
-                    _ => {}
-                }
+                state.handle_touch(pmb_gl::glutin_to_pmb_touch(touch), width, height);
 
                 context.window().request_redraw();
             }
@@ -378,33 +258,37 @@ fn main() {
             }
 
             Event::WindowEvent {
-                event: WindowEvent::MouseInput { state, button, .. },
+                event:
+                    WindowEvent::MouseInput {
+                        state: key_state,
+                        button,
+                        ..
+                    },
                 ..
             } => {
                 let button = pmb_gl::glutin_to_pmb_mouse_button(button);
-                let state = pmb_gl::glutin_to_pmb_key_state(state);
-                input_handler.handle_mouse_button(button, state);
+                let key_state = pmb_gl::glutin_to_pmb_key_state(key_state);
+                state.handle_mouse_button(button, key_state);
+                context.window().request_redraw();
             }
 
             Event::WindowEvent {
                 event: WindowEvent::CursorMoved { position, .. },
                 ..
             } => {
-                let prev = input_handler.cursor_pos();
-                input_handler.handle_mouse_move(pmb_gl::physical_pos_to_pixel_pos(position));
-
-                if input_handler.button_down(MouseButton::Left) {
-                    let next = input_handler.cursor_pos();
-                    let PhysicalSize { width, height } = context.window().inner_size();
-                    state.move_origin(width, height, prev, next);
-                    context.window().request_redraw();
-                }
+                let PhysicalSize { width, height } = context.window().inner_size();
+                state.handle_cursor_move(
+                    width,
+                    height,
+                    pmb_gl::physical_pos_to_pixel_pos(position),
+                );
 
                 if !cursor_visible {
                     cursor_visible = true;
                     context.window().set_cursor_visible(cursor_visible);
-                    context.window().request_redraw();
                 }
+
+                context.window().request_redraw();
             }
 
             Event::MainEventsCleared => match (state.path.as_ref(), state.modified) {
