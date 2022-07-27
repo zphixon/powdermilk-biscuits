@@ -384,6 +384,10 @@ impl Graphics {
             pass.set_bind_group(0, &self.view_bind_group, &[]);
 
             for stroke in state.strokes.iter() {
+                if stroke.erased() || stroke.points().is_empty() {
+                    continue;
+                }
+
                 pass.set_push_constants(
                     ShaderStages::VERTEX,
                     0,
