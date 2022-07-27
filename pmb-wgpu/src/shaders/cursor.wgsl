@@ -10,14 +10,14 @@ struct Frag {
 }
 
 @group(0) @binding(0) var<uniform> view: mat4x4<f32>;
-@group(0) @binding(1) var<uniform> penDown: f32;
-@group(0) @binding(2) var<uniform> erasing: f32;
+
+var<push_constant> penState: vec2<f32>;
 
 @vertex fn vmain(@location(0) in: vec2<f32>) -> Frag {
   var out: Frag;
   out.pos = view * vec4<f32>(in, 0.5, 1.0);
-  out.penDown = penDown;
-  out.erasing = erasing;
+  out.penDown = penState.x;
+  out.erasing = penState.y;
   return out;
 }
 
