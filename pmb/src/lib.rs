@@ -9,36 +9,13 @@ use crate::{
     error::{PmbError, Result},
     event::{Touch, TouchPhase},
     graphics::{Color, ColorExt, PixelPos, StrokePoint, StrokePos},
-    stroke::{DiskPart, Stroke, StrokeElement, StrokeStyle},
+    stroke::{Stroke, StrokeElement, StrokeStyle},
     ui::ToUi,
 };
-use serde::{Deserialize, Serialize};
 use std::{
     io::{Read, Write},
     path::PathBuf,
 };
-
-pub fn read(mut r: impl Read) -> Result<ToDisk> {
-    let mut magic = [0; 3];
-    r.read_exact(&mut magic)?;
-
-    if magic != [b'P', b'M', b'B'] {
-        return Result::Err(PmbError::MissingHeader);
-    }
-
-    let reader = flate2::read::DeflateDecoder::new(r);
-    Ok(bincode::deserialize_from(reader)?)
-}
-
-pub fn write(path: impl AsRef<std::path::Path>, disk: ToDisk) -> Result<()> {
-    let mut file = std::fs::File::create(&path)?;
-    file.write_all(&[b'P', b'M', b'B'])?;
-
-    let writer = flate2::write::DeflateEncoder::new(file, flate2::Compression::fast());
-    bincode::serialize_into(writer, &disk)?;
-
-    Ok(())
-}
 
 pub const TITLE_UNMODIFIED: &'static str = "hi! <3";
 pub const TITLE_MODIFIED: &'static str = "hi! <3 (modified)";
@@ -142,53 +119,22 @@ impl GestureState {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
-pub struct Settings {
-    pub brush_size: usize,
-    pub stroke_style: StrokeStyle,
-    pub use_individual_style: bool,
-    pub zoom: f32,
-    pub origin: StrokePoint,
-}
-
-impl Default for Settings {
-    fn default() -> Self {
-        Settings {
-            brush_size: DEFAULT_BRUSH,
-            stroke_style: StrokeStyle::Lines,
-            use_individual_style: false,
-            zoom: DEFAULT_ZOOM,
-            origin: Default::default(),
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct ToDisk {
-    pub strokes: Vec<DiskPart>,
-    pub settings: Settings,
-}
-
-#[derive(Serialize, Deserialize)]
 pub struct State<B, S>
 where
     B: Backend,
     S: StrokeBackend,
 {
     pub strokes: Vec<Stroke<S>>,
-    pub settings: Settings,
-
-    #[serde(skip)]
+    pub brush_size: usize,
+    pub stroke_style: StrokeStyle,
+    pub use_individual_style: bool,
+    pub zoom: f32,
+    pub origin: StrokePoint,
     pub stylus: Stylus,
-    #[serde(skip)]
     pub gesture_state: GestureState,
-    #[serde(skip)]
     pub modified: bool,
-    #[serde(skip)]
     pub path: Option<PathBuf>,
-    #[serde(skip)]
     pub input: input::InputHandler,
-    #[serde(skip)]
     pub backend: Option<B>,
 }
 
@@ -295,7 +241,11 @@ where
     pub fn new() -> Self {
         Self {
             strokes: grid(),
-            settings: Settings::default(),
+            brush_size: DEFAULT_BRUSH,
+            stroke_style: StrokeStyle::default(),
+            use_individual_style: false,
+            zoom: DEFAULT_ZOOM,
+            origin: StrokePoint::default(),
             stylus: Stylus::default(),
             gesture_state: GestureState::NoInput,
             modified: false,
@@ -380,9 +330,9 @@ where
                     println!("{x}, {y}, {p}");
                 }
             }
-            println!("brush={}", self.settings.brush_size);
-            println!("zoom={:.02}", self.settings.zoom);
-            println!("origin={}", self.settings.origin);
+            println!("brush={}", self.brush_size);
+            println!("zoom={:.02}", self.zoom);
+            println!("origin={}", self.origin);
         }
 
         if just_pressed!(ctrl + Z) {
@@ -407,8 +357,8 @@ where
     }
 
     pub fn reset_view(&mut self) {
-        self.settings.zoom = DEFAULT_ZOOM;
-        self.settings.origin = Default::default();
+        self.zoom = DEFAULT_ZOOM;
+        self.origin = Default::default();
     }
 
     pub fn handle_mouse_move(&mut self, location: PixelPos) {
@@ -421,16 +371,16 @@ where
         let next_y = self.input.cursor_pos().y;
         let dy = next_y - prev_y;
 
-        let prev_ndc =
-            self.backend()
-                .stroke_to_ndc(width, height, self.settings.zoom, self.stylus.point);
+        let prev_ndc = self
+            .backend()
+            .stroke_to_ndc(width, height, self.zoom, self.stylus.point);
         let prev_stylus = self.backend().ndc_to_pixel(width, height, prev_ndc);
 
         self.update_stylus(width, height, touch);
 
-        let next_ndc =
-            self.backend()
-                .stroke_to_ndc(width, height, self.settings.zoom, self.stylus.point);
+        let next_ndc = self
+            .backend()
+            .stroke_to_ndc(width, height, self.zoom, self.stylus.point);
         let next_stylus = self.backend().ndc_to_pixel(width, height, next_ndc);
 
         match (
@@ -465,7 +415,7 @@ where
             // if they say yes and the file we're editing has a path
             (rfd::MessageDialogResult::Yes, Some(path)) => {
                 let message = format!("Could not save file as {}", path.display());
-                write(path, self.to_disk()).error_dialog(&message)?;
+                //write(path, self.to_disk()).error_dialog(&message)?;
                 self.modified = false;
                 Ok(true)
             }
@@ -477,7 +427,7 @@ where
                     Some(new_filename) => {
                         // try write to disk
                         let message = format!("Could not save file as {}", new_filename.display());
-                        write(new_filename, self.to_disk()).error_dialog(&message)?;
+                        //write(new_filename, self.to_disk()).error_dialog(&message)?;
                         self.modified = false;
                         Ok(true)
                     }
@@ -527,16 +477,18 @@ where
         };
 
         // read the new file
-        let disk = read(file)?;
+        //let disk = read(file)?;
+        let mut disk = Self::default();
+        disk.strokes.iter_mut().for_each(Stroke::calculate_spline);
 
-        let mut strokes: Vec<_> = disk.strokes.into_iter().map(Stroke::with_disk).collect();
+        self.strokes = disk.strokes;
+        self.brush_size = disk.brush_size;
+        self.stroke_style = disk.stroke_style;
+        self.use_individual_style = disk.use_individual_style;
+        self.zoom = disk.zoom;
+        self.origin = disk.origin;
+        self.stylus = disk.stylus;
 
-        strokes
-            .iter_mut()
-            .for_each(|stroke| stroke.calculate_spline());
-
-        self.strokes = strokes;
-        self.settings = disk.settings;
         self.modified = false;
         self.path = Some(path);
 
@@ -546,65 +498,53 @@ where
     pub fn save_file(&mut self) -> Result<()> {
         if let Some(path) = self.path.as_ref() {
             let message = format!("Could not save file {}", path.display());
-            write(path, self.to_disk()).error_dialog(&message)?;
+            //write(path, self.to_disk()).error_dialog(&message)?;
             self.modified = false;
         } else if let Some(path) = ui::save_dialog("Save unnamed file", None) {
             let message = format!("Could not save file {}", path.display());
             self.path = Some(path);
-            write(self.path.as_ref().unwrap(), self.to_disk()).error_dialog(&message)?;
+            //write(self.path.as_ref().unwrap(), self.to_disk()).error_dialog(&message)?;
             self.modified = false;
         }
 
         Ok(())
     }
 
-    pub fn to_disk(&self) -> ToDisk {
-        ToDisk {
-            strokes: self
-                .strokes
-                .clone()
-                .into_iter()
-                .map(DiskPart::from)
-                .collect(),
-            settings: self.settings.clone(),
-        }
-    }
-
     pub fn increase_brush(&mut self) {
-        self.settings.brush_size += BRUSH_DELTA;
-        self.settings.brush_size = self.settings.brush_size.clamp(MIN_BRUSH, MAX_BRUSH);
+        self.brush_size += BRUSH_DELTA;
+        self.brush_size = self.brush_size.clamp(MIN_BRUSH, MAX_BRUSH);
     }
 
     pub fn decrease_brush(&mut self) {
-        self.settings.brush_size -= BRUSH_DELTA;
-        self.settings.brush_size = self.settings.brush_size.clamp(MIN_BRUSH, MAX_BRUSH);
+        self.brush_size -= BRUSH_DELTA;
+        self.brush_size = self.brush_size.clamp(MIN_BRUSH, MAX_BRUSH);
     }
 
     fn move_origin(&mut self, width: u32, height: u32, prev: PixelPos, next: PixelPos) {
         let prev_ndc = self.backend().pixel_to_ndc(width, height, prev);
         let prev_stroke = self
             .backend()
-            .ndc_to_stroke(width, height, self.settings.zoom, prev_ndc);
-        let prev_xformed = graphics::xform_point_to_pos(self.settings.origin, prev_stroke);
+            .ndc_to_stroke(width, height, self.zoom, prev_ndc);
+        let prev_xformed = graphics::xform_point_to_pos(self.origin, prev_stroke);
 
         let next_ndc = self.backend().pixel_to_ndc(width, height, next);
         let next_stroke = self
             .backend()
-            .ndc_to_stroke(width, height, self.settings.zoom, next_ndc);
-        let next_xformed = graphics::xform_point_to_pos(self.settings.origin, next_stroke);
+            .ndc_to_stroke(width, height, self.zoom, next_ndc);
+        let next_xformed = graphics::xform_point_to_pos(self.origin, next_stroke);
 
         let dx = next_xformed.x - prev_xformed.x;
         let dy = next_xformed.y - prev_xformed.y;
-        self.settings.origin.x += dx;
-        self.settings.origin.y += dy;
+        self.origin.x += dx;
+        self.origin.y += dy;
     }
 
     pub fn change_zoom(&mut self, dz: f32) {
-        if (self.settings.zoom + dz).is_finite() {
-            self.settings.zoom += dz;
+        if (self.zoom + dz).is_finite() {
+            self.zoom += dz;
         }
 
-        self.settings.zoom = self.settings.zoom.clamp(MIN_ZOOM, MAX_ZOOM);
+        self.zoom = self.zoom.clamp(MIN_ZOOM, MAX_ZOOM);
     }
 
     fn clear_strokes(&mut self) {
@@ -629,8 +569,8 @@ where
         let ndc_pos = self.backend().pixel_to_ndc(width, height, location);
         let point = self
             .backend()
-            .ndc_to_stroke(width, height, self.settings.zoom, ndc_pos);
-        let pos = graphics::xform_point_to_pos(self.settings.origin, point);
+            .ndc_to_stroke(width, height, self.zoom, ndc_pos);
+        let pos = graphics::xform_point_to_pos(self.origin, point);
         let pressure = force.unwrap_or(1.0);
 
         let inverted = pen_info
@@ -700,7 +640,7 @@ where
             let stylus_ndc = self.backend().stroke_to_ndc(
                 width,
                 height,
-                self.settings.zoom,
+                self.zoom,
                 StrokePoint {
                     x: self.stylus.pos.x,
                     y: self.stylus.pos.y,
@@ -720,7 +660,7 @@ where
                         let point_ndc = self.backend.unwrap().stroke_to_ndc(
                             width,
                             height,
-                            self.settings.zoom,
+                            self.zoom,
                             StrokePoint {
                                 x: point.x,
                                 y: point.y,
@@ -736,7 +676,7 @@ where
                         .sqrt()
                             * 2.0;
 
-                        if dist < self.settings.brush_size as f32 {
+                        if dist < self.brush_size as f32 {
                             stroke.erase();
                             self.modified = true;
                             break 'inner;
@@ -749,7 +689,7 @@ where
                 TouchPhase::Start => {
                     self.modified = true;
                     self.strokes
-                        .push(Stroke::new(rand::random(), self.settings.brush_size as f32));
+                        .push(Stroke::new(rand::random(), self.brush_size as f32));
                 }
 
                 TouchPhase::Move => {

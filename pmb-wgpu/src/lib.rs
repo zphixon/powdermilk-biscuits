@@ -543,16 +543,11 @@ impl Graphics {
         size: PhysicalSize<u32>,
         cursor_visible: bool,
     ) -> Result<(), SurfaceError> {
-        let stroke_view = view_matrix(
-            state.settings.zoom,
-            state.settings.zoom,
-            size,
-            state.settings.origin,
-        );
+        let stroke_view = view_matrix(state.zoom, state.zoom, size, state.origin);
 
         let cursor_view = view_matrix(
-            state.settings.zoom,
-            state.settings.brush_size as f32,
+            state.zoom,
+            state.brush_size as f32,
             size,
             state.stylus.point,
         );

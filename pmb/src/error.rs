@@ -4,7 +4,7 @@ pub type Result<T> = core::result::Result<T, PmbError>;
 pub enum PmbError {
     MissingHeader,
     IoError(std::io::Error),
-    BincodeError(bincode::Error),
+    BincodeError(Box<dyn std::error::Error>),
 }
 
 impl From<std::io::Error> for PmbError {
@@ -13,9 +13,15 @@ impl From<std::io::Error> for PmbError {
     }
 }
 
-impl From<bincode::Error> for PmbError {
-    fn from(err: bincode::Error) -> Self {
-        PmbError::BincodeError(err)
+impl From<bincode::error::DecodeError> for PmbError {
+    fn from(err: bincode::error::DecodeError) -> Self {
+        PmbError::BincodeError(Box::new(err))
+    }
+}
+
+impl From<bincode::error::EncodeError> for PmbError {
+    fn from(err: bincode::error::EncodeError) -> Self {
+        PmbError::BincodeError(Box::new(err))
     }
 }
 

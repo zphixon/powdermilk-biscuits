@@ -106,7 +106,7 @@ fn main() {
         State::default()
     };
 
-    println!("stroke style {:?}", state.settings.stroke_style);
+    println!("stroke style {:?}", state.stroke_style);
 
     // gl origin in stroke space
     ev.run(move |event, _, control_flow| {
@@ -306,10 +306,10 @@ fn main() {
                 unsafe {
                     gl.use_program(Some(strokes_program));
                     let view = pmb_gl::view_matrix(
-                        state.settings.zoom,
-                        state.settings.zoom,
+                        state.zoom,
+                        state.zoom,
                         context.window().inner_size(),
-                        state.settings.origin,
+                        state.origin,
                     );
                     gl.uniform_matrix_4_f32_slice(
                         Some(&strokes_view),
@@ -389,10 +389,8 @@ fn main() {
                 }
 
                 if !cursor_visible {
-                    let circle = powdermilk_biscuits::graphics::circle_points(
-                        state.settings.brush_size as f32,
-                        32,
-                    );
+                    let circle =
+                        powdermilk_biscuits::graphics::circle_points(state.brush_size as f32, 32);
                     unsafe {
                         gl.use_program(Some(pen_cursor_program));
                         let vbo = gl.create_buffer().unwrap();
@@ -424,7 +422,7 @@ fn main() {
                         );
 
                         let view = pmb_gl::view_matrix(
-                            state.settings.zoom,
+                            state.zoom,
                             1.0,
                             context.window().inner_size(),
                             state.stylus.point,

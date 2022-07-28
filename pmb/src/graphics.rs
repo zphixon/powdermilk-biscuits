@@ -1,4 +1,3 @@
-use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 
 pub type Color = [u8; 3];
@@ -54,7 +53,7 @@ pub struct PixelPos {
     pub y: f32,
 }
 
-#[derive(Default, Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct StrokePoint {
     pub x: f32,
     pub y: f32,

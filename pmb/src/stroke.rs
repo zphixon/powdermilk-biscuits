@@ -1,8 +1,7 @@
 use crate::{graphics::Color, StrokeBackend};
 use bspline::BSpline;
-use serde::{Deserialize, Serialize};
 
-#[derive(Default, Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Copy)]
 #[repr(packed)]
 pub struct StrokeElement {
     pub x: f32,
@@ -32,59 +31,18 @@ impl std::ops::Mul<f32> for StrokeElement {
     }
 }
 
-#[derive(Default, Debug, Serialize, Deserialize)]
-pub struct DiskPart {
+#[derive(Debug, Default)]
+pub struct Stroke<S>
+where
+    S: StrokeBackend,
+{
     points: Vec<StrokeElement>,
     color: Color,
     brush_size: f32,
     style: StrokeStyle,
     erased: bool,
-}
-
-impl DiskPart {
-    pub fn new(color: Color, brush_size: f32) -> Self {
-        DiskPart {
-            color,
-            brush_size,
-            ..Default::default()
-        }
-    }
-}
-
-impl<S> From<Stroke<S>> for DiskPart
-where
-    S: StrokeBackend,
-{
-    fn from(stroke: Stroke<S>) -> Self {
-        stroke.disk
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Stroke<S>
-where
-    S: StrokeBackend,
-{
-    disk: DiskPart,
-
-    #[serde(skip)]
     spline: Option<BSpline<StrokeElement, f32>>,
-
-    #[serde(skip)]
     backend: Option<S>,
-}
-
-impl<S> Default for Stroke<S>
-where
-    S: StrokeBackend,
-{
-    fn default() -> Self {
-        Self {
-            disk: DiskPart::default(),
-            spline: None,
-            backend: Default::default(),
-        }
-    }
 }
 
 impl<S> Clone for Stroke<S>
@@ -93,13 +51,11 @@ where
 {
     fn clone(&self) -> Self {
         Stroke {
-            disk: DiskPart {
-                points: self.disk.points.clone(),
-                color: self.disk.color,
-                brush_size: self.disk.brush_size,
-                style: self.disk.style,
-                erased: self.disk.erased,
-            },
+            points: self.points.clone(),
+            color: self.color,
+            brush_size: self.brush_size,
+            style: self.style,
+            erased: self.erased,
             spline: self.spline.clone(),
             backend: Default::default(),
         }
@@ -122,20 +78,10 @@ impl<S> Stroke<S>
 where
     S: StrokeBackend,
 {
-    pub fn with_disk(disk: DiskPart) -> Self {
-        Self {
-            disk,
-            ..Default::default()
-        }
-    }
-
     pub fn with_points(points: Vec<StrokeElement>, color: Color) -> Self {
         Self {
-            disk: DiskPart {
-                points,
-                color,
-                ..Default::default()
-            },
+            points,
+            color,
             ..Default::default()
         }
     }
@@ -154,34 +100,34 @@ where
 
     pub fn new(color: Color, brush_size: f32) -> Self {
         Self {
-            disk: DiskPart::new(color, brush_size),
-            spline: None,
-            backend: Default::default(),
+            color,
+            brush_size,
+            ..Default::default()
         }
     }
 
     pub fn points(&self) -> &[StrokeElement] {
-        &self.disk.points
+        &self.points
     }
 
     pub fn points_mut(&mut self) -> &mut Vec<StrokeElement> {
-        &mut self.disk.points
+        &mut self.points
     }
 
     pub fn color(&self) -> Color {
-        self.disk.color
+        self.color
     }
 
     pub fn brush_size(&self) -> f32 {
-        self.disk.brush_size
+        self.brush_size
     }
 
     pub fn erased(&self) -> bool {
-        self.disk.erased
+        self.erased
     }
 
     pub fn erase(&mut self) {
-        self.disk.erased = true;
+        self.erased = true;
     }
 
     pub fn backend(&self) -> Option<&S> {
@@ -226,7 +172,7 @@ where
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, evc_derive::EnumVariantCount, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, evc_derive::EnumVariantCount)]
 #[repr(usize)]
 #[allow(dead_code)]
 pub enum StrokeStyle {
