@@ -13,6 +13,8 @@ use powdermilk_biscuits::{
     input::{ElementState, Keycode, MouseButton},
 };
 
+pub type GlState = powdermilk_biscuits::State<GlBackend, StrokeBackend>;
+
 #[derive(Debug, Default)]
 pub struct GlBackend {}
 

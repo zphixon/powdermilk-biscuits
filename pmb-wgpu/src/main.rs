@@ -1,4 +1,5 @@
-use powdermilk_biscuits::{ui, State};
+use pmb_wgpu::WgslState as State;
+use powdermilk_biscuits::ui;
 use wgpu::SurfaceError;
 use winit::{
     dpi::{LogicalPosition, PhysicalSize},
@@ -23,10 +24,9 @@ async fn run() {
         .build(&ev)
         .unwrap();
 
-    let mut state: State<pmb_wgpu::WgpuBackend, pmb_wgpu::StrokeBackend> = if let Some(filename) =
-        std::env::args()
-            .nth(1)
-            .map(|filename| std::path::PathBuf::from(filename))
+    let mut state: State = if let Some(filename) = std::env::args()
+        .nth(1)
+        .map(|filename| std::path::PathBuf::from(filename))
     {
         State::with_filename(filename)
     } else {

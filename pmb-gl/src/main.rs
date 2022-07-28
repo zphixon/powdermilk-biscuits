@@ -6,8 +6,8 @@ use glutin::{
     window::WindowBuilder,
     ContextBuilder,
 };
-use pmb_gl::StrokeBackend;
-use powdermilk_biscuits::{State, TITLE_MODIFIED, TITLE_UNMODIFIED};
+use pmb_gl::{GlState as State, StrokeBackend};
+use powdermilk_biscuits::{TITLE_MODIFIED, TITLE_UNMODIFIED};
 use std::mem::size_of;
 
 fn main() {
@@ -19,6 +19,7 @@ fn main() {
             y: 1080. + 1080. / 2. - 600. / 2.,
         })
         .with_title(TITLE_UNMODIFIED);
+
     let context = unsafe {
         ContextBuilder::new()
             .with_vsync(true)
@@ -29,6 +30,7 @@ fn main() {
             .make_current()
             .unwrap()
     };
+
     let gl =
         unsafe { Context::from_loader_function(|name| context.get_proc_address(name) as *const _) };
 
@@ -95,10 +97,9 @@ fn main() {
     let mut aa = true;
     let mut stroke_style = glow::LINE_STRIP;
 
-    let mut state: State<pmb_gl::GlBackend, pmb_gl::StrokeBackend> = if let Some(filename) =
-        std::env::args()
-            .nth(1)
-            .map(|file| std::path::PathBuf::from(file))
+    let mut state: State = if let Some(filename) = std::env::args()
+        .nth(1)
+        .map(|file| std::path::PathBuf::from(file))
     {
         State::with_filename(filename)
     } else {

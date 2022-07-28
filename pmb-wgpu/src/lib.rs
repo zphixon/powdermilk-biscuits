@@ -29,7 +29,7 @@ use winit::{
     window::Window,
 };
 
-type WgslState = State<WgpuBackend, StrokeBackend>;
+pub type WgslState = State<WgpuBackend, StrokeBackend>;
 
 const NUM_SEGMENTS: usize = 50;
 
