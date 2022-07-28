@@ -29,6 +29,8 @@ use winit::{
     window::Window,
 };
 
+type WgslState = State<WgpuBackend, StrokeBackend>;
+
 const NUM_SEGMENTS: usize = 50;
 
 #[derive(Debug, Default)]
@@ -511,7 +513,7 @@ impl Graphics {
         });
     }
 
-    pub fn buffer_all_strokes(&mut self, state: &mut State<WgpuBackend, StrokeBackend>) {
+    pub fn buffer_all_strokes(&mut self, state: &mut WgslState) {
         for stroke in state.strokes.iter_mut() {
             if stroke.is_dirty() {
                 self.buffer_stroke(stroke);
@@ -521,7 +523,7 @@ impl Graphics {
 
     pub fn render(
         &mut self,
-        state: &mut State<WgpuBackend, StrokeBackend>,
+        state: &mut WgslState,
         size: PhysicalSize<u32>,
         cursor_visible: bool,
     ) -> Result<(), SurfaceError> {
