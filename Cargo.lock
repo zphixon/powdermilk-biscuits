@@ -635,7 +635,7 @@ dependencies = [
 [[package]]
 name = "glutin"
 version = "0.28.0"
-source = "git+https://github.com/zphixon/glutin?branch=my-winit#d9de0fe6dc12f2ce87e9a10d10b64e5750b0050a"
+source = "git+https://github.com/zphixon/glutin?branch=my-winit#e83585bcf67d9943795b63e815e1e5b89147c042"
 dependencies = [
  "cgl",
  "cocoa",
@@ -658,7 +658,7 @@ dependencies = [
 [[package]]
 name = "glutin_egl_sys"
 version = "0.1.5"
-source = "git+https://github.com/zphixon/glutin?branch=my-winit#d9de0fe6dc12f2ce87e9a10d10b64e5750b0050a"
+source = "git+https://github.com/zphixon/glutin?branch=my-winit#e83585bcf67d9943795b63e815e1e5b89147c042"
 dependencies = [
  "gl_generator",
  "winapi",
@@ -667,7 +667,7 @@ dependencies = [
 [[package]]
 name = "glutin_gles2_sys"
 version = "0.1.5"
-source = "git+https://github.com/zphixon/glutin?branch=my-winit#d9de0fe6dc12f2ce87e9a10d10b64e5750b0050a"
+source = "git+https://github.com/zphixon/glutin?branch=my-winit#e83585bcf67d9943795b63e815e1e5b89147c042"
 dependencies = [
  "gl_generator",
  "objc",
@@ -676,7 +676,7 @@ dependencies = [
 [[package]]
 name = "glutin_glx_sys"
 version = "0.1.7"
-source = "git+https://github.com/zphixon/glutin?branch=my-winit#d9de0fe6dc12f2ce87e9a10d10b64e5750b0050a"
+source = "git+https://github.com/zphixon/glutin?branch=my-winit#e83585bcf67d9943795b63e815e1e5b89147c042"
 dependencies = [
  "gl_generator",
  "x11-dl",
@@ -685,7 +685,7 @@ dependencies = [
 [[package]]
 name = "glutin_wgl_sys"
 version = "0.1.5"
-source = "git+https://github.com/zphixon/glutin?branch=my-winit#d9de0fe6dc12f2ce87e9a10d10b64e5750b0050a"
+source = "git+https://github.com/zphixon/glutin?branch=my-winit#e83585bcf67d9943795b63e815e1e5b89147c042"
 dependencies = [
  "gl_generator",
 ]
