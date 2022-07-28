@@ -43,7 +43,7 @@ pub fn write(path: impl AsRef<std::path::Path>, disk: ToDisk) -> Result<()> {
 pub const TITLE_UNMODIFIED: &'static str = "hi! <3";
 pub const TITLE_MODIFIED: &'static str = "hi! <3 (modified)";
 
-pub trait Backend: std::fmt::Debug + Default {
+pub trait Backend: std::fmt::Debug + Default + Clone + Copy {
     type Ndc: std::fmt::Display + Clone + Copy;
 
     fn pixel_to_ndc(&self, width: u32, height: u32, pos: PixelPos) -> Self::Ndc;
@@ -189,98 +189,94 @@ where
     #[serde(skip)]
     pub input: input::InputHandler,
     #[serde(skip)]
-    pub backend: B,
+    pub backend: Option<B>,
 }
 
-// Default for State {{{
 impl<B, S> Default for State<B, S>
 where
     B: Backend,
     S: StrokeBackend,
 {
     fn default() -> Self {
-        use std::iter::repeat;
-        let mut strokes = vec![Stroke::with_points(
-            graphics::circle_points(1.0, 50)
-                .chunks_exact(2)
-                .map(|arr| StrokeElement {
-                    x: arr[0],
-                    y: arr[1],
-                    pressure: 1.0,
-                })
-                .collect(),
-            Color::WHITE,
-        )];
+        Self::new()
+    }
+}
 
-        strokes.extend(repeat(-25.0).take(50).enumerate().map(|(i, x)| {
-            Stroke::with_points(
-                repeat(-25.0)
-                    .take(50)
-                    .enumerate()
-                    .map(|(j, y)| StrokeElement {
-                        x: i as f32 + x,
-                        y: j as f32 + y,
-                        pressure: 1.0,
-                    })
-                    .collect(),
-                Color::grey(0.1),
-            )
-        }));
+fn grid<S>() -> Vec<Stroke<S>>
+where
+    S: StrokeBackend,
+{
+    use std::iter::repeat;
+    let mut strokes = vec![Stroke::with_points(
+        graphics::circle_points(1.0, 50)
+            .chunks_exact(2)
+            .map(|arr| StrokeElement {
+                x: arr[0],
+                y: arr[1],
+                pressure: 1.0,
+            })
+            .collect(),
+        Color::WHITE,
+    )];
 
-        strokes.extend(repeat(-25.0).take(50).enumerate().map(|(i, y)| {
-            Stroke::with_points(
-                repeat(-25.0)
-                    .take(50)
-                    .enumerate()
-                    .map(|(j, x)| StrokeElement {
-                        x: j as f32 + x,
-                        y: i as f32 + y,
-                        pressure: 1.0,
-                    })
-                    .collect(),
-                Color::grey(0.1),
-            )
-        }));
-
-        strokes.push(Stroke::with_points(
+    strokes.extend(repeat(-25.0).take(50).enumerate().map(|(i, x)| {
+        Stroke::with_points(
             repeat(-25.0)
                 .take(50)
                 .enumerate()
-                .map(|(i, x)| StrokeElement {
+                .map(|(j, y)| StrokeElement {
                     x: i as f32 + x,
-                    y: 0.0,
+                    y: j as f32 + y,
                     pressure: 1.0,
                 })
                 .collect(),
-            Color::grey(0.3),
-        ));
+            Color::grey(0.1),
+        )
+    }));
 
-        strokes.push(Stroke::with_points(
+    strokes.extend(repeat(-25.0).take(50).enumerate().map(|(i, y)| {
+        Stroke::with_points(
             repeat(-25.0)
                 .take(50)
                 .enumerate()
-                .map(|(i, y)| StrokeElement {
-                    x: 0.0,
+                .map(|(j, x)| StrokeElement {
+                    x: j as f32 + x,
                     y: i as f32 + y,
                     pressure: 1.0,
                 })
                 .collect(),
-            Color::grey(0.3),
-        ));
+            Color::grey(0.1),
+        )
+    }));
 
-        State {
-            stylus: Default::default(),
-            strokes,
-            gesture_state: GestureState::NoInput,
-            input: Default::default(),
-            settings: Default::default(),
-            modified: false,
-            path: None,
-            backend: Default::default(),
-        }
-    }
+    strokes.push(Stroke::with_points(
+        repeat(-25.0)
+            .take(50)
+            .enumerate()
+            .map(|(i, x)| StrokeElement {
+                x: i as f32 + x,
+                y: 0.0,
+                pressure: 1.0,
+            })
+            .collect(),
+        Color::grey(0.3),
+    ));
+
+    strokes.push(Stroke::with_points(
+        repeat(-25.0)
+            .take(50)
+            .enumerate()
+            .map(|(i, y)| StrokeElement {
+                x: 0.0,
+                y: i as f32 + y,
+                pressure: 1.0,
+            })
+            .collect(),
+        Color::grey(0.3),
+    ));
+
+    strokes
 }
-// }}}
 
 pub const DEFAULT_ZOOM: f32 = 50.;
 pub const MAX_ZOOM: f32 = 500.;
@@ -296,14 +292,31 @@ where
     B: Backend,
     S: StrokeBackend,
 {
+    pub fn new() -> Self {
+        Self {
+            strokes: grid(),
+            settings: Settings::default(),
+            stylus: Stylus::default(),
+            gesture_state: GestureState::NoInput,
+            modified: false,
+            path: None,
+            input: input::InputHandler::default(),
+            backend: Some(Default::default()),
+        }
+    }
+
+    fn backend(&self) -> B {
+        self.backend.unwrap()
+    }
+
     pub fn modified() -> Self {
-        let mut this = State::default();
+        let mut this = State::new();
         this.modified = true;
         this
     }
 
     pub fn with_filename(path: impl AsRef<std::path::Path>) -> Self {
-        let mut this = State::default();
+        let mut this = State::new();
         let message = format!("Could not open {}", path.as_ref().display());
         let _ = this.read_file(Some(path)).error_dialog(&message);
         this
@@ -409,16 +422,16 @@ where
         let dy = next_y - prev_y;
 
         let prev_ndc =
-            self.backend
+            self.backend()
                 .stroke_to_ndc(width, height, self.settings.zoom, self.stylus.point);
-        let prev_stylus = self.backend.ndc_to_pixel(width, height, prev_ndc);
+        let prev_stylus = self.backend().ndc_to_pixel(width, height, prev_ndc);
 
         self.update_stylus(width, height, touch);
 
         let next_ndc =
-            self.backend
+            self.backend()
                 .stroke_to_ndc(width, height, self.settings.zoom, self.stylus.point);
-        let next_stylus = self.backend.ndc_to_pixel(width, height, next_ndc);
+        let next_stylus = self.backend().ndc_to_pixel(width, height, next_ndc);
 
         match (
             self.input.button_down(input::MouseButton::Middle),
@@ -568,15 +581,15 @@ where
     }
 
     fn move_origin(&mut self, width: u32, height: u32, prev: PixelPos, next: PixelPos) {
-        let prev_ndc = self.backend.pixel_to_ndc(width, height, prev);
+        let prev_ndc = self.backend().pixel_to_ndc(width, height, prev);
         let prev_stroke = self
-            .backend
+            .backend()
             .ndc_to_stroke(width, height, self.settings.zoom, prev_ndc);
         let prev_xformed = graphics::xform_point_to_pos(self.settings.origin, prev_stroke);
 
-        let next_ndc = self.backend.pixel_to_ndc(width, height, next);
+        let next_ndc = self.backend().pixel_to_ndc(width, height, next);
         let next_stroke = self
-            .backend
+            .backend()
             .ndc_to_stroke(width, height, self.settings.zoom, next_ndc);
         let next_xformed = graphics::xform_point_to_pos(self.settings.origin, next_stroke);
 
@@ -613,9 +626,9 @@ where
             ..
         } = touch;
 
-        let ndc_pos = self.backend.pixel_to_ndc(width, height, location);
+        let ndc_pos = self.backend().pixel_to_ndc(width, height, location);
         let point = self
-            .backend
+            .backend()
             .ndc_to_stroke(width, height, self.settings.zoom, ndc_pos);
         let pos = graphics::xform_point_to_pos(self.settings.origin, point);
         let pressure = force.unwrap_or(1.0);
@@ -684,7 +697,7 @@ where
 
     fn handle_update(&mut self, width: u32, height: u32, phase: TouchPhase) {
         if self.stylus.inverted() {
-            let stylus_ndc = self.backend.stroke_to_ndc(
+            let stylus_ndc = self.backend().stroke_to_ndc(
                 width,
                 height,
                 self.settings.zoom,
@@ -693,7 +706,7 @@ where
                     y: self.stylus.pos.y,
                 },
             );
-            let stylus_pix = self.backend.ndc_to_pixel(width, height, stylus_ndc);
+            let stylus_pix = self.backend().ndc_to_pixel(width, height, stylus_ndc);
             let stylus_pix_x = stylus_pix.x as f32;
             let stylus_pix_y = stylus_pix.y as f32;
 
@@ -704,7 +717,7 @@ where
                     }
 
                     'inner: for point in stroke.points().iter() {
-                        let point_ndc = self.backend.stroke_to_ndc(
+                        let point_ndc = self.backend.unwrap().stroke_to_ndc(
                             width,
                             height,
                             self.settings.zoom,
@@ -713,7 +726,8 @@ where
                                 y: point.y,
                             },
                         );
-                        let point_pix = self.backend.ndc_to_pixel(width, height, point_ndc);
+                        let point_pix =
+                            self.backend.unwrap().ndc_to_pixel(width, height, point_ndc);
                         let point_pix_x = point_pix.x as f32;
                         let point_pix_y = point_pix.y as f32;
 
@@ -746,7 +760,7 @@ where
                                 y: self.stylus.pos.y,
                                 pressure: self.stylus.pressure,
                             });
-                            stroke.backend_mut().make_dirty();
+                            stroke.backend_mut().map(|backend| backend.make_dirty());
                             stroke.calculate_spline();
                         }
                     }

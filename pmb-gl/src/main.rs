@@ -349,7 +349,8 @@ fn main() {
                     }
 
                     unsafe {
-                        let BackendInner { vbo, vao } = stroke.backend().inner.as_ref().unwrap();
+                        let BackendInner { vbo, vao } =
+                            stroke.backend().unwrap().inner.as_ref().unwrap();
 
                         gl.bind_buffer(glow::ARRAY_BUFFER, Some(*vbo));
                         gl.bind_vertex_array(Some(*vao));

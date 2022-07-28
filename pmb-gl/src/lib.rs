@@ -15,7 +15,7 @@ use powdermilk_biscuits::{
 
 pub type GlState = powdermilk_biscuits::State<GlBackend, StrokeBackend>;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct GlBackend {}
 
 impl powdermilk_biscuits::Backend for GlBackend {

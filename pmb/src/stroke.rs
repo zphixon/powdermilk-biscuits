@@ -71,7 +71,7 @@ where
     spline: Option<BSpline<StrokeElement, f32>>,
 
     #[serde(skip)]
-    backend: S,
+    backend: Option<S>,
 }
 
 impl<S> Default for Stroke<S>
@@ -184,12 +184,12 @@ where
         self.disk.erased = true;
     }
 
-    pub fn backend(&self) -> &S {
-        &self.backend
+    pub fn backend(&self) -> Option<&S> {
+        self.backend.as_ref()
     }
 
-    pub fn backend_mut(&mut self) -> &mut S {
-        &mut self.backend
+    pub fn backend_mut(&mut self) -> Option<&mut S> {
+        self.backend.as_mut()
     }
 
     pub fn replace_backend_with<F>(&mut self, mut with: F)
@@ -197,11 +197,11 @@ where
         F: FnMut(&[u8]) -> S,
     {
         let backend = with(unsafe { self.as_bytes() });
-        self.backend = backend;
+        self.backend = Some(backend);
     }
 
     pub fn is_dirty(&self) -> bool {
-        self.backend().is_dirty()
+        self.backend().is_none() || self.backend().unwrap().is_dirty()
     }
 
     pub fn calculate_spline(&mut self) {

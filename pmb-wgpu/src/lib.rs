@@ -33,7 +33,7 @@ pub type WgslState = State<WgpuBackend, StrokeBackend>;
 
 const NUM_SEGMENTS: usize = 50;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct WgpuBackend;
 
 impl powdermilk_biscuits::Backend for WgpuBackend {
@@ -611,7 +611,14 @@ impl Graphics {
 
                         pass.set_vertex_buffer(
                             0,
-                            stroke.backend().inner.as_ref().unwrap().buffer.slice(..),
+                            stroke
+                                .backend()
+                                .unwrap()
+                                .inner
+                                .as_ref()
+                                .unwrap()
+                                .buffer
+                                .slice(..),
                         );
                         pass.draw(0..stroke.points().len() as u32, 0..1);
                     }
