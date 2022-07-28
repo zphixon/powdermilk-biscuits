@@ -39,10 +39,24 @@ impl powdermilk_biscuits::Backend for GlBackend {
 }
 
 #[derive(Debug)]
-pub struct StrokeBackend {
+pub struct BackendInner {
     pub vbo: glow::Buffer,
     pub vao: glow::VertexArray,
+}
+
+#[derive(Debug)]
+pub struct StrokeBackend {
+    pub inner: Option<BackendInner>,
     pub dirty: bool,
+}
+
+impl Default for StrokeBackend {
+    fn default() -> Self {
+        StrokeBackend {
+            inner: None,
+            dirty: true,
+        }
+    }
 }
 
 impl powdermilk_biscuits::StrokeBackend for StrokeBackend {

@@ -60,14 +60,18 @@ where
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Stroke<S>
 where
     S: StrokeBackend,
 {
     disk: DiskPart,
+
+    #[serde(skip)]
     spline: Option<BSpline<StrokeElement, f32>>,
-    backend: Option<S>,
+
+    #[serde(skip)]
+    backend: S,
 }
 
 impl<S> Default for Stroke<S>
@@ -78,7 +82,7 @@ where
         Self {
             disk: DiskPart::default(),
             spline: None,
-            backend: None,
+            backend: Default::default(),
         }
     }
 }
@@ -97,7 +101,7 @@ where
                 erased: self.disk.erased,
             },
             spline: self.spline.clone(),
-            backend: None,
+            backend: Default::default(),
         }
     }
 }
@@ -152,7 +156,7 @@ where
         Self {
             disk: DiskPart::new(color, brush_size),
             spline: None,
-            backend: None,
+            backend: Default::default(),
         }
     }
 
@@ -180,11 +184,11 @@ where
         self.disk.erased = true;
     }
 
-    pub fn backend(&self) -> Option<&S> {
-        self.backend.as_ref()
+    pub fn backend(&self) -> &S {
+        &self.backend
     }
 
-    pub fn backend_mut(&mut self) -> &mut Option<S> {
+    pub fn backend_mut(&mut self) -> &mut S {
         &mut self.backend
     }
 
@@ -193,11 +197,11 @@ where
         F: FnMut(&[u8]) -> S,
     {
         let backend = with(unsafe { self.as_bytes() });
-        self.backend = Some(backend);
+        self.backend = backend;
     }
 
     pub fn is_dirty(&self) -> bool {
-        self.backend().map(|b| b.is_dirty()).unwrap_or(true)
+        self.backend().is_dirty()
     }
 
     pub fn calculate_spline(&mut self) {

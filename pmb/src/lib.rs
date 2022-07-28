@@ -53,7 +53,7 @@ pub trait Backend: std::fmt::Debug + Default {
     fn stroke_to_ndc(&self, width: u32, height: u32, zoom: f32, point: StrokePoint) -> Self::Ndc;
 }
 
-pub trait StrokeBackend: std::fmt::Debug {
+pub trait StrokeBackend: std::fmt::Debug + Default {
     fn make_dirty(&mut self);
     fn is_dirty(&self) -> bool;
 }
@@ -97,8 +97,9 @@ impl Stylus {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub enum GestureState {
+    #[default]
     NoInput,
     Stroke,
     Active(usize),
@@ -168,18 +169,26 @@ pub struct ToDisk {
     pub settings: Settings,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct State<B, S>
 where
     B: Backend,
     S: StrokeBackend,
 {
-    pub stylus: Stylus,
     pub strokes: Vec<Stroke<S>>,
-    pub gesture_state: GestureState,
     pub settings: Settings,
+
+    #[serde(skip)]
+    pub stylus: Stylus,
+    #[serde(skip)]
+    pub gesture_state: GestureState,
+    #[serde(skip)]
     pub modified: bool,
+    #[serde(skip)]
     pub path: Option<PathBuf>,
+    #[serde(skip)]
     pub input: input::InputHandler,
+    #[serde(skip)]
     pub backend: B,
 }
 
@@ -737,11 +746,7 @@ where
                                 y: self.stylus.pos.y,
                                 pressure: self.stylus.pressure,
                             });
-
-                            if let Some(backend) = stroke.backend_mut().as_mut() {
-                                backend.make_dirty();
-                            }
-
+                            stroke.backend_mut().make_dirty();
                             stroke.calculate_spline();
                         }
                     }

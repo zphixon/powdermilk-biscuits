@@ -72,9 +72,23 @@ pub fn view_matrix(
 }
 
 #[derive(Debug)]
-pub struct StrokeBackend {
+pub struct BackendInner {
     pub buffer: Buffer,
+}
+
+#[derive(Debug)]
+pub struct StrokeBackend {
+    pub inner: Option<BackendInner>,
     pub dirty: bool,
+}
+
+impl Default for StrokeBackend {
+    fn default() -> Self {
+        StrokeBackend {
+            inner: None,
+            dirty: true,
+        }
+    }
 }
 
 impl powdermilk_biscuits::StrokeBackend for StrokeBackend {
@@ -504,10 +518,12 @@ impl Graphics {
 
     pub fn buffer_stroke(&mut self, stroke: &mut Stroke<StrokeBackend>) {
         stroke.replace_backend_with(|bytes| StrokeBackend {
-            buffer: self.device.create_buffer_init(&BufferInitDescriptor {
-                label: None,
-                contents: bytes,
-                usage: BufferUsages::VERTEX,
+            inner: Some(BackendInner {
+                buffer: self.device.create_buffer_init(&BufferInitDescriptor {
+                    label: None,
+                    contents: bytes,
+                    usage: BufferUsages::VERTEX,
+                }),
             }),
             dirty: false,
         });
@@ -593,7 +609,10 @@ impl Graphics {
                             bytemuck::cast_slice(&stroke.color().to_float()),
                         );
 
-                        pass.set_vertex_buffer(0, stroke.backend().unwrap().buffer.slice(..));
+                        pass.set_vertex_buffer(
+                            0,
+                            stroke.backend().inner.as_ref().unwrap().buffer.slice(..),
+                        );
                         pass.draw(0..stroke.points().len() as u32, 0..1);
                     }
                 }
