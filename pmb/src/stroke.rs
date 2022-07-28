@@ -61,7 +61,10 @@ where
 }
 
 #[derive(Debug)]
-pub struct Stroke<S> {
+pub struct Stroke<S>
+where
+    S: StrokeBackend,
+{
     disk: DiskPart,
     spline: Option<BSpline<StrokeElement, f32>>,
     backend: Option<S>,
@@ -99,7 +102,15 @@ where
     }
 }
 
-impl<S> Stroke<S> {
+impl StrokeBackend for () {
+    fn is_dirty(&self) -> bool {
+        false
+    }
+
+    fn make_dirty(&mut self) {}
+}
+
+impl Stroke<()> {
     pub const DEGREE: usize = 3;
 }
 
@@ -190,21 +201,23 @@ where
     }
 
     pub fn calculate_spline(&mut self) {
-        if self.points().len() > Self::DEGREE {
-            let points = [self.points().first().cloned().unwrap(); Stroke::<()>::DEGREE]
+        #[allow(non_upper_case_globals)]
+        const degree: usize = Stroke::<()>::DEGREE;
+        if self.points().len() > degree {
+            let points = [self.points().first().cloned().unwrap(); degree]
                 .into_iter()
                 .chain(self.points().iter().cloned())
-                .chain([self.points().last().cloned().unwrap(); Stroke::<()>::DEGREE])
+                .chain([self.points().last().cloned().unwrap(); degree])
                 .map(|point| point.into())
                 .collect::<Vec<StrokeElement>>();
 
             let knots = std::iter::repeat(())
-                .take(points.len() + Self::DEGREE + 1)
+                .take(points.len() + degree + 1)
                 .enumerate()
                 .map(|(i, ())| i as f32)
                 .collect::<Vec<_>>();
 
-            self.spline = Some(BSpline::new(Self::DEGREE, points, knots));
+            self.spline = Some(BSpline::new(degree, points, knots));
         }
     }
 }
