@@ -1,4 +1,7 @@
-use crate::{graphics::Color, StrokeBackend};
+use crate::{
+    graphics::{Color, ColorExt},
+    StrokeBackend,
+};
 use bspline::BSpline;
 
 #[derive(Default, Debug, Clone, Copy)]
@@ -58,7 +61,7 @@ impl std::ops::Mul<f32> for StrokeElement {
     }
 }
 
-#[derive(Debug, Default, pmb_derive_disk::Disk)]
+#[derive(Debug, pmb_derive_disk::Disk)]
 pub struct Stroke<S>
 where
     S: StrokeBackend,
@@ -75,6 +78,23 @@ where
     backend: Option<S>,
 }
 
+impl<S> Default for Stroke<S>
+where
+    S: StrokeBackend,
+{
+    fn default() -> Self {
+        Self {
+            points: Default::default(),
+            color: Color::WHITE,
+            brush_size: crate::DEFAULT_BRUSH as f32,
+            style: Default::default(),
+            erased: false,
+            spline: None,
+            backend: None,
+        }
+    }
+}
+
 impl<S> Clone for Stroke<S>
 where
     S: StrokeBackend,
@@ -87,7 +107,7 @@ where
             style: self.style,
             erased: self.erased,
             spline: self.spline.clone(),
-            backend: Default::default(),
+            backend: None,
         }
     }
 }
@@ -112,6 +132,7 @@ where
         Self {
             points,
             color,
+            backend: None,
             ..Default::default()
         }
     }
@@ -132,6 +153,7 @@ where
         Self {
             color,
             brush_size,
+            backend: None,
             ..Default::default()
         }
     }

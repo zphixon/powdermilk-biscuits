@@ -65,7 +65,7 @@ pub trait Backend: std::fmt::Debug + Default + Clone + Copy {
     fn stroke_to_ndc(&self, width: u32, height: u32, zoom: f32, point: StrokePoint) -> Self::Ndc;
 }
 
-pub trait StrokeBackend: std::fmt::Debug + Default {
+pub trait StrokeBackend: std::fmt::Debug {
     fn make_dirty(&mut self);
     fn is_dirty(&self) -> bool;
 }
@@ -178,7 +178,7 @@ where
     #[disk_skip]
     pub input: input::InputHandler,
     #[disk_skip]
-    pub backend: Option<B>,
+    pub backend: B,
 }
 
 impl<B, S> Default for State<B, S>
@@ -294,12 +294,8 @@ where
             modified: false,
             path: None,
             input: input::InputHandler::default(),
-            backend: Some(Default::default()),
+            backend: Default::default(),
         }
-    }
-
-    fn backend(&self) -> B {
-        self.backend.unwrap()
     }
 
     pub fn modified() -> Self {
@@ -436,16 +432,16 @@ where
         let dy = next_y - prev_y;
 
         let prev_ndc = self
-            .backend()
+            .backend
             .stroke_to_ndc(width, height, self.zoom, self.stylus.point);
-        let prev_stylus = self.backend().ndc_to_pixel(width, height, prev_ndc);
+        let prev_stylus = self.backend.ndc_to_pixel(width, height, prev_ndc);
 
         self.update_stylus(width, height, touch);
 
         let next_ndc = self
-            .backend()
+            .backend
             .stroke_to_ndc(width, height, self.zoom, self.stylus.point);
-        let next_stylus = self.backend().ndc_to_pixel(width, height, next_ndc);
+        let next_stylus = self.backend.ndc_to_pixel(width, height, next_ndc);
 
         match (
             self.input.button_down(input::MouseButton::Middle),
@@ -584,15 +580,15 @@ where
     }
 
     fn move_origin(&mut self, width: u32, height: u32, prev: PixelPos, next: PixelPos) {
-        let prev_ndc = self.backend().pixel_to_ndc(width, height, prev);
+        let prev_ndc = self.backend.pixel_to_ndc(width, height, prev);
         let prev_stroke = self
-            .backend()
+            .backend
             .ndc_to_stroke(width, height, self.zoom, prev_ndc);
         let prev_xformed = graphics::xform_point_to_pos(self.origin, prev_stroke);
 
-        let next_ndc = self.backend().pixel_to_ndc(width, height, next);
+        let next_ndc = self.backend.pixel_to_ndc(width, height, next);
         let next_stroke = self
-            .backend()
+            .backend
             .ndc_to_stroke(width, height, self.zoom, next_ndc);
         let next_xformed = graphics::xform_point_to_pos(self.origin, next_stroke);
 
@@ -629,9 +625,9 @@ where
             ..
         } = touch;
 
-        let ndc_pos = self.backend().pixel_to_ndc(width, height, location);
+        let ndc_pos = self.backend.pixel_to_ndc(width, height, location);
         let point = self
-            .backend()
+            .backend
             .ndc_to_stroke(width, height, self.zoom, ndc_pos);
         let pos = graphics::xform_point_to_pos(self.origin, point);
         let pressure = force.unwrap_or(1.0);
@@ -700,7 +696,7 @@ where
 
     fn handle_update(&mut self, width: u32, height: u32, phase: TouchPhase) {
         if self.stylus.inverted() {
-            let stylus_ndc = self.backend().stroke_to_ndc(
+            let stylus_ndc = self.backend.stroke_to_ndc(
                 width,
                 height,
                 self.zoom,
@@ -709,7 +705,7 @@ where
                     y: self.stylus.pos.y,
                 },
             );
-            let stylus_pix = self.backend().ndc_to_pixel(width, height, stylus_ndc);
+            let stylus_pix = self.backend.ndc_to_pixel(width, height, stylus_ndc);
             let stylus_pix_x = stylus_pix.x as f32;
             let stylus_pix_y = stylus_pix.y as f32;
 
@@ -720,7 +716,7 @@ where
                     }
 
                     'inner: for point in stroke.points().iter() {
-                        let point_ndc = self.backend.unwrap().stroke_to_ndc(
+                        let point_ndc = self.backend.stroke_to_ndc(
                             width,
                             height,
                             self.zoom,
@@ -729,8 +725,7 @@ where
                                 y: point.y,
                             },
                         );
-                        let point_pix =
-                            self.backend.unwrap().ndc_to_pixel(width, height, point_ndc);
+                        let point_pix = self.backend.ndc_to_pixel(width, height, point_ndc);
                         let point_pix_x = point_pix.x as f32;
                         let point_pix_y = point_pix.y as f32;
 

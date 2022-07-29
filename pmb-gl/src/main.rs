@@ -6,7 +6,7 @@ use glutin::{
     window::WindowBuilder,
     ContextBuilder,
 };
-use pmb_gl::{BackendInner, GlState as State, StrokeBackend};
+use pmb_gl::{GlState as State, StrokeBackend};
 use powdermilk_biscuits::{TITLE_MODIFIED, TITLE_UNMODIFIED};
 use std::mem::size_of;
 
@@ -340,7 +340,8 @@ fn main() {
                                 );
 
                                 StrokeBackend {
-                                    inner: Some(BackendInner { vbo, vao }),
+                                    vbo,
+                                    vao,
                                     dirty: false,
                                 }
                             });
@@ -354,8 +355,7 @@ fn main() {
                     }
 
                     unsafe {
-                        let BackendInner { vbo, vao } =
-                            stroke.backend().unwrap().inner.as_ref().unwrap();
+                        let StrokeBackend { vbo, vao, .. } = stroke.backend().unwrap();
 
                         gl.bind_buffer(glow::ARRAY_BUFFER, Some(*vbo));
                         gl.bind_vertex_array(Some(*vao));
