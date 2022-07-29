@@ -1,3 +1,4 @@
+use crate::migrate::Version;
 use std::{
     error::Error,
     fmt::{Display, Formatter, Result as FmtResult},
@@ -86,8 +87,9 @@ pub enum ErrorKind {
     MissingHeader,
     IoError(std::io::Error),
     BincodeError(Box<dyn std::error::Error>),
-    VersionMismatch(u64),
-    UnknownVersion(u64),
+    VersionMismatch(Version),
+    UnknownVersion(Version),
+    IncompatibleVersion(Version),
 }
 
 impl From<std::io::Error> for PmbError {
@@ -114,13 +116,18 @@ impl Display for ErrorKind {
             ErrorKind::MissingHeader => write!(f, "Missing PMB header"),
             ErrorKind::IoError(err) => write!(f, "{err}"),
             ErrorKind::BincodeError(err) => write!(f, "{err}"),
-            ErrorKind::VersionMismatch(num) => write!(
-                f,
-                "Expected version number {}, got {num}",
-                crate::PMB_VERSION
-            ),
-            ErrorKind::UnknownVersion(num) => {
-                write!(f, "Unknown version number {num}")
+            ErrorKind::VersionMismatch(version) => {
+                write!(f, "Expected version {}, got {version}", Version::CURRENT)
+            }
+            ErrorKind::UnknownVersion(version) => {
+                write!(f, "Unknown version number {version}")
+            }
+            ErrorKind::IncompatibleVersion(version) => {
+                write!(
+                    f,
+                    "Version {version} is incompatible with the current version {}",
+                    Version::CURRENT
+                )
             }
         }
     }

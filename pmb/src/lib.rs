@@ -10,6 +10,7 @@ use crate::{
     error::{ErrorKind, PmbError, PmbErrorExt},
     event::{Touch, TouchPhase},
     graphics::{Color, ColorExt, PixelPos, StrokePoint, StrokePos},
+    migrate::{UpgradeType, Version},
     stroke::{Stroke, StrokeElement},
 };
 use bincode::config::standard;
@@ -21,7 +22,6 @@ use std::{
 pub const TITLE_UNMODIFIED: &str = "hi! <3";
 pub const TITLE_MODIFIED: &str = "hi! <3 (modified)";
 pub const PMB_MAGIC: [u8; 3] = [b'P', b'M', b'B'];
-pub const PMB_VERSION: u64 = 1;
 
 pub fn read<B, S>(mut reader: impl Read) -> Result<State<B, S>, PmbError>
 where
@@ -37,9 +37,9 @@ where
 
     let mut version_bytes = [0; std::mem::size_of::<u64>()];
     reader.read_exact(&mut version_bytes)?;
-    let version = u64::from_le_bytes(version_bytes);
+    let version = migrate::Version(u64::from_le_bytes(version_bytes));
 
-    if version != PMB_VERSION {
+    if version != Version::CURRENT {
         return Err(PmbError::new(ErrorKind::VersionMismatch(version)));
     }
 
@@ -57,7 +57,7 @@ where
 {
     let mut file = std::fs::File::create(&path)?;
     file.write_all(&PMB_MAGIC)?;
-    file.write_all(&u64::to_le_bytes(PMB_VERSION))?;
+    file.write_all(&u64::to_le_bytes(Version::CURRENT.0))?;
 
     let mut deflate_writer = flate2::write::DeflateEncoder::new(file, flate2::Compression::fast());
     bincode::encode_into_std_write(state, &mut deflate_writer, standard())?;
@@ -310,6 +310,14 @@ where
         this
     }
 
+    pub fn update_from(&mut self, other: State<B, S>) {
+        self.strokes = other.strokes;
+        self.brush_size = other.brush_size;
+        self.zoom = other.zoom;
+        self.origin = other.origin;
+        self.stylus = other.stylus;
+    }
+
     pub fn geedis(&self) {
         let bin = bincode::encode_to_vec(&self, standard()).unwrap();
         let (this, _): (Self, _) = bincode::decode_from_slice(&bin, standard()).unwrap();
@@ -552,20 +560,42 @@ where
         // read the new file
         let mut disk: Self = match read(file).problem(format!("{}", path.display())) {
             Ok(disk) => disk,
+
             Err(PmbError {
                 kind: ErrorKind::VersionMismatch(version),
                 ..
-            }) => migrate::from(version)?,
+            }) => match Version::upgrade_type(version) {
+                UpgradeType::Smooth => migrate::from(version, &path)?,
+
+                UpgradeType::Rocky => match rfd::MessageDialog::new()
+                    .set_title("Migrate version")
+                    .set_buttons(rfd::MessageButtons::YesNo)
+                    .set_description("Significant internal changes have been made to Powdermilk Biscuits since you last opened this file. Although it has not been marked as significantly incompatible with the current version, you may still experience data loss by attempting to upgrade this file to the most recent version.\n\nNo changes will be made to the file as is, and you will be prompted to save the file in a new location instead of overwriting it.\n\nProceed?")
+                    .show()
+                {
+                    rfd::MessageDialogResult::Yes => {
+                        let state = migrate::from(version, &path)?;
+                        self.update_from(state);
+                        self.modified = true;
+                        self.path = None;
+
+                        return Ok(());
+                    },
+
+                    _ => return Ok(()),
+                },
+
+                UpgradeType::Incompatible => {
+                    return Err(PmbError::new(ErrorKind::IncompatibleVersion(version)));
+                }
+            },
+
             err => err?,
         };
+
         disk.strokes.iter_mut().for_each(Stroke::calculate_spline);
 
-        self.strokes = disk.strokes;
-        self.brush_size = disk.brush_size;
-        self.zoom = disk.zoom;
-        self.origin = disk.origin;
-        self.stylus = disk.stylus;
-
+        self.update_from(disk);
         self.modified = false;
         self.path = Some(path);
 
