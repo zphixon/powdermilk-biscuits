@@ -1,20 +1,4 @@
-use crate::error::PmbError;
 use std::path::{Path, PathBuf};
-
-pub trait ToUi {
-    fn error_dialog(self, text: &str) -> Self;
-}
-
-impl<T> ToUi for Result<T, PmbError> {
-    fn error_dialog(self, text: &str) -> Self {
-        if let Err(e) = &self {
-            let text = format!("{text}\n{e}");
-            error(&text);
-        }
-
-        self
-    }
-}
 
 pub fn error(text: &str) -> rfd::MessageDialogResult {
     rfd::MessageDialog::new()

@@ -6,11 +6,10 @@ pub mod stroke;
 pub mod ui;
 
 use crate::{
-    error::PmbError,
+    error::{ErrorKind, PmbError, PmbErrorExt},
     event::{Touch, TouchPhase},
     graphics::{Color, ColorExt, PixelPos, StrokePoint, StrokePos},
     stroke::{Stroke, StrokeElement, StrokeStyle},
-    ui::ToUi,
 };
 use bincode::config::standard;
 use std::{
@@ -31,7 +30,9 @@ where
     reader.read_exact(&mut magic)?;
 
     if magic != PMB_MAGIC {
-        return Err(PmbError::MissingHeader);
+        return Err(
+            PmbError::new(ErrorKind::MissingHeader).problem(String::from("Missing magic header"))
+        );
     }
 
     let mut deflate_reader = flate2::read::DeflateDecoder::new(reader);
@@ -324,8 +325,9 @@ where
 
     pub fn with_filename(path: impl AsRef<std::path::Path>) -> Self {
         let mut this = State::new();
-        let message = format!("Could not open {}", path.as_ref().display());
-        let _ = this.read_file(Some(path)).error_dialog(&message);
+        this.read_file(Some(path))
+            .problem(String::from("Could not open file"))
+            .display();
         this
     }
 
@@ -398,7 +400,9 @@ where
         }
 
         if just_pressed!(ctrl + S) {
-            let _ = self.save_file();
+            self.save_file()
+                .problem(format!("Could not save file"))
+                .display();
             self.input.clear();
         }
 
@@ -411,7 +415,9 @@ where
         }
 
         if just_pressed!(ctrl + O) {
-            let _ = self.read_file(Option::<&str>::None);
+            self.read_file(Option::<&str>::None)
+                .problem(format!("Could not open file"))
+                .display();
             self.input.clear();
         }
     }
@@ -474,8 +480,7 @@ where
         match (ui::ask_to_save(why), self.path.as_ref()) {
             // if they say yes and the file we're editing has a path
             (rfd::MessageDialogResult::Yes, Some(path)) => {
-                let message = format!("Could not save file as {}", path.display());
-                write(path, self).error_dialog(&message)?;
+                write(path, self).problem(format!("{}", path.display()))?;
                 self.modified = false;
                 Ok(true)
             }
@@ -486,8 +491,8 @@ where
                 match ui::save_dialog("Save unnamed file", None) {
                     Some(new_filename) => {
                         // try write to disk
-                        let message = format!("Could not save file as {}", new_filename.display());
-                        write(new_filename, self).error_dialog(&message)?;
+                        write(&new_filename, self)
+                            .problem(format!("{}", new_filename.display()))?;
                         self.modified = false;
                         Ok(true)
                     }
@@ -507,7 +512,10 @@ where
         // if we are modified
         if self.modified {
             // ask to save first
-            if !self.ask_to_save_then_save("Would you like to save before opening another file?")? {
+            if !self
+                .ask_to_save_then_save("Would you like to save before opening another file?")
+                .problem(String::from("Could not save file"))?
+            {
                 return Ok(());
             }
         }
@@ -533,11 +541,11 @@ where
                 self.modified = true;
                 return Ok(());
             }
-            Err(err) => return Err(PmbError::from(err)),
+            Err(err) => Err(PmbError::from(err))?,
         };
 
         // read the new file
-        let mut disk: Self = read(file)?;
+        let mut disk: Self = read(file).problem(format!("{}", path.display()))?;
         disk.strokes.iter_mut().for_each(Stroke::calculate_spline);
 
         self.strokes = disk.strokes;
@@ -556,13 +564,12 @@ where
 
     pub fn save_file(&mut self) -> Result<(), PmbError> {
         if let Some(path) = self.path.as_ref() {
-            let message = format!("Could not save file {}", path.display());
-            write(path, self).error_dialog(&message)?;
+            write(path, self).problem(format!("{}", path.display()))?;
             self.modified = false;
         } else if let Some(path) = ui::save_dialog("Save unnamed file", None) {
-            let message = format!("Could not save file {}", path.display());
+            let problem = format!("{}", path.display());
             self.path = Some(path);
-            write(self.path.as_ref().unwrap(), self).error_dialog(&message)?;
+            write(self.path.as_ref().unwrap(), self).problem(problem)?;
             self.modified = false;
         }
 
