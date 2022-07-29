@@ -3,8 +3,9 @@ use std::fmt::{Display, Formatter};
 pub type Color = [u8; 3];
 
 pub trait ColorExt {
-    const WHITE: [u8; 3] = [0xff, 0xff, 0xff];
-    const BLACK: [u8; 3] = [0x00, 0x00, 0x00];
+    const WHITE: Color = [0xff, 0xff, 0xff];
+    const BLACK: Color = [0x00, 0x00, 0x00];
+    const PMB: Color = [0x50, 0x4d, 0x42];
 
     fn grey(level: f32) -> Color {
         [
