@@ -137,16 +137,18 @@ where
         }
     }
 
-    pub unsafe fn as_bytes(&self) -> &[u8] {
-        let points_flat = std::slice::from_raw_parts(
-            self.points().as_ptr() as *const f32,
-            self.points().len() * 3,
-        );
+    pub fn as_bytes(&self) -> &[u8] {
+        unsafe {
+            let points_flat = std::slice::from_raw_parts(
+                self.points().as_ptr() as *const f32,
+                self.points().len() * 3,
+            );
 
-        std::slice::from_raw_parts(
-            points_flat.as_ptr() as *const u8,
-            points_flat.len() * std::mem::size_of::<f32>(),
-        )
+            std::slice::from_raw_parts(
+                points_flat.as_ptr() as *const u8,
+                points_flat.len() * std::mem::size_of::<f32>(),
+            )
+        }
     }
 
     pub fn new(color: Color, brush_size: f32) -> Self {
@@ -194,7 +196,7 @@ where
     where
         F: FnMut(&[u8]) -> S,
     {
-        let backend = with(unsafe { self.as_bytes() });
+        let backend = with(self.as_bytes());
         self.backend = Some(backend);
     }
 
@@ -210,7 +212,6 @@ where
                 .into_iter()
                 .chain(self.points().iter().cloned())
                 .chain([self.points().last().cloned().unwrap(); degree])
-                .map(|point| point.into())
                 .collect::<Vec<StrokeElement>>();
 
             let knots = std::iter::repeat(())

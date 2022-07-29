@@ -18,8 +18,8 @@ use std::{
     path::PathBuf,
 };
 
-pub const TITLE_UNMODIFIED: &'static str = "hi! <3";
-pub const TITLE_MODIFIED: &'static str = "hi! <3 (modified)";
+pub const TITLE_UNMODIFIED: &str = "hi! <3";
+pub const TITLE_MODIFIED: &str = "hi! <3 (modified)";
 pub const PMB_MAGIC: [u8; 3] = [b'P', b'M', b'B'];
 
 pub fn read<B, S>(mut reader: impl Read) -> Result<State<B, S>>
@@ -475,7 +475,7 @@ where
             // if they say yes and the file we're editing has a path
             (rfd::MessageDialogResult::Yes, Some(path)) => {
                 let message = format!("Could not save file as {}", path.display());
-                write(path, &self).error_dialog(&message)?;
+                write(path, self).error_dialog(&message)?;
                 self.modified = false;
                 Ok(true)
             }
@@ -487,7 +487,7 @@ where
                     Some(new_filename) => {
                         // try write to disk
                         let message = format!("Could not save file as {}", new_filename.display());
-                        write(new_filename, &self).error_dialog(&message)?;
+                        write(new_filename, self).error_dialog(&message)?;
                         self.modified = false;
                         Ok(true)
                     }
@@ -515,7 +515,7 @@ where
         // if we were passed a path, use that, otherwise ask for one
         let path = match path
             .map(|path| path.as_ref().to_path_buf())
-            .or_else(|| ui::open_dialog())
+            .or_else(ui::open_dialog)
         {
             Some(path) => path,
             None => {
@@ -557,12 +557,12 @@ where
     pub fn save_file(&mut self) -> Result<()> {
         if let Some(path) = self.path.as_ref() {
             let message = format!("Could not save file {}", path.display());
-            write(path, &self).error_dialog(&message)?;
+            write(path, self).error_dialog(&message)?;
             self.modified = false;
         } else if let Some(path) = ui::save_dialog("Save unnamed file", None) {
             let message = format!("Could not save file {}", path.display());
             self.path = Some(path);
-            write(self.path.as_ref().unwrap(), &self).error_dialog(&message)?;
+            write(self.path.as_ref().unwrap(), self).error_dialog(&message)?;
             self.modified = false;
         }
 
@@ -758,7 +758,11 @@ where
                                 y: self.stylus.pos.y,
                                 pressure: self.stylus.pressure,
                             });
-                            stroke.backend_mut().map(|backend| backend.make_dirty());
+
+                            if let Some(backend) = stroke.backend_mut() {
+                                backend.make_dirty()
+                            }
+
                             stroke.calculate_spline();
                         }
                     }

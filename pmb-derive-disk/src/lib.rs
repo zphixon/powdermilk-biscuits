@@ -30,15 +30,13 @@ pub fn derive_disk(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     where
                         E: ::bincode::enc::Encoder,
                     {
-                        #(
-                            ::bincode::Encode::encode(&self.#saved_fields , encoder)?;
-                        )*
-
+                        #(::bincode::Encode::encode(&self.#saved_fields, encoder)?;)*
                         Ok(())
                     }
                 }
 
                 impl #impl_ ::bincode::Decode for #name #type_ #where_ {
+                    #[allow(clippy::needless_update)]
                     fn decode<D>(decoder: &mut D) -> std::result::Result<Self, ::bincode::error::DecodeError>
                     where
                         D: ::bincode::de::Decoder,

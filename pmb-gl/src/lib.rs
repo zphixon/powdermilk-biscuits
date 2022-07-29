@@ -190,13 +190,14 @@ impl Display for GlPos {
     }
 }
 
+#[allow(clippy::missing_safety_doc)]
 pub unsafe fn compile_shader(
     gl: &glow::Context,
     shader_type: u32,
     path: &'static str,
 ) -> glow::NativeShader {
-    let source =
-        std::fs::read_to_string(path).expect(&format!("could not read shader at path {path}"));
+    let source = std::fs::read_to_string(path)
+        .unwrap_or_else(|_| panic!("could not read shader at path {path}"));
 
     let shader = gl.create_shader(shader_type).unwrap();
     gl.shader_source(shader, &source);
@@ -209,6 +210,7 @@ pub unsafe fn compile_shader(
     shader
 }
 
+#[allow(clippy::missing_safety_doc)]
 pub unsafe fn compile_program(
     gl: &glow::Context,
     vert_path: &'static str,

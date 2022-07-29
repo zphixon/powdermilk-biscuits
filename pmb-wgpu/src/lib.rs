@@ -243,8 +243,10 @@ impl Graphics {
             .await
             .unwrap();
 
-        let mut limits = Limits::default();
-        limits.max_push_constant_size = 128;
+        let limits = Limits {
+            max_push_constant_size: 128,
+            ..Default::default()
+        };
 
         // segfault on linux here :(
         let (device, queue) = adapter

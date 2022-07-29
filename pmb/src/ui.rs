@@ -6,12 +6,9 @@ pub trait ToUi {
 
 impl<T> ToUi for crate::Result<T> {
     fn error_dialog(self, text: &str) -> Self {
-        match &self {
-            Err(e) => {
-                let text = format!("{text}\n{e}");
-                error(&text);
-            }
-            _ => {}
+        if let Err(e) = &self {
+            let text = format!("{text}\n{e}");
+            error(&text);
         }
 
         self
@@ -21,7 +18,7 @@ impl<T> ToUi for crate::Result<T> {
 pub fn error(text: &str) -> rfd::MessageDialogResult {
     rfd::MessageDialog::new()
         .set_title("Error")
-        .set_description(&text)
+        .set_description(text)
         .set_level(rfd::MessageLevel::Error)
         .set_buttons(rfd::MessageButtons::Ok)
         .show()
@@ -45,7 +42,7 @@ pub fn save_dialog(title: &str, filename: Option<&Path>) -> Option<PathBuf> {
     rfd::FileDialog::new()
         .set_title(title)
         .add_filter("PMB", &["pmb"])
-        .set_file_name(&filename)
+        .set_file_name(filename)
         .save_file()
 }
 

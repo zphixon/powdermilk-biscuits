@@ -97,14 +97,12 @@ fn main() {
     let mut aa = true;
     let mut stroke_style = glow::LINE_STRIP;
 
-    let mut state: State = if let Some(filename) = std::env::args()
-        .nth(1)
-        .map(|file| std::path::PathBuf::from(file))
-    {
-        State::with_filename(filename)
-    } else {
-        State::default()
-    };
+    let mut state: State =
+        if let Some(filename) = std::env::args().nth(1).map(std::path::PathBuf::from) {
+            State::with_filename(filename)
+        } else {
+            State::default()
+        };
 
     println!("stroke style {:?}", state.stroke_style);
 
@@ -335,7 +333,7 @@ fn main() {
                                 gl.bind_vertex_array(Some(vao));
                                 gl.buffer_data_u8_slice(
                                     glow::ARRAY_BUFFER,
-                                    &bytes,
+                                    bytes,
                                     glow::STATIC_DRAW,
                                 );
 
@@ -406,7 +404,7 @@ fn main() {
                             circle.as_ptr() as *const u8,
                             circle.len() * size_of::<f32>(),
                         );
-                        gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, &bytes, glow::STATIC_DRAW);
+                        gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, bytes, glow::STATIC_DRAW);
                         gl.enable_vertex_attrib_array(0);
                         gl.vertex_attrib_pointer_f32(
                             0,
