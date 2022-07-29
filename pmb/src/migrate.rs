@@ -54,9 +54,7 @@ impl Version {
         }
 
         match from {
-            Version(version) if version > 5000 => Smooth,
-
-            Version(1) => Rocky,
+            Version(1) => Smooth,
             _ => Incompatible,
         }
     }
@@ -72,76 +70,6 @@ where
 
     match version {
         version if version == Version::CURRENT => unreachable!(),
-
-        Version(version) if version > 5000 => match v0header::read(&file) {
-            Ok(v0) => {
-                let mut state = State {
-                    strokes: v0
-                        .strokes
-                        .into_iter()
-                        .map(|v0| Stroke {
-                            points: v0
-                                .points
-                                .into_iter()
-                                .map(|v0| {
-                                    let x = v0.x;
-                                    let y = v0.y;
-                                    let pressure = v0.pressure;
-                                    StrokeElement { x, y, pressure }
-                                })
-                                .collect(),
-                            color: v0.color,
-                            brush_size: v0.brush_size,
-                            erased: v0.erased,
-                            ..Default::default()
-                        })
-                        .collect(),
-                    brush_size: v0.settings.brush_size,
-                    zoom: v0.settings.zoom,
-                    origin: v0.settings.origin,
-                    ..Default::default()
-                };
-
-                state.strokes.iter_mut().for_each(Stroke::calculate_spline);
-                Ok(state)
-            }
-
-            Err(err) if matches!(err.kind, ErrorKind::MissingHeader) => {
-                let v0 = v0no_header::read(file)?;
-
-                let mut state = State {
-                    strokes: v0
-                        .strokes
-                        .into_iter()
-                        .map(|v0| Stroke {
-                            points: v0
-                                .points
-                                .into_iter()
-                                .map(|v0| {
-                                    let x = v0.x;
-                                    let y = v0.y;
-                                    let pressure = v0.pressure;
-                                    StrokeElement { x, y, pressure }
-                                })
-                                .collect(),
-                            color: v0.color,
-                            brush_size: v0.brush_size,
-                            erased: v0.erased,
-                            ..Default::default()
-                        })
-                        .collect(),
-                    brush_size: v0.settings.brush_size,
-                    zoom: v0.settings.zoom,
-                    origin: v0.settings.origin,
-                    ..Default::default()
-                };
-
-                state.strokes.iter_mut().for_each(Stroke::calculate_spline);
-                Ok(state)
-            }
-
-            Err(err) => return Err(err),
-        },
 
         Version(1) => {
             let v1: v1::StateV1 = v1::read(file)?.into();
@@ -178,105 +106,6 @@ where
         }
 
         _ => Err(PmbError::new(ErrorKind::UnknownVersion(version))),
-    }
-}
-
-mod v0no_header {
-    use super::*;
-
-    #[derive(Debug, Clone, Copy, PartialEq, bincode::Decode)]
-    #[repr(usize)]
-    pub enum StrokeStyle {
-        Lines,
-        Circles,
-        CirclesPressure,
-        Points,
-        Spline,
-    }
-
-    #[derive(bincode::Decode)]
-    pub struct ToDisk {
-        pub strokes: Vec<Stroke>,
-        pub settings: Settings,
-    }
-
-    #[derive(bincode::Decode)]
-    pub struct Settings {
-        pub brush_size: usize,
-        pub stroke_style: StrokeStyle,
-        pub use_individual_style: bool,
-        pub zoom: f32,
-        pub origin: crate::StrokePoint,
-    }
-
-    #[derive(bincode::Decode)]
-    pub struct Stroke {
-        pub points: Vec<crate::stroke::StrokeElement>,
-        pub color: crate::graphics::Color,
-        pub brush_size: f32,
-        pub style: StrokeStyle,
-        pub erased: bool,
-    }
-
-    pub fn read(r: impl Read) -> Result<ToDisk, PmbError> {
-        let mut reader = flate2::read::DeflateDecoder::new(r);
-        Ok(bincode::decode_from_std_read(
-            &mut reader,
-            bincode::config::legacy(),
-        )?)
-    }
-}
-
-mod v0header {
-    use super::*;
-
-    #[derive(Debug, Clone, Copy, PartialEq, bincode::Decode)]
-    #[repr(usize)]
-    pub enum StrokeStyle {
-        Lines,
-        Circles,
-        CirclesPressure,
-        Points,
-        Spline,
-    }
-
-    #[derive(bincode::Decode)]
-    pub struct ToDisk {
-        pub strokes: Vec<Stroke>,
-        pub settings: Settings,
-    }
-
-    #[derive(bincode::Decode)]
-    pub struct Settings {
-        pub brush_size: usize,
-        pub stroke_style: StrokeStyle,
-        pub use_individual_style: bool,
-        pub zoom: f32,
-        pub origin: crate::StrokePoint,
-    }
-
-    #[derive(bincode::Decode)]
-    pub struct Stroke {
-        pub points: Vec<crate::stroke::StrokeElement>,
-        pub color: crate::graphics::Color,
-        pub brush_size: f32,
-        pub style: StrokeStyle,
-        pub erased: bool,
-    }
-
-    pub fn read(mut r: impl Read) -> Result<ToDisk, PmbError> {
-        let mut magic = [0; 3];
-        r.read_exact(&mut magic)?;
-
-        if magic != [b'P', b'M', b'B'] {
-            return Err(PmbError::new(ErrorKind::MissingHeader));
-        }
-
-        let mut reader = flate2::read::DeflateDecoder::new(r);
-        Ok(bincode::decode_from_std_read(
-            &mut reader,
-            bincode::config::legacy(),
-        )?)
     }
 }
 
