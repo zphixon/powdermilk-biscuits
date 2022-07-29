@@ -1310,6 +1310,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1df8c4ec4b0627e53bdf214615ad287367e482558cf84b109250b37464dc03ae"
 
 [[package]]
+name = "pmb-derive-disk"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "pmb-gl"
 version = "0.1.0"
 dependencies = [
@@ -1358,6 +1367,7 @@ dependencies = [
  "evc_derive",
  "flate2",
  "lyon",
+ "pmb-derive-disk",
  "rand",
  "rfd",
 ]

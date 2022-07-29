@@ -12,6 +12,7 @@ use crate::{
     stroke::{Stroke, StrokeElement, StrokeStyle},
     ui::ToUi,
 };
+use bincode::config::standard;
 use std::{
     io::{Read, Write},
     path::PathBuf,
@@ -119,6 +120,7 @@ impl GestureState {
     }
 }
 
+#[derive(pmb_derive_disk::Disk)]
 pub struct State<B, S>
 where
     B: Backend,
@@ -130,11 +132,18 @@ where
     pub use_individual_style: bool,
     pub zoom: f32,
     pub origin: StrokePoint,
+
+    #[disk_skip]
     pub stylus: Stylus,
+    #[disk_skip]
     pub gesture_state: GestureState,
+    #[disk_skip]
     pub modified: bool,
+    #[disk_skip]
     pub path: Option<PathBuf>,
+    #[disk_skip]
     pub input: input::InputHandler,
+    #[disk_skip]
     pub backend: Option<B>,
 }
 
@@ -263,6 +272,24 @@ where
         let mut this = State::new();
         this.modified = true;
         this
+    }
+
+    pub fn geedis(&self) {
+        let bin = bincode::encode_to_vec(&self, standard()).unwrap();
+        let (this, _): (Self, _) = bincode::decode_from_slice(&bin, standard()).unwrap();
+
+        assert_eq!(self.strokes.len(), this.strokes.len());
+        for (a, b) in self.strokes.iter().zip(this.strokes.iter()) {
+            assert_eq!(a.points().len(), b.points().len());
+            for (ae, be) in a.points().iter().zip(b.points().iter()) {
+                let (ax, bx) = (ae.x, be.x);
+                let (ay, by) = (ae.y, be.y);
+                let (ap, bp) = (ae.pressure, be.pressure);
+                assert_eq!(ax, bx);
+                assert_eq!(ay, by);
+                assert_eq!(ap, bp);
+            }
+        }
     }
 
     pub fn with_filename(path: impl AsRef<std::path::Path>) -> Self {

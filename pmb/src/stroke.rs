@@ -9,6 +9,33 @@ pub struct StrokeElement {
     pub pressure: f32,
 }
 
+impl bincode::Encode for StrokeElement {
+    fn encode<E: bincode::enc::Encoder>(
+        &self,
+        encoder: &mut E,
+    ) -> Result<(), bincode::error::EncodeError> {
+        let x = self.x;
+        let y = self.y;
+        let pressure = self.pressure;
+        x.encode(encoder)?;
+        y.encode(encoder)?;
+        pressure.encode(encoder)?;
+        Ok(())
+    }
+}
+
+impl bincode::Decode for StrokeElement {
+    fn decode<D: bincode::de::Decoder>(
+        decoder: &mut D,
+    ) -> Result<Self, bincode::error::DecodeError> {
+        Ok(Self {
+            x: bincode::Decode::decode(decoder)?,
+            y: bincode::Decode::decode(decoder)?,
+            pressure: bincode::Decode::decode(decoder)?,
+        })
+    }
+}
+
 impl std::ops::Add for StrokeElement {
     type Output = StrokeElement;
     fn add(self, rhs: Self) -> Self::Output {
@@ -31,7 +58,7 @@ impl std::ops::Mul<f32> for StrokeElement {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, pmb_derive_disk::Disk)]
 pub struct Stroke<S>
 where
     S: StrokeBackend,
@@ -41,7 +68,10 @@ where
     brush_size: f32,
     style: StrokeStyle,
     erased: bool,
+
+    #[disk_skip]
     spline: Option<BSpline<StrokeElement, f32>>,
+    #[disk_skip]
     backend: Option<S>,
 }
 
@@ -172,7 +202,9 @@ where
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, evc_derive::EnumVariantCount)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, evc_derive::EnumVariantCount, bincode::Encode, bincode::Decode,
+)]
 #[repr(usize)]
 #[allow(dead_code)]
 pub enum StrokeStyle {

@@ -4,6 +4,7 @@ members = [
     'pmb',
     'pmb-gl',
     'pmb-wgpu',
+    'pmb-derive-disk',
 ]
 
 [profile.dev]
