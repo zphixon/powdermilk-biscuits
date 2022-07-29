@@ -20,6 +20,40 @@ use std::{
 
 pub const TITLE_UNMODIFIED: &'static str = "hi! <3";
 pub const TITLE_MODIFIED: &'static str = "hi! <3 (modified)";
+pub const PMB_MAGIC: [u8; 3] = [b'P', b'M', b'B'];
+
+pub fn read<B, S>(mut reader: impl Read) -> Result<State<B, S>>
+where
+    B: Backend,
+    S: StrokeBackend,
+{
+    let mut magic = [0; 3];
+    reader.read_exact(&mut magic)?;
+
+    if magic != PMB_MAGIC {
+        return Err(PmbError::MissingHeader);
+    }
+
+    let mut deflate_reader = flate2::read::DeflateDecoder::new(reader);
+    Ok(bincode::decode_from_std_read(
+        &mut deflate_reader,
+        standard(),
+    )?)
+}
+
+pub fn write<B, S>(path: impl AsRef<std::path::Path>, state: &State<B, S>) -> Result<()>
+where
+    B: Backend,
+    S: StrokeBackend,
+{
+    let mut file = std::fs::File::create(&path)?;
+    file.write_all(&PMB_MAGIC)?;
+
+    let mut deflate_writer = flate2::write::DeflateEncoder::new(file, flate2::Compression::fast());
+    bincode::encode_into_std_write(state, &mut deflate_writer, standard())?;
+
+    Ok(())
+}
 
 pub trait Backend: std::fmt::Debug + Default + Clone + Copy {
     type Ndc: std::fmt::Display + Clone + Copy;
@@ -442,7 +476,7 @@ where
             // if they say yes and the file we're editing has a path
             (rfd::MessageDialogResult::Yes, Some(path)) => {
                 let message = format!("Could not save file as {}", path.display());
-                //write(path, self.to_disk()).error_dialog(&message)?;
+                write(path, &self).error_dialog(&message)?;
                 self.modified = false;
                 Ok(true)
             }
@@ -454,7 +488,7 @@ where
                     Some(new_filename) => {
                         // try write to disk
                         let message = format!("Could not save file as {}", new_filename.display());
-                        //write(new_filename, self.to_disk()).error_dialog(&message)?;
+                        write(new_filename, &self).error_dialog(&message)?;
                         self.modified = false;
                         Ok(true)
                     }
@@ -504,8 +538,7 @@ where
         };
 
         // read the new file
-        //let disk = read(file)?;
-        let mut disk = Self::default();
+        let mut disk: Self = read(file)?;
         disk.strokes.iter_mut().for_each(Stroke::calculate_spline);
 
         self.strokes = disk.strokes;
@@ -525,12 +558,12 @@ where
     pub fn save_file(&mut self) -> Result<()> {
         if let Some(path) = self.path.as_ref() {
             let message = format!("Could not save file {}", path.display());
-            //write(path, self.to_disk()).error_dialog(&message)?;
+            write(path, &self).error_dialog(&message)?;
             self.modified = false;
         } else if let Some(path) = ui::save_dialog("Save unnamed file", None) {
             let message = format!("Could not save file {}", path.display());
             self.path = Some(path);
-            //write(self.path.as_ref().unwrap(), self.to_disk()).error_dialog(&message)?;
+            write(self.path.as_ref().unwrap(), &self).error_dialog(&message)?;
             self.modified = false;
         }
 
