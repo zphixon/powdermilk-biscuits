@@ -49,12 +49,39 @@ where
         version if version == Version::CURRENT => unreachable!(),
 
         Version(1) => {
-            let mut state: State<B, S> = v1::to_v2(path)?.into();
+            use crate::stroke::*;
 
-            state
-                .strokes
-                .iter_mut()
-                .for_each(crate::stroke::Stroke::calculate_spline);
+            let file = std::fs::File::open(&path)?;
+            let v1: v1::StateV1 = v1::read(file)?.into();
+
+            let mut state = State {
+                strokes: v1
+                    .strokes
+                    .into_iter()
+                    .map(|v1| Stroke {
+                        points: v1
+                            .points
+                            .into_iter()
+                            .map(|v1| {
+                                let x = v1.x;
+                                let y = v1.y;
+                                let pressure = v1.pressure;
+                                StrokeElement { x, y, pressure }
+                            })
+                            .collect(),
+                        color: v1.color,
+                        brush_size: v1.brush_size,
+                        erased: v1.erased,
+                        spline: None,
+                        backend: None,
+                    })
+                    .collect(),
+                brush_size: v1.brush_size,
+                zoom: v1.zoom,
+                ..Default::default()
+            };
+
+            state.strokes.iter_mut().for_each(Stroke::calculate_spline);
 
             return Ok(state);
         }
@@ -68,40 +95,37 @@ mod v1 {
     use bincode::config::standard;
     use std::io::Read;
 
-    #[repr(transparent)]
-    pub struct StateV2<B, S>(State<B, S>)
-    where
-        B: Backend,
-        S: StrokeBackend;
-
-    impl<B: Backend, S: StrokeBackend> bincode::Decode for StateV2<B, S> {
-        fn decode<D: bincode::de::Decoder>(
-            decoder: &mut D,
-        ) -> Result<Self, bincode::error::DecodeError> {
-            Ok(StateV2(bincode::Decode::decode(decoder)?))
-        }
+    #[derive(bincode::Decode)]
+    pub struct StrokePoint {
+        pub x: f32,
+        pub y: f32,
     }
 
-    impl<B: Backend, S: StrokeBackend> Into<State<B, S>> for StateV2<B, S> {
-        fn into(self) -> State<B, S> {
-            self.0
-        }
+    #[derive(bincode::Decode)]
+    #[repr(packed)]
+    pub struct StrokeElement {
+        pub x: f32,
+        pub y: f32,
+        pub pressure: f32,
     }
 
-    pub fn to_v2<B, S>(path: impl AsRef<Path>) -> Result<StateV2<B, S>, PmbError>
-    where
-        B: Backend,
-        S: StrokeBackend,
-    {
-        let file = std::fs::File::open(&path)?;
-        read_v1(file)
+    #[derive(bincode::Decode)]
+    pub struct StrokeV1 {
+        pub points: Vec<StrokeElement>,
+        pub color: [u8; 3],
+        pub brush_size: f32,
+        pub erased: bool,
     }
 
-    fn read_v1<B, S>(mut reader: impl Read) -> Result<StateV2<B, S>, PmbError>
-    where
-        B: Backend,
-        S: StrokeBackend,
-    {
+    #[derive(bincode::Decode)]
+    pub struct StateV1 {
+        pub strokes: Vec<StrokeV1>,
+        pub brush_size: usize,
+        pub zoom: f32,
+        pub origin: StrokePoint,
+    }
+
+    pub fn read(mut reader: impl Read) -> Result<StateV1, PmbError> {
         let mut magic = [0; 3];
         reader.read_exact(&mut magic)?;
 
