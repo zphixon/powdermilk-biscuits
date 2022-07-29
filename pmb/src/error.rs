@@ -52,7 +52,7 @@ impl PmbErrorExt for PmbError {
 
 #[derive(Debug)]
 pub struct PmbError {
-    kind: ErrorKind,
+    pub kind: ErrorKind,
     why: Vec<String>,
 }
 
@@ -86,6 +86,8 @@ pub enum ErrorKind {
     MissingHeader,
     IoError(std::io::Error),
     BincodeError(Box<dyn std::error::Error>),
+    VersionMismatch(u64),
+    UnknownVersion(u64),
 }
 
 impl From<std::io::Error> for PmbError {
@@ -112,6 +114,14 @@ impl Display for ErrorKind {
             ErrorKind::MissingHeader => write!(f, "Missing PMB header"),
             ErrorKind::IoError(err) => write!(f, "{err}"),
             ErrorKind::BincodeError(err) => write!(f, "{err}"),
+            ErrorKind::VersionMismatch(num) => write!(
+                f,
+                "Expected version number {}, got {num}",
+                crate::PMB_VERSION
+            ),
+            ErrorKind::UnknownVersion(num) => {
+                write!(f, "Unknown version number {num}")
+            }
         }
     }
 }

@@ -2,6 +2,7 @@ pub mod error;
 pub mod event;
 pub mod graphics;
 pub mod input;
+pub mod migrate;
 pub mod stroke;
 pub mod ui;
 
@@ -20,6 +21,7 @@ use std::{
 pub const TITLE_UNMODIFIED: &str = "hi! <3";
 pub const TITLE_MODIFIED: &str = "hi! <3 (modified)";
 pub const PMB_MAGIC: [u8; 3] = [b'P', b'M', b'B'];
+pub const PMB_VERSION: u64 = 1;
 
 pub fn read<B, S>(mut reader: impl Read) -> Result<State<B, S>, PmbError>
 where
@@ -31,6 +33,14 @@ where
 
     if magic != PMB_MAGIC {
         return Err(PmbError::new(ErrorKind::MissingHeader));
+    }
+
+    let mut version_bytes = [0; std::mem::size_of::<u64>()];
+    reader.read_exact(&mut version_bytes)?;
+    let version = u64::from_le_bytes(version_bytes);
+
+    if version != PMB_VERSION {
+        return Err(PmbError::new(ErrorKind::VersionMismatch(version)));
     }
 
     let mut deflate_reader = flate2::read::DeflateDecoder::new(reader);
@@ -47,6 +57,7 @@ where
 {
     let mut file = std::fs::File::create(&path)?;
     file.write_all(&PMB_MAGIC)?;
+    file.write_all(&u64::to_le_bytes(PMB_VERSION))?;
 
     let mut deflate_writer = flate2::write::DeflateEncoder::new(file, flate2::Compression::fast());
     bincode::encode_into_std_write(state, &mut deflate_writer, standard())?;
@@ -539,7 +550,14 @@ where
         };
 
         // read the new file
-        let mut disk: Self = read(file).problem(format!("{}", path.display()))?;
+        let mut disk: Self = match read(file).problem(format!("{}", path.display())) {
+            Ok(disk) => disk,
+            Err(PmbError {
+                kind: ErrorKind::VersionMismatch(version),
+                ..
+            }) => migrate::from(version)?,
+            err => err?,
+        };
         disk.strokes.iter_mut().for_each(Stroke::calculate_spline);
 
         self.strokes = disk.strokes;
