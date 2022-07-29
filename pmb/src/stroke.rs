@@ -66,15 +66,15 @@ pub struct Stroke<S>
 where
     S: StrokeBackend,
 {
-    points: Vec<StrokeElement>,
-    color: Color,
-    brush_size: f32,
-    erased: bool,
+    pub points: Vec<StrokeElement>,
+    pub color: Color,
+    pub brush_size: f32,
+    pub erased: bool,
 
     #[disk_skip]
-    spline: Option<BSpline<StrokeElement, f32>>,
+    pub spline: Option<BSpline<StrokeElement, f32>>,
     #[disk_skip]
-    backend: Option<S>,
+    pub backend: Option<S>,
 }
 
 impl<S> Default for Stroke<S>
