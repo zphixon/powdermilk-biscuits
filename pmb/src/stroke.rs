@@ -69,7 +69,6 @@ where
     points: Vec<StrokeElement>,
     color: Color,
     brush_size: f32,
-    style: StrokeStyle,
     erased: bool,
 
     #[disk_skip]
@@ -87,7 +86,6 @@ where
             points: Default::default(),
             color: Color::WHITE,
             brush_size: crate::DEFAULT_BRUSH as f32,
-            style: Default::default(),
             erased: false,
             spline: None,
             backend: None,
@@ -104,7 +102,6 @@ where
             points: self.points.clone(),
             color: self.color,
             brush_size: self.brush_size,
-            style: self.style,
             erased: self.erased,
             spline: self.spline.clone(),
             backend: None,
@@ -222,24 +219,5 @@ where
 
             self.spline = Some(BSpline::new(degree, points, knots));
         }
-    }
-}
-
-#[derive(
-    Debug, Clone, Copy, PartialEq, evc_derive::EnumVariantCount, bincode::Encode, bincode::Decode,
-)]
-#[repr(usize)]
-#[allow(dead_code)]
-pub enum StrokeStyle {
-    Lines,
-    Circles,
-    CirclesPressure,
-    Points,
-    Spline,
-}
-
-impl Default for StrokeStyle {
-    fn default() -> Self {
-        StrokeStyle::Lines
     }
 }

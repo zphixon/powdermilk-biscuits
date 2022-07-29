@@ -9,7 +9,7 @@ use crate::{
     error::{ErrorKind, PmbError, PmbErrorExt},
     event::{Touch, TouchPhase},
     graphics::{Color, ColorExt, PixelPos, StrokePoint, StrokePos},
-    stroke::{Stroke, StrokeElement, StrokeStyle},
+    stroke::{Stroke, StrokeElement},
 };
 use bincode::config::standard;
 use std::{
@@ -163,8 +163,6 @@ where
 {
     pub strokes: Vec<Stroke<S>>,
     pub brush_size: usize,
-    pub stroke_style: StrokeStyle,
-    pub use_individual_style: bool,
     pub zoom: f32,
     pub origin: StrokePoint,
 
@@ -286,8 +284,6 @@ where
         Self {
             strokes: grid(),
             brush_size: DEFAULT_BRUSH,
-            stroke_style: StrokeStyle::default(),
-            use_individual_style: false,
             zoom: DEFAULT_ZOOM,
             origin: StrokePoint::default(),
             stylus: Stylus::default(),
@@ -550,8 +546,6 @@ where
 
         self.strokes = disk.strokes;
         self.brush_size = disk.brush_size;
-        self.stroke_style = disk.stroke_style;
-        self.use_individual_style = disk.use_individual_style;
         self.zoom = disk.zoom;
         self.origin = disk.origin;
         self.stylus = disk.stylus;

@@ -104,8 +104,6 @@ fn main() {
             State::default()
         };
 
-    println!("stroke style {:?}", state.stroke_style);
-
     // gl origin in stroke space
     ev.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
