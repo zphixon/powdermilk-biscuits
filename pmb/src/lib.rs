@@ -398,10 +398,12 @@ where
 
         if just_pressed!(ctrl + Z) {
             self.undo_stroke();
+            self.input.clear();
         }
 
         if just_pressed!(ctrl + S) {
             let _ = self.save_file();
+            self.input.clear();
         }
 
         if just_pressed!(Z) {
@@ -414,6 +416,7 @@ where
 
         if just_pressed!(ctrl + O) {
             let _ = self.read_file(Option::<&str>::None);
+            self.input.clear();
         }
     }
 
