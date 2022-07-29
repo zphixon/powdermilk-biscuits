@@ -1,5 +1,3 @@
-pub type Result<T> = core::result::Result<T, PmbError>;
-
 #[derive(Debug)]
 pub enum PmbError {
     MissingHeader,

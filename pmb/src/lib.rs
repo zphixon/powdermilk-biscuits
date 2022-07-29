@@ -6,7 +6,7 @@ pub mod stroke;
 pub mod ui;
 
 use crate::{
-    error::{PmbError, Result},
+    error::PmbError,
     event::{Touch, TouchPhase},
     graphics::{Color, ColorExt, PixelPos, StrokePoint, StrokePos},
     stroke::{Stroke, StrokeElement, StrokeStyle},
@@ -22,7 +22,7 @@ pub const TITLE_UNMODIFIED: &str = "hi! <3";
 pub const TITLE_MODIFIED: &str = "hi! <3 (modified)";
 pub const PMB_MAGIC: [u8; 3] = [b'P', b'M', b'B'];
 
-pub fn read<B, S>(mut reader: impl Read) -> Result<State<B, S>>
+pub fn read<B, S>(mut reader: impl Read) -> Result<State<B, S>, PmbError>
 where
     B: Backend,
     S: StrokeBackend,
@@ -41,7 +41,7 @@ where
     )?)
 }
 
-pub fn write<B, S>(path: impl AsRef<std::path::Path>, state: &State<B, S>) -> Result<()>
+pub fn write<B, S>(path: impl AsRef<std::path::Path>, state: &State<B, S>) -> Result<(), PmbError>
 where
     B: Backend,
     S: StrokeBackend,
@@ -470,7 +470,7 @@ where
     }
 
     // returns whether to exit or overwrite state
-    pub fn ask_to_save_then_save(&mut self, why: &str) -> Result<bool> {
+    pub fn ask_to_save_then_save(&mut self, why: &str) -> Result<bool, PmbError> {
         match (ui::ask_to_save(why), self.path.as_ref()) {
             // if they say yes and the file we're editing has a path
             (rfd::MessageDialogResult::Yes, Some(path)) => {
@@ -503,7 +503,7 @@ where
         }
     }
 
-    pub fn read_file(&mut self, path: Option<impl AsRef<std::path::Path>>) -> Result<()> {
+    pub fn read_file(&mut self, path: Option<impl AsRef<std::path::Path>>) -> Result<(), PmbError> {
         // if we are modified
         if self.modified {
             // ask to save first
@@ -554,7 +554,7 @@ where
         Ok(())
     }
 
-    pub fn save_file(&mut self) -> Result<()> {
+    pub fn save_file(&mut self) -> Result<(), PmbError> {
         if let Some(path) = self.path.as_ref() {
             let message = format!("Could not save file {}", path.display());
             write(path, self).error_dialog(&message)?;
