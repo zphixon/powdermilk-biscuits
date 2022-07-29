@@ -1,20 +1,20 @@
 //! PMB versions
 //!
 //! Perhaps there are some architectural changes that should take place to make this not so silly,
-//! but I wanted to be able to do `bincode::encode()/decode()` directly on `State` and friends, so
+//! but I wanted to be able to do `bincode::encode()/decode()` directly on [State] and friends, so
 //! now you (most likely future me) have (has) to live with this for the moment. Anyway. For the
 //! most part, changes can be made to types which are written to disk as long as they have a
 //! `#[disk_skip]` attribute. If you ever want to make a change involving a field without
 //! `#[disk_skip]`, you need to do these things:
 //!
-//! - Increment Version::CURRENT
-//! - Add a new module named v[old] where [old] is the previous version
-//! - Copy/paste every type with `derive(Disk)` to that module, suffixing its name with V[new], and
+//! - Increment [Version::CURRENT]
+//! - Add a new module named v\[old\] where \[old\] is the previous version
+//! - Copy/paste every type with `derive(Disk)` to that module, suffixing its name with V\[new\], and
 //!   removing any fields that do not get serialized to disk
 //! - Derive bincode::Decode for each type
-//! - Add the new version to `Version::upgrade_type` and edit the compatibility between the old and
-//!   new `State`s
-//! - Add the new version to `from`, replacing the old types from the new version to the previous
+//! - Add the new version to [Version::upgrade_type] and edit the compatibility between the old and
+//!   new [State]s
+//! - Add the new version to [from], replacing the old types from the new version to the previous
 //!   version and fight for your life
 
 use crate::{
