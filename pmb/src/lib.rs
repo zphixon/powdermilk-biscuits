@@ -30,9 +30,7 @@ where
     reader.read_exact(&mut magic)?;
 
     if magic != PMB_MAGIC {
-        return Err(
-            PmbError::new(ErrorKind::MissingHeader).problem(String::from("Missing magic header"))
-        );
+        return Err(PmbError::new(ErrorKind::MissingHeader));
     }
 
     let mut deflate_reader = flate2::read::DeflateDecoder::new(reader);

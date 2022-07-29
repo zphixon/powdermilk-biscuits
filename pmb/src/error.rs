@@ -57,17 +57,10 @@ pub struct PmbError {
 }
 
 impl PmbError {
-    pub fn because(kind: ErrorKind, reason: String) -> Self {
-        PmbError {
-            kind,
-            why: vec![reason],
-        }
-    }
-
     pub fn new(kind: ErrorKind) -> Self {
         PmbError {
+            why: vec![format!("{kind}")],
             kind,
-            why: Vec::new(),
         }
     }
 }
@@ -97,22 +90,19 @@ pub enum ErrorKind {
 
 impl From<std::io::Error> for PmbError {
     fn from(err: std::io::Error) -> Self {
-        let problem = format!("{err}");
-        PmbError::new(ErrorKind::IoError(err)).problem(problem)
+        PmbError::new(ErrorKind::IoError(err))
     }
 }
 
 impl From<bincode::error::DecodeError> for PmbError {
     fn from(err: bincode::error::DecodeError) -> Self {
-        let problem = format!("{err}");
-        PmbError::new(ErrorKind::BincodeError(Box::new(err))).problem(problem)
+        PmbError::new(ErrorKind::BincodeError(Box::new(err)))
     }
 }
 
 impl From<bincode::error::EncodeError> for PmbError {
     fn from(err: bincode::error::EncodeError) -> Self {
-        let problem = format!("{err}");
-        PmbError::new(ErrorKind::BincodeError(Box::new(err))).problem(problem)
+        PmbError::new(ErrorKind::BincodeError(Box::new(err)))
     }
 }
 
