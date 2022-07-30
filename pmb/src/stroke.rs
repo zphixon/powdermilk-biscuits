@@ -61,7 +61,7 @@ impl std::ops::Mul<f32> for StrokeElement {
 }
 
 #[rustfmt::skip]
-#[derive(pmb_derive_disk::Disk)]
+#[derive(derive_disk::Disk)]
 pub struct Stroke<S>
 where
     S: StrokeBackend,

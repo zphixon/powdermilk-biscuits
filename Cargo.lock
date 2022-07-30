@@ -418,6 +418,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "derive-disk"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "derive-evc"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "dispatch"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -449,15 +467,6 @@ dependencies = [
  "log",
  "regex",
  "termcolor",
-]
-
-[[package]]
-name = "evc_derive"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -1374,15 +1383,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1df8c4ec4b0627e53bdf214615ad287367e482558cf84b109250b37464dc03ae"
 
 [[package]]
-name = "pmb-derive-disk"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "pmb-gl"
 version = "0.1.0"
 dependencies = [
@@ -1427,9 +1427,9 @@ name = "powdermilk-biscuits"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "evc_derive",
+ "derive-disk",
+ "derive-evc",
  "flate2",
- "pmb-derive-disk",
  "rand",
  "rfd",
 ]

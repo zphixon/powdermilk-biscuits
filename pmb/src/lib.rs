@@ -165,7 +165,7 @@ impl GestureState {
 }
 
 #[rustfmt::skip]
-#[derive(pmb_derive_disk::Disk)]
+#[derive(derive_disk::Disk)]
 pub struct State<B, S>
 where
     B: Backend,
