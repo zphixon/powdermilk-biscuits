@@ -16,11 +16,9 @@ smaa = '0.7.0'
 
 [target.'cfg(windows)'.dependencies.winit]
 git = 'https://github.com/zphixon/winit'
-branch = 'pen-info'
-default-features = false
+branch = 'pen-info2'
 
 [target.'cfg(unix)'.dependencies.winit]
 git = 'https://github.com/zphixon/winit'
-branch = 'pen-info'
-default-features = false
+branch = 'pen-info2'
 features = ['x11']
