@@ -72,6 +72,7 @@ where
     pub erased: bool,
 
     #[disk_skip] pub backend: Option<S>,
+    #[disk_skip] pub done: bool,
 }
 
 impl<S> Default for Stroke<S>
@@ -179,5 +180,21 @@ where
 
     pub fn is_dirty(&self) -> bool {
         self.backend().is_none() || self.backend().unwrap().is_dirty()
+    }
+
+    pub fn add_point(&mut self, stylus: &crate::Stylus) {
+        self.points_mut().push(StrokeElement {
+            x: stylus.pos.x,
+            y: stylus.pos.y,
+            pressure: stylus.pressure,
+        });
+
+        if let Some(backend) = self.backend_mut() {
+            backend.make_dirty();
+        }
+    }
+
+    pub fn finish(&mut self) {
+        self.done = true;
     }
 }

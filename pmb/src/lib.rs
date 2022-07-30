@@ -795,20 +795,16 @@ where
                 TouchPhase::Move => {
                     if let Some(stroke) = self.strokes.last_mut() {
                         if self.stylus.down() {
-                            stroke.points_mut().push(StrokeElement {
-                                x: self.stylus.pos.x,
-                                y: self.stylus.pos.y,
-                                pressure: self.stylus.pressure,
-                            });
-
-                            if let Some(backend) = stroke.backend_mut() {
-                                backend.make_dirty()
-                            }
+                            stroke.add_point(&self.stylus);
                         }
                     }
                 }
 
-                TouchPhase::End | TouchPhase::Cancel => {}
+                TouchPhase::End | TouchPhase::Cancel => {
+                    if let Some(stroke) = self.strokes.last_mut() {
+                        stroke.finish();
+                    }
+                }
             };
         }
     }
