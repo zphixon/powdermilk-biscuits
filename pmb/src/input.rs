@@ -68,11 +68,16 @@ pub struct InputHandler {
 fn cycle_state(key_state: KeyState, element_state: ElementState) -> KeyState {
     match (key_state, element_state) {
         (KeyState::Released, ElementState::Pressed) => KeyState::Downstroke,
+        (KeyState::Released, ElementState::Released) => KeyState::Released,
         (KeyState::Downstroke, ElementState::Pressed) => KeyState::Held,
         (KeyState::Downstroke, ElementState::Released) => KeyState::Upstroke,
         (KeyState::Held, ElementState::Pressed) => KeyState::Held,
         (KeyState::Held, ElementState::Released) => KeyState::Upstroke,
-        (k, e) => unreachable!("({k:?}, {e:?}) invalid state"),
+        (KeyState::Upstroke, ElementState::Pressed) => KeyState::Downstroke,
+
+        // this state edge doesn't make any sense but it's happened when I double-tap the trackpad
+        // on my laptop
+        (KeyState::Upstroke, ElementState::Released) => KeyState::Released,
     }
 }
 
