@@ -4,7 +4,7 @@ use crate::{
 };
 
 #[derive(Default, Debug, Clone, Copy)]
-#[repr(packed)]
+#[repr(C)]
 pub struct StrokeElement {
     pub x: f32,
     pub y: f32,
@@ -16,12 +16,9 @@ impl bincode::Encode for StrokeElement {
         &self,
         encoder: &mut E,
     ) -> Result<(), bincode::error::EncodeError> {
-        let x = self.x;
-        let y = self.y;
-        let pressure = self.pressure;
-        x.encode(encoder)?;
-        y.encode(encoder)?;
-        pressure.encode(encoder)?;
+        self.x.encode(encoder)?;
+        self.y.encode(encoder)?;
+        self.pressure.encode(encoder)?;
         Ok(())
     }
 }
@@ -35,28 +32,6 @@ impl bincode::Decode for StrokeElement {
             y: bincode::Decode::decode(decoder)?,
             pressure: bincode::Decode::decode(decoder)?,
         })
-    }
-}
-
-impl std::ops::Add for StrokeElement {
-    type Output = StrokeElement;
-    fn add(self, rhs: Self) -> Self::Output {
-        StrokeElement {
-            x: self.x + rhs.x,
-            y: self.y + rhs.y,
-            pressure: self.pressure,
-        }
-    }
-}
-
-impl std::ops::Mul<f32> for StrokeElement {
-    type Output = StrokeElement;
-    fn mul(self, rhs: f32) -> Self::Output {
-        StrokeElement {
-            x: self.x * rhs,
-            y: self.y * rhs,
-            pressure: self.pressure,
-        }
     }
 }
 

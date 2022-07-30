@@ -82,11 +82,10 @@ where
                         points: v1
                             .points
                             .into_iter()
-                            .map(|v1| {
-                                let x = v1.x;
-                                let y = v1.y;
-                                let pressure = v1.pressure;
-                                StrokeElement { x, y, pressure }
+                            .map(|v1| StrokeElement {
+                                x: v1.x,
+                                y: v1.y,
+                                pressure: v1.pressure,
                             })
                             .collect(),
                         color: v1.color,
@@ -118,7 +117,7 @@ mod v1 {
     }
 
     #[derive(bincode::Decode)]
-    #[repr(packed)]
+    #[repr(C)]
     pub struct StrokeElement {
         pub x: f32,
         pub y: f32,

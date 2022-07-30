@@ -302,10 +302,7 @@ where
             for stroke in self.strokes.iter() {
                 println!("stroke");
                 for point in stroke.points().iter() {
-                    let x = point.x;
-                    let y = point.y;
-                    let p = point.pressure;
-                    println!("{x}, {y}, {p}");
+                    println!("{},{},{}", point.x, point.y, point.pressure);
                 }
             }
             println!("brush={}", self.brush_size);
