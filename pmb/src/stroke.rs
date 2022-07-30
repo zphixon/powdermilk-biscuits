@@ -61,6 +61,7 @@ impl std::ops::Mul<f32> for StrokeElement {
     }
 }
 
+#[rustfmt::skip]
 #[derive(Debug, pmb_derive_disk::Disk)]
 pub struct Stroke<S>
 where
@@ -71,10 +72,8 @@ where
     pub brush_size: f32,
     pub erased: bool,
 
-    #[disk_skip]
-    pub spline: Option<BSpline<StrokeElement, f32>>,
-    #[disk_skip]
-    pub backend: Option<S>,
+    #[disk_skip] pub spline: Option<BSpline<StrokeElement, f32>>,
+    #[disk_skip] pub backend: Option<S>,
 }
 
 impl<S> Default for Stroke<S>

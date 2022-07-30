@@ -164,6 +164,7 @@ impl GestureState {
     }
 }
 
+#[rustfmt::skip]
 #[derive(pmb_derive_disk::Disk)]
 pub struct State<B, S>
 where
@@ -175,18 +176,12 @@ where
     pub zoom: f32,
     pub origin: StrokePoint,
 
-    #[disk_skip]
-    pub stylus: Stylus,
-    #[disk_skip]
-    pub gesture_state: GestureState,
-    #[disk_skip]
-    pub modified: bool,
-    #[disk_skip]
-    pub path: Option<PathBuf>,
-    #[disk_skip]
-    pub input: input::InputHandler,
-    #[disk_skip]
-    pub backend: B,
+    #[disk_skip] pub stylus: Stylus,
+    #[disk_skip] pub gesture_state: GestureState,
+    #[disk_skip] pub modified: bool,
+    #[disk_skip] pub path: Option<PathBuf>,
+    #[disk_skip] pub input: input::InputHandler,
+    #[disk_skip] pub backend: B,
 }
 
 impl<B, S> Default for State<B, S>
