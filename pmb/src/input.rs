@@ -27,7 +27,7 @@ pub enum MouseButton {
     Other(usize),
 }
 
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Debug, Clone, Copy)]
 pub enum ElementState {
     Pressed,
     Released,
@@ -37,6 +37,7 @@ pub enum ElementState {
 pub enum KeyState {
     Downstroke,
     Held,
+    Upstroke,
     Released,
 }
 
@@ -50,6 +51,11 @@ impl KeyState {
         use KeyState::*;
         matches!(self, Downstroke)
     }
+
+    pub fn just_released(&self) -> bool {
+        use KeyState::*;
+        matches!(self, Upstroke)
+    }
 }
 
 #[derive(Default)]
@@ -62,8 +68,11 @@ pub struct InputHandler {
 fn cycle_state(key_state: KeyState, element_state: ElementState) -> KeyState {
     match (key_state, element_state) {
         (KeyState::Released, ElementState::Pressed) => KeyState::Downstroke,
-        (_, ElementState::Released) => KeyState::Released,
-        (_, ElementState::Pressed) => KeyState::Held,
+        (KeyState::Downstroke, ElementState::Pressed) => KeyState::Held,
+        (KeyState::Downstroke, ElementState::Released) => KeyState::Upstroke,
+        (KeyState::Held, ElementState::Pressed) => KeyState::Held,
+        (KeyState::Held, ElementState::Released) => KeyState::Upstroke,
+        (k, e) => unreachable!("({k:?}, {e:?}) invalid state"),
     }
 }
 
@@ -90,6 +99,10 @@ impl InputHandler {
         self.buttons.contains_key(&button) && self.buttons[&button].just_pressed()
     }
 
+    pub fn button_just_released(&mut self, button: MouseButton) -> bool {
+        self.buttons.contains_key(&button) && self.buttons[&button].just_released()
+    }
+
     pub(super) fn handle_key(&mut self, key: Keycode, state: ElementState) {
         let key_state = self.keys.entry(key).or_insert(KeyState::Released);
         let next_state = cycle_state(*key_state, state);
@@ -102,6 +115,10 @@ impl InputHandler {
 
     pub fn just_pressed(&self, key: Keycode) -> bool {
         self.keys.contains_key(&key) && self.keys[&key].just_pressed()
+    }
+
+    pub fn just_released(&self, key: Keycode) -> bool {
+        self.keys.contains_key(&key) && self.keys[&key].just_released()
     }
 
     pub fn shift(&self) -> bool {
@@ -117,5 +134,19 @@ impl InputHandler {
     pub fn clear(&mut self) {
         self.keys.clear();
         self.buttons.clear();
+    }
+
+    pub(super) fn upstrokes(&mut self) {
+        self.keys.values_mut().for_each(|value| {
+            if matches!(value, KeyState::Upstroke) {
+                *value = KeyState::Released;
+            }
+        });
+
+        self.buttons.values_mut().for_each(|value| {
+            if matches!(value, KeyState::Upstroke) {
+                *value = KeyState::Released;
+            }
+        });
     }
 }

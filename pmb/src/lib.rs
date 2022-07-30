@@ -331,6 +331,8 @@ where
                 .problem(format!("Could not open file"))
                 .display();
         }
+
+        self.input.upstrokes();
     }
 
     pub fn reset_view(&mut self) {
