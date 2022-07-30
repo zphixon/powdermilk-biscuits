@@ -206,6 +206,49 @@ pub fn stroke_to_ndc(width: u32, height: u32, zoom: f32, point: StrokePoint) -> 
     }
 }
 
+pub trait EventExt {
+    fn is_input(&self) -> bool;
+    fn is_window(&self) -> bool;
+}
+
+impl<T> EventExt for winit::event::Event<'_, T> {
+    fn is_input(&self) -> bool {
+        use winit::event::*;
+        use DeviceEvent as D;
+        use WindowEvent as W;
+
+        matches!(
+            self,
+            Event::DeviceEvent {
+                event: D::MouseMotion { .. }
+                    | D::MouseWheel { .. }
+                    | D::Motion { .. }
+                    | D::Button { .. }
+                    | D::Key(_)
+                    | D::Text { .. },
+                ..
+            } | Event::WindowEvent {
+                event: W::ReceivedCharacter(_)
+                    | W::KeyboardInput { .. }
+                    | W::ModifiersChanged(_)
+                    | W::CursorMoved { .. }
+                    | W::CursorEntered { .. }
+                    | W::CursorLeft { .. }
+                    | W::MouseWheel { .. }
+                    | W::MouseInput { .. }
+                    | W::TouchpadPressure { .. }
+                    | W::AxisMotion { .. }
+                    | W::Touch(_),
+                ..
+            }
+        )
+    }
+
+    fn is_window(&self) -> bool {
+        matches!(self, winit::event::Event::WindowEvent { .. })
+    }
+}
+
 pub type Size = PhysicalSize<u32>;
 
 pub struct Graphics {

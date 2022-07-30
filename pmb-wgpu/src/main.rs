@@ -39,6 +39,11 @@ async fn run() {
     ev.run(move |event, _, flow| {
         *flow = ControlFlow::Wait;
 
+        use pmb_wgpu::EventExt;
+        if event.is_window() && event.is_input() {
+            window.request_redraw();
+        }
+
         match event {
             Event::WindowEvent {
                 event: WindowEvent::Focused(focused),
@@ -106,8 +111,6 @@ async fn run() {
 
                 let dzoom = if zoom_in { ZOOM_SPEED } else { -ZOOM_SPEED };
                 state.change_zoom(dzoom);
-
-                window.request_redraw();
             }
 
             Event::WindowEvent {
@@ -122,7 +125,6 @@ async fn run() {
                 let button = pmb_wgpu::winit_to_pmb_mouse_button(button);
                 let key_state = pmb_wgpu::winit_to_pmb_key_state(key_state);
                 state.handle_mouse_button(button, key_state);
-                window.request_redraw();
             }
 
             Event::RedrawRequested(_) => {
@@ -168,7 +170,6 @@ async fn run() {
                 if !cursor_visible {
                     cursor_visible = true;
                     window.set_cursor_visible(true);
-                    window.request_redraw();
                 }
             }
 
@@ -200,8 +201,6 @@ async fn run() {
                     (None, true) => window.set_title(powdermilk_biscuits::TITLE_MODIFIED),
                     (None, false) => window.set_title(powdermilk_biscuits::TITLE_UNMODIFIED),
                 }
-
-                window.request_redraw();
             }
 
             _ => {}
