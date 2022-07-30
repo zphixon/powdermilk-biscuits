@@ -2,7 +2,6 @@ use crate::{
     graphics::{Color, ColorExt},
     StrokeBackend,
 };
-use bspline::BSpline;
 
 #[derive(Default, Debug, Clone, Copy)]
 #[repr(packed)]
@@ -62,7 +61,7 @@ impl std::ops::Mul<f32> for StrokeElement {
 }
 
 #[rustfmt::skip]
-#[derive(Debug, pmb_derive_disk::Disk)]
+#[derive(pmb_derive_disk::Disk)]
 pub struct Stroke<S>
 where
     S: StrokeBackend,
@@ -72,7 +71,6 @@ where
     pub brush_size: f32,
     pub erased: bool,
 
-    #[disk_skip] pub spline: Option<BSpline<StrokeElement, f32>>,
     #[disk_skip] pub backend: Option<S>,
 }
 
@@ -86,23 +84,6 @@ where
             color: Color::WHITE,
             brush_size: crate::DEFAULT_BRUSH as f32,
             erased: false,
-            spline: None,
-            backend: None,
-        }
-    }
-}
-
-impl<S> Clone for Stroke<S>
-where
-    S: StrokeBackend,
-{
-    fn clone(&self) -> Self {
-        Stroke {
-            points: self.points.clone(),
-            color: self.color,
-            brush_size: self.brush_size,
-            erased: self.erased,
-            spline: self.spline.clone(),
             backend: None,
         }
     }
@@ -198,25 +179,5 @@ where
 
     pub fn is_dirty(&self) -> bool {
         self.backend().is_none() || self.backend().unwrap().is_dirty()
-    }
-
-    pub fn calculate_spline(&mut self) {
-        #[allow(non_upper_case_globals)]
-        const degree: usize = Stroke::<()>::DEGREE;
-        if self.points().len() > degree {
-            let points = [self.points().first().cloned().unwrap(); degree]
-                .into_iter()
-                .chain(self.points().iter().cloned())
-                .chain([self.points().last().cloned().unwrap(); degree])
-                .collect::<Vec<StrokeElement>>();
-
-            let knots = std::iter::repeat(())
-                .take(points.len() + degree + 1)
-                .enumerate()
-                .map(|(i, ())| i as f32)
-                .collect::<Vec<_>>();
-
-            self.spline = Some(BSpline::new(degree, points, knots));
-        }
     }
 }

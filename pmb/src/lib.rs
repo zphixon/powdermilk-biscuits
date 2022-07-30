@@ -553,7 +553,7 @@ where
         };
 
         // read the new file
-        let mut disk: Self = match read(file).problem(format!("{}", path.display())) {
+        let disk: Self = match read(file).problem(format!("{}", path.display())) {
             Ok(disk) => disk,
 
             Err(PmbError {
@@ -587,8 +587,6 @@ where
 
             err => err?,
         };
-
-        disk.strokes.iter_mut().for_each(Stroke::calculate_spline);
 
         self.update_from(disk);
         self.modified = false;
@@ -776,6 +774,7 @@ where
                         .sqrt()
                             * 2.0;
 
+                        // TODO check geometry instead of stroke points
                         if dist < self.brush_size as f32 {
                             stroke.erase();
                             self.modified = true;
@@ -788,8 +787,9 @@ where
             match phase {
                 TouchPhase::Start => {
                     self.modified = true;
-                    self.strokes
-                        .push(Stroke::new(rand::random(), self.brush_size as f32));
+
+                    let stroke = Stroke::<S>::new(rand::random(), self.brush_size as f32);
+                    self.strokes.push(stroke);
                 }
 
                 TouchPhase::Move => {
@@ -804,17 +804,11 @@ where
                             if let Some(backend) = stroke.backend_mut() {
                                 backend.make_dirty()
                             }
-
-                            stroke.calculate_spline();
                         }
                     }
                 }
 
-                TouchPhase::End | TouchPhase::Cancel => {
-                    if let Some(stroke) = self.strokes.last_mut() {
-                        stroke.calculate_spline();
-                    }
-                }
+                TouchPhase::End | TouchPhase::Cancel => {}
             };
         }
     }

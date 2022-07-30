@@ -74,7 +74,7 @@ where
         Version(1) => {
             let v1: v1::StateV1 = v1::read(file)?.into();
 
-            let mut state = State {
+            let state = State {
                 strokes: v1
                     .strokes
                     .into_iter()
@@ -92,8 +92,7 @@ where
                         color: v1.color,
                         brush_size: v1.brush_size,
                         erased: v1.erased,
-                        spline: None,
-                        backend: None,
+                        ..Default::default()
                     })
                     .collect(),
                 brush_size: v1.brush_size,
@@ -101,7 +100,6 @@ where
                 ..Default::default()
             };
 
-            state.strokes.iter_mut().for_each(Stroke::calculate_spline);
             return Ok(state);
         }
 

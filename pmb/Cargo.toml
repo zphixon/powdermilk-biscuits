@@ -10,8 +10,6 @@ default = []
 rand = '0.8.5'
 evc_derive = { path = '../evc_derive' }
 pmb-derive-disk = { path = '../pmb-derive-disk' }
-bspline = '1.1.0'
-lyon = '1.0.0'
 bincode = '2.0.0-rc.1'
 flate2 = '1.0.24'
 rfd = { git = 'https://github.com/zphixon/rfd', branch = 'yes-no-cancel' }
