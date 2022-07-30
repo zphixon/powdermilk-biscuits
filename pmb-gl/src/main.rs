@@ -145,11 +145,6 @@ fn main() {
                     };
                 }
 
-                if state.input.just_pressed(G) {
-                    state.geedis();
-                    println!("it checks out!");
-                }
-
                 if state.input.shift() && state.input.just_pressed(S) {
                     let num_string = std::fs::read_to_string("img/num.txt").expect("read num.txt");
                     let num = num_string.trim().parse::<usize>().expect("parse num.txt");

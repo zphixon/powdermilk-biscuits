@@ -86,6 +86,7 @@ where
             brush_size: crate::DEFAULT_BRUSH as f32,
             erased: false,
             backend: None,
+            done: false,
         }
     }
 }

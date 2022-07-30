@@ -194,82 +194,6 @@ where
     }
 }
 
-fn grid<S>() -> Vec<Stroke<S>>
-where
-    S: StrokeBackend,
-{
-    use std::iter::repeat;
-    let mut strokes = vec![Stroke::with_points(
-        graphics::circle_points(1.0, 50)
-            .chunks_exact(2)
-            .map(|arr| StrokeElement {
-                x: arr[0],
-                y: arr[1],
-                pressure: 1.0,
-            })
-            .collect(),
-        Color::WHITE,
-    )];
-
-    strokes.extend(repeat(-25.0).take(50).enumerate().map(|(i, x)| {
-        Stroke::with_points(
-            repeat(-25.0)
-                .take(50)
-                .enumerate()
-                .map(|(j, y)| StrokeElement {
-                    x: i as f32 + x,
-                    y: j as f32 + y,
-                    pressure: 1.0,
-                })
-                .collect(),
-            Color::grey(0.1),
-        )
-    }));
-
-    strokes.extend(repeat(-25.0).take(50).enumerate().map(|(i, y)| {
-        Stroke::with_points(
-            repeat(-25.0)
-                .take(50)
-                .enumerate()
-                .map(|(j, x)| StrokeElement {
-                    x: j as f32 + x,
-                    y: i as f32 + y,
-                    pressure: 1.0,
-                })
-                .collect(),
-            Color::grey(0.1),
-        )
-    }));
-
-    strokes.push(Stroke::with_points(
-        repeat(-25.0)
-            .take(50)
-            .enumerate()
-            .map(|(i, x)| StrokeElement {
-                x: i as f32 + x,
-                y: 0.0,
-                pressure: 1.0,
-            })
-            .collect(),
-        Color::grey(0.3),
-    ));
-
-    strokes.push(Stroke::with_points(
-        repeat(-25.0)
-            .take(50)
-            .enumerate()
-            .map(|(i, y)| StrokeElement {
-                x: 0.0,
-                y: i as f32 + y,
-                pressure: 1.0,
-            })
-            .collect(),
-        Color::grey(0.3),
-    ));
-
-    strokes
-}
-
 pub const DEFAULT_ZOOM: f32 = 50.;
 pub const MAX_ZOOM: f32 = 500.;
 pub const MIN_ZOOM: f32 = 1.;
@@ -311,24 +235,6 @@ where
         self.zoom = other.zoom;
         self.origin = other.origin;
         self.stylus = other.stylus;
-    }
-
-    pub fn geedis(&self) {
-        let bin = bincode::encode_to_vec(&self, standard()).unwrap();
-        let (this, _): (Self, _) = bincode::decode_from_slice(&bin, standard()).unwrap();
-
-        assert_eq!(self.strokes.len(), this.strokes.len());
-        for (a, b) in self.strokes.iter().zip(this.strokes.iter()) {
-            assert_eq!(a.points().len(), b.points().len());
-            for (ae, be) in a.points().iter().zip(b.points().iter()) {
-                let (ax, bx) = (ae.x, be.x);
-                let (ay, by) = (ae.y, be.y);
-                let (ap, bp) = (ae.pressure, be.pressure);
-                assert_eq!(ax, bx);
-                assert_eq!(ay, by);
-                assert_eq!(ap, bp);
-            }
-        }
     }
 
     pub fn with_filename(path: impl AsRef<std::path::Path>) -> Self {
@@ -808,4 +714,80 @@ where
             };
         }
     }
+}
+
+fn grid<S>() -> Vec<Stroke<S>>
+where
+    S: StrokeBackend,
+{
+    use std::iter::repeat;
+    let mut strokes = vec![Stroke::with_points(
+        graphics::circle_points(1.0, 50)
+            .chunks_exact(2)
+            .map(|arr| StrokeElement {
+                x: arr[0],
+                y: arr[1],
+                pressure: 1.0,
+            })
+            .collect(),
+        Color::WHITE,
+    )];
+
+    strokes.extend(repeat(-25.0).take(50).enumerate().map(|(i, x)| {
+        Stroke::with_points(
+            repeat(-25.0)
+                .take(50)
+                .enumerate()
+                .map(|(j, y)| StrokeElement {
+                    x: i as f32 + x,
+                    y: j as f32 + y,
+                    pressure: 1.0,
+                })
+                .collect(),
+            Color::grey(0.1),
+        )
+    }));
+
+    strokes.extend(repeat(-25.0).take(50).enumerate().map(|(i, y)| {
+        Stroke::with_points(
+            repeat(-25.0)
+                .take(50)
+                .enumerate()
+                .map(|(j, x)| StrokeElement {
+                    x: j as f32 + x,
+                    y: i as f32 + y,
+                    pressure: 1.0,
+                })
+                .collect(),
+            Color::grey(0.1),
+        )
+    }));
+
+    strokes.push(Stroke::with_points(
+        repeat(-25.0)
+            .take(50)
+            .enumerate()
+            .map(|(i, x)| StrokeElement {
+                x: i as f32 + x,
+                y: 0.0,
+                pressure: 1.0,
+            })
+            .collect(),
+        Color::grey(0.3),
+    ));
+
+    strokes.push(Stroke::with_points(
+        repeat(-25.0)
+            .take(50)
+            .enumerate()
+            .map(|(i, y)| StrokeElement {
+                x: 0.0,
+                y: i as f32 + y,
+                pressure: 1.0,
+            })
+            .collect(),
+        Color::grey(0.3),
+    ));
+
+    strokes
 }
