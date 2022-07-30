@@ -9,10 +9,10 @@ pub fn error(text: &str) -> rfd::MessageDialogResult {
         .show()
 }
 
-pub fn ask_to_save(why: &str) -> rfd::MessageDialogResult {
+pub fn ask_to_save(title: &str, why: &str) -> rfd::MessageDialogResult {
     rfd::MessageDialog::new()
         .set_level(rfd::MessageLevel::Warning)
-        .set_title("Unsaved changes")
+        .set_title(title)
         .set_description(why)
         .set_buttons(rfd::MessageButtons::YesNoCancel)
         .show()
@@ -31,9 +31,9 @@ pub fn save_dialog(title: &str, filename: Option<&Path>) -> Option<PathBuf> {
         .save_file()
 }
 
-pub fn open_dialog() -> Option<PathBuf> {
+pub fn open_dialog(title: &str) -> Option<PathBuf> {
     rfd::FileDialog::new()
-        .set_title("Open file")
+        .set_title(title)
         .add_filter("PMB", &["pmb"])
         .pick_file()
 }

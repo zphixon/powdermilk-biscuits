@@ -46,7 +46,7 @@ async fn run() {
             } => {
                 if state.modified {
                     if state
-                        .ask_to_save_then_save("Would you like to save before exiting?")
+                        .ask_to_save_then_save("save-before-exit")
                         .unwrap_or(false)
                     {
                         *flow = ControlFlow::Exit;
