@@ -310,14 +310,12 @@ where
 
         if just_pressed!(ctrl + Z) {
             self.undo_stroke();
-            self.input.clear();
         }
 
         if just_pressed!(ctrl + S) {
             self.save_file()
                 .problem(format!("Could not save file"))
                 .display();
-            self.input.clear();
         }
 
         if just_pressed!(Z) {
@@ -332,7 +330,6 @@ where
             self.read_file(Option::<&str>::None)
                 .problem(format!("Could not open file"))
                 .display();
-            self.input.clear();
         }
     }
 

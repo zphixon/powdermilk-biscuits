@@ -41,6 +41,13 @@ async fn run() {
 
         match event {
             Event::WindowEvent {
+                event: WindowEvent::Focused(focused),
+                ..
+            } if !focused => {
+                state.input.clear();
+            }
+
+            Event::WindowEvent {
                 event: WindowEvent::CloseRequested,
                 ..
             } => {

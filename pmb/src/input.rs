@@ -114,7 +114,7 @@ impl InputHandler {
         self.is_down(LControl) || self.is_down(RControl)
     }
 
-    pub(super) fn clear(&mut self) {
+    pub fn clear(&mut self) {
         self.keys.clear();
         self.buttons.clear();
     }

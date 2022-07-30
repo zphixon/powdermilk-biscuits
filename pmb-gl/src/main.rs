@@ -109,6 +109,13 @@ fn main() {
         *control_flow = ControlFlow::Wait;
         match event {
             Event::WindowEvent {
+                event: WindowEvent::Focused(focused),
+                ..
+            } if !focused => {
+                state.input.clear();
+            }
+
+            Event::WindowEvent {
                 event:
                     WindowEvent::KeyboardInput {
                         input:
