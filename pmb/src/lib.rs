@@ -245,6 +245,11 @@ where
         this
     }
 
+    pub fn reset_view(&mut self) {
+        self.zoom = DEFAULT_ZOOM;
+        self.origin = Default::default();
+    }
+
     pub fn handle_key(&mut self, key: input::Keycode, state: input::ElementState) {
         use input::Keycode::*;
         self.input.handle_key(key, state);
@@ -335,11 +340,6 @@ where
         self.input.upstrokes();
     }
 
-    pub fn reset_view(&mut self) {
-        self.zoom = DEFAULT_ZOOM;
-        self.origin = Default::default();
-    }
-
     pub fn handle_mouse_move(&mut self, location: PixelPos) {
         self.input.handle_mouse_move(location);
     }
@@ -386,132 +386,6 @@ where
 
     pub fn handle_mouse_button(&mut self, button: input::MouseButton, state: input::ElementState) {
         self.input.handle_mouse_button(button, state);
-    }
-
-    // returns whether to exit or overwrite state
-    pub fn ask_to_save_then_save(&mut self, why: &str) -> Result<bool, PmbError> {
-        match (ui::ask_to_save(why), self.path.as_ref()) {
-            // if they say yes and the file we're editing has a path
-            (rfd::MessageDialogResult::Yes, Some(path)) => {
-                write(path, self).problem(format!("{}", path.display()))?;
-                self.modified = false;
-                Ok(true)
-            }
-
-            // they say yes and the file doesn't have a path yet
-            (rfd::MessageDialogResult::Yes, None) => {
-                // ask where to save it
-                match ui::save_dialog("Save unnamed file", None) {
-                    Some(new_filename) => {
-                        // try write to disk
-                        write(&new_filename, self)
-                            .problem(format!("{}", new_filename.display()))?;
-                        self.modified = false;
-                        Ok(true)
-                    }
-
-                    None => Ok(false),
-                }
-            }
-
-            // they say no, don't write changes
-            (rfd::MessageDialogResult::No, _) => Ok(true),
-
-            _ => Ok(false),
-        }
-    }
-
-    pub fn read_file(&mut self, path: Option<impl AsRef<std::path::Path>>) -> Result<(), PmbError> {
-        // if we are modified
-        if self.modified {
-            // ask to save first
-            if !self
-                .ask_to_save_then_save("Would you like to save before opening another file?")
-                .problem(String::from("Could not save file"))?
-            {
-                return Ok(());
-            }
-        }
-
-        // if we were passed a path, use that, otherwise ask for one
-        let path = match path
-            .map(|path| path.as_ref().to_path_buf())
-            .or_else(ui::open_dialog)
-        {
-            Some(path) => path,
-            None => {
-                return Ok(());
-            }
-        };
-
-        // open the new file
-        let file = match std::fs::File::open(&path) {
-            Ok(file) => file,
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                // if it doesn't exist don't try to read it
-                *self = State::default();
-                self.path = Some(path);
-                self.modified = true;
-                return Ok(());
-            }
-            Err(err) => Err(PmbError::from(err))?,
-        };
-
-        // read the new file
-        let disk: Self = match read(file).problem(format!("{}", path.display())) {
-            Ok(disk) => disk,
-
-            Err(PmbError {
-                kind: ErrorKind::VersionMismatch(version),
-                ..
-            }) => match Version::upgrade_type(version) {
-                UpgradeType::Smooth => migrate::from(version, &path)?,
-
-                UpgradeType::Rocky => match rfd::MessageDialog::new()
-                    .set_title("Migrate version")
-                    .set_buttons(rfd::MessageButtons::YesNo)
-                    .set_description("Significant internal changes have been made to Powdermilk Biscuits since you last opened this file. Although it has not been marked as significantly incompatible with the current version, you may still experience data loss by attempting to upgrade this file to the most recent version.\n\nNo changes will be made to the file as is, and you will be prompted to save the file in a new location instead of overwriting it.\n\nProceed?")
-                    .show()
-                {
-                    rfd::MessageDialogResult::Yes => {
-                        let state = migrate::from(version, &path)?;
-                        self.update_from(state);
-                        self.modified = true;
-                        self.path = None;
-
-                        return Ok(());
-                    },
-
-                    _ => return Ok(()),
-                },
-
-                UpgradeType::Incompatible => {
-                    return Err(PmbError::new(ErrorKind::IncompatibleVersion(version)));
-                }
-            },
-
-            err => err?,
-        };
-
-        self.update_from(disk);
-        self.modified = false;
-        self.path = Some(path);
-
-        Ok(())
-    }
-
-    pub fn save_file(&mut self) -> Result<(), PmbError> {
-        if let Some(path) = self.path.as_ref() {
-            write(path, self).problem(format!("{}", path.display()))?;
-            self.modified = false;
-        } else if let Some(path) = ui::save_dialog("Save unnamed file", None) {
-            let problem = format!("{}", path.display());
-            self.path = Some(path);
-            write(self.path.as_ref().unwrap(), self).problem(problem)?;
-            self.modified = false;
-        }
-
-        Ok(())
     }
 
     pub fn increase_brush(&mut self) {
@@ -712,6 +586,132 @@ where
                 }
             };
         }
+    }
+
+    // returns whether to exit or overwrite state
+    pub fn ask_to_save_then_save(&mut self, why: &str) -> Result<bool, PmbError> {
+        match (ui::ask_to_save(why), self.path.as_ref()) {
+            // if they say yes and the file we're editing has a path
+            (rfd::MessageDialogResult::Yes, Some(path)) => {
+                write(path, self).problem(format!("{}", path.display()))?;
+                self.modified = false;
+                Ok(true)
+            }
+
+            // they say yes and the file doesn't have a path yet
+            (rfd::MessageDialogResult::Yes, None) => {
+                // ask where to save it
+                match ui::save_dialog("Save unnamed file", None) {
+                    Some(new_filename) => {
+                        // try write to disk
+                        write(&new_filename, self)
+                            .problem(format!("{}", new_filename.display()))?;
+                        self.modified = false;
+                        Ok(true)
+                    }
+
+                    None => Ok(false),
+                }
+            }
+
+            // they say no, don't write changes
+            (rfd::MessageDialogResult::No, _) => Ok(true),
+
+            _ => Ok(false),
+        }
+    }
+
+    pub fn read_file(&mut self, path: Option<impl AsRef<std::path::Path>>) -> Result<(), PmbError> {
+        // if we are modified
+        if self.modified {
+            // ask to save first
+            if !self
+                .ask_to_save_then_save("Would you like to save before opening another file?")
+                .problem(String::from("Could not save file"))?
+            {
+                return Ok(());
+            }
+        }
+
+        // if we were passed a path, use that, otherwise ask for one
+        let path = match path
+            .map(|path| path.as_ref().to_path_buf())
+            .or_else(ui::open_dialog)
+        {
+            Some(path) => path,
+            None => {
+                return Ok(());
+            }
+        };
+
+        // open the new file
+        let file = match std::fs::File::open(&path) {
+            Ok(file) => file,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                // if it doesn't exist don't try to read it
+                *self = State::default();
+                self.path = Some(path);
+                self.modified = true;
+                return Ok(());
+            }
+            Err(err) => Err(PmbError::from(err))?,
+        };
+
+        // read the new file
+        let disk: Self = match read(file).problem(format!("{}", path.display())) {
+            Ok(disk) => disk,
+
+            Err(PmbError {
+                kind: ErrorKind::VersionMismatch(version),
+                ..
+            }) => match Version::upgrade_type(version) {
+                UpgradeType::Smooth => migrate::from(version, &path)?,
+
+                UpgradeType::Rocky => match rfd::MessageDialog::new()
+                    .set_title("Migrate version")
+                    .set_buttons(rfd::MessageButtons::YesNo)
+                    .set_description("Significant internal changes have been made to Powdermilk Biscuits since you last opened this file. Although it has not been marked as significantly incompatible with the current version, you may still experience data loss by attempting to upgrade this file to the most recent version.\n\nNo changes will be made to the file as is, and you will be prompted to save the file in a new location instead of overwriting it.\n\nProceed?")
+                    .show()
+                {
+                    rfd::MessageDialogResult::Yes => {
+                        let state = migrate::from(version, &path)?;
+                        self.update_from(state);
+                        self.modified = true;
+                        self.path = None;
+
+                        return Ok(());
+                    },
+
+                    _ => return Ok(()),
+                },
+
+                UpgradeType::Incompatible => {
+                    return Err(PmbError::new(ErrorKind::IncompatibleVersion(version)));
+                }
+            },
+
+            err => err?,
+        };
+
+        self.update_from(disk);
+        self.modified = false;
+        self.path = Some(path);
+
+        Ok(())
+    }
+
+    pub fn save_file(&mut self) -> Result<(), PmbError> {
+        if let Some(path) = self.path.as_ref() {
+            write(path, self).problem(format!("{}", path.display()))?;
+            self.modified = false;
+        } else if let Some(path) = ui::save_dialog("Save unnamed file", None) {
+            let problem = format!("{}", path.display());
+            self.path = Some(path);
+            write(self.path.as_ref().unwrap(), self).problem(problem)?;
+            self.modified = false;
+        }
+
+        Ok(())
     }
 }
 
