@@ -54,7 +54,7 @@ impl Version {
         }
 
         match from {
-            Version(1) => Rocky,
+            Version(1) => Smooth,
             _ => Incompatible,
         }
     }

@@ -14,7 +14,6 @@ use crate::{
     stroke::{Stroke, StrokeElement},
 };
 use bincode::config::standard;
-use fluent::{FluentBundle, FluentResource};
 use std::{
     io::{Read, Write},
     path::PathBuf,
@@ -165,7 +164,6 @@ impl GestureState {
     }
 }
 
-#[rustfmt::skip]
 #[derive(pmb_derive_disk::Disk)]
 pub struct State<B, S>
 where
@@ -177,13 +175,18 @@ where
     pub zoom: f32,
     pub origin: StrokePoint,
 
-    #[disk_skip] pub stylus: Stylus,
-    #[disk_skip] pub gesture_state: GestureState,
-    #[disk_skip] pub modified: bool,
-    #[disk_skip] pub path: Option<PathBuf>,
-    #[disk_skip] pub input: input::InputHandler,
-    #[disk_skip] pub backend: B,
-    #[disk_skip] pub fluent: FluentBundle<FluentResource>,
+    #[disk_skip]
+    pub stylus: Stylus,
+    #[disk_skip]
+    pub gesture_state: GestureState,
+    #[disk_skip]
+    pub modified: bool,
+    #[disk_skip]
+    pub path: Option<PathBuf>,
+    #[disk_skip]
+    pub input: input::InputHandler,
+    #[disk_skip]
+    pub backend: B,
 }
 
 impl<B, S> Default for State<B, S>
@@ -287,11 +290,6 @@ where
     S: StrokeBackend,
 {
     pub fn new() -> Self {
-        let mut fluent = FluentBundle::new(vec!["en-US".parse().unwrap()]);
-        let resource =
-            FluentResource::try_new(include_str!("../../int/test.ftl").to_string()).unwrap();
-        fluent.add_resource(resource).unwrap();
-
         Self {
             strokes: grid(),
             brush_size: DEFAULT_BRUSH,
@@ -303,7 +301,6 @@ where
             path: None,
             input: input::InputHandler::default(),
             backend: Default::default(),
-            fluent,
         }
     }
 
@@ -311,13 +308,6 @@ where
         let mut this = State::new();
         this.modified = true;
         this
-    }
-
-    pub(crate) fn get_simple_string(&self, msg: &'static str) -> String {
-        let msg = self.fluent.get_message(msg).unwrap();
-        let pat = msg.value().unwrap();
-        let mut err = Vec::new();
-        self.fluent.format_pattern(&pat, None, &mut err).to_string()
     }
 
     pub fn update_from(&mut self, other: State<B, S>) {
@@ -349,7 +339,7 @@ where
     pub fn with_filename(path: impl AsRef<std::path::Path>) -> Self {
         let mut this = State::new();
         this.read_file(Some(path))
-            .problem(this.get_simple_string("couldnt-open-file"))
+            .problem(String::from("Could not open file"))
             .display();
         this
     }
@@ -424,7 +414,7 @@ where
 
         if just_pressed!(ctrl + S) {
             self.save_file()
-                .problem(self.get_simple_string("couldnt-save-file"))
+                .problem(format!("Could not save file"))
                 .display();
             self.input.clear();
         }
@@ -439,7 +429,7 @@ where
 
         if just_pressed!(ctrl + O) {
             self.read_file(Option::<&str>::None)
-                .problem(self.get_simple_string("couldnt-open-file"))
+                .problem(format!("Could not open file"))
                 .display();
             self.input.clear();
         }
@@ -499,14 +489,8 @@ where
     }
 
     // returns whether to exit or overwrite state
-    pub fn ask_to_save_then_save(&mut self, why: &'static str) -> Result<bool, PmbError> {
-        match (
-            ui::ask_to_save(
-                &self.get_simple_string("unsaved-changes"),
-                &self.get_simple_string(why),
-            ),
-            self.path.as_ref(),
-        ) {
+    pub fn ask_to_save_then_save(&mut self, why: &str) -> Result<bool, PmbError> {
+        match (ui::ask_to_save(why), self.path.as_ref()) {
             // if they say yes and the file we're editing has a path
             (rfd::MessageDialogResult::Yes, Some(path)) => {
                 write(path, self).problem(format!("{}", path.display()))?;
@@ -542,8 +526,8 @@ where
         if self.modified {
             // ask to save first
             if !self
-                .ask_to_save_then_save("save-before-open")
-                .problem(self.get_simple_string("couldnt-save-file"))?
+                .ask_to_save_then_save("Would you like to save before opening another file?")
+                .problem(String::from("Could not save file"))?
             {
                 return Ok(());
             }
@@ -552,7 +536,7 @@ where
         // if we were passed a path, use that, otherwise ask for one
         let path = match path
             .map(|path| path.as_ref().to_path_buf())
-            .or_else(|| ui::open_dialog(&self.get_simple_string("open-file")))
+            .or_else(ui::open_dialog)
         {
             Some(path) => path,
             None => {
@@ -584,9 +568,9 @@ where
                 UpgradeType::Smooth => migrate::from(version, &path)?,
 
                 UpgradeType::Rocky => match rfd::MessageDialog::new()
-                    .set_title(&self.get_simple_string("migrate"))
+                    .set_title("Migrate version")
                     .set_buttons(rfd::MessageButtons::YesNo)
-                    .set_description(&self.get_simple_string("changes"))
+                    .set_description("Significant internal changes have been made to Powdermilk Biscuits since you last opened this file. Although it has not been marked as significantly incompatible with the current version, you may still experience data loss by attempting to upgrade this file to the most recent version.\n\nNo changes will be made to the file as is, and you will be prompted to save the file in a new location instead of overwriting it.\n\nProceed?")
                     .show()
                 {
                     rfd::MessageDialogResult::Yes => {
@@ -596,7 +580,7 @@ where
                         self.path = None;
 
                         return Ok(());
-                    }
+                    },
 
                     _ => return Ok(()),
                 },
@@ -622,8 +606,7 @@ where
         if let Some(path) = self.path.as_ref() {
             write(path, self).problem(format!("{}", path.display()))?;
             self.modified = false;
-        } else if let Some(path) = ui::save_dialog(&self.get_simple_string("unsaved-changes"), None)
-        {
+        } else if let Some(path) = ui::save_dialog("Save unnamed file", None) {
             let problem = format!("{}", path.display());
             self.path = Some(path);
             write(self.path.as_ref().unwrap(), self).problem(problem)?;
