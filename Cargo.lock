@@ -2166,7 +2166,7 @@ checksum = "f4dd6dc7df2d84cf7b33822ed5b86318fb1781948e9663bacd047fc9dd52259d"
 [[package]]
 name = "winit"
 version = "0.26.1"
-source = "git+https://github.com/zphixon/winit?branch=pen-info2#781a8a96fa09df3b07e331d8a9304f56a9956554"
+source = "git+https://github.com/zphixon/winit?branch=pen-info2#3acb5f7ecda3907bf5293b5bf137a6b5ad15b3d0"
 dependencies = [
  "bitflags",
  "cocoa",
