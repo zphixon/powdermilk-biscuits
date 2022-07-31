@@ -65,3 +65,19 @@ Keybinds:
 - ctrl+o: read file
 - ctrl+s: save file
 - shift+s: save as image
+
+[Polar stroking tesselation](https://dl.acm.org/doi/pdf/10.1145/3386569.3392458)
+
+> Divide a path into links, one link per path segment, cap, and join.
+> For each link,
+>> Compute 𝑀 and the sequences ΔΣ, 𝑝, Ψ, 𝛿.
+>> For 𝑗 = 0...𝑁 where 𝑁 = ΔΣ (𝑀):
+>>> Evaluate g(𝑡(𝑗)) and n(𝑗).
+>>> Generate rib vertices N𝑗 and P𝑗.
+>>> If 𝑗 > 0 emit the quad with vertices N𝑗−1, P𝑗−1, N𝑗, P𝑗
+
+- 𝑀: interval count (§3.3.6)
+- 𝑁: last element index in the sequence ΔΣ (§13)
+- p: eq 4
+- Ψ: eq 5
+- δ: eq 6

@@ -785,5 +785,68 @@ where
         Color::grey(0.3),
     ));
 
+    #[rustfmt::skip]
+    strokes.push(Stroke::with_points(vec![
+        StrokeElement{x:8.148584,y:-3.3291578,pressure:1.},
+        StrokeElement{x:8.215044,y:-3.2789655,pressure:1.},
+        StrokeElement{x:8.289104,y:-3.2163758,pressure:1.},
+        StrokeElement{x:8.370762,y:-3.141387,pressure:1.},
+        StrokeElement{x:8.460019,y:-3.0540009,pressure:1.},
+        StrokeElement{x:8.556875,y:-2.954216,pressure:1.},
+        StrokeElement{x:8.661331,y:-2.8420334,pressure:1.},
+        StrokeElement{x:8.773386,y:-2.717453,pressure:1.},
+        StrokeElement{x:8.89304,y:-2.580474,pressure:1.},
+        StrokeElement{x:9.020293,y:-2.431097,pressure:1.},
+        StrokeElement{x:9.155146,y:-2.269322,pressure:1.},
+    ], [0xff, 0,0]));
+
+    #[rustfmt::skip]
+    strokes.push(Stroke::with_points(vec![
+        StrokeElement{x:8.461885,y:-3.1091926,pressure:1.},
+        StrokeElement{x:8.603271,y:-2.9320197,pressure:1.},
+        StrokeElement{x:8.750122,y:-2.73645,pressure:1.},
+        StrokeElement{x:8.902439,y:-2.5224829,pressure:1.},
+        StrokeElement{x:9.060224,y:-2.2901187,pressure:1.},
+        StrokeElement{x:9.223473,y:-2.0393572,pressure:1.},
+        StrokeElement{x:9.392188,y:-1.7701986,pressure:1.},
+        StrokeElement{x:9.566371,y:-1.4826429,pressure:1.},
+        StrokeElement{x:9.746019,y:-1.17669,pressure:1.},
+        StrokeElement{x:9.931133,y:-0.85233986,pressure:1.},
+        StrokeElement{x:10.121714,y:-0.50959253,pressure:1.},
+    ], [0x88, 0x88,0]));
+
+    #[rustfmt::skip]
+    strokes.push(Stroke::with_points(vec![
+        StrokeElement{x:9.155146,y:-2.269322,pressure:1.},
+        StrokeElement{x:9.343125,y:-1.9221085,pressure:1.},
+        StrokeElement{x:9.520442,y:-1.5843607,pressure:1.},
+        StrokeElement{x:9.687091,y:-1.2560778,pressure:1.},
+        StrokeElement{x:9.843077,y:-0.9372604,pressure:1.},
+        StrokeElement{x:9.988394,y:-0.627908,pressure:1.},
+        StrokeElement{x:10.123047,y:-0.32802087,pressure:1.},
+        StrokeElement{x:10.247035,y:-0.037599117,pressure:1.},
+        StrokeElement{x:10.360357,y:0.24335757,pressure:1.},
+        StrokeElement{x:10.463014,y:0.5148488,pressure:1.},
+        StrokeElement{x:10.555004,y:0.776875,pressure:1.},
+    ], [0,0x88,0x88]));
+
+    #[rustfmt::skip]
+    strokes.push(Stroke::with_points(vec![
+        StrokeElement{x:10.121714,y:-0.50959253,pressure:1.},
+        StrokeElement{x:10.209437,y:-0.24703312,pressure:1.},
+        StrokeElement{x:10.299297,y:0.026057944,pressure:1.},
+        StrokeElement{x:10.391287,y:0.30968076,pressure:1.},
+        StrokeElement{x:10.48541,y:0.60383534,pressure:1.},
+        StrokeElement{x:10.581667,y:0.9085216,pressure:1.},
+        StrokeElement{x:10.680057,y:1.2237396,pressure:1.},
+        StrokeElement{x:10.78058,y:1.5494893,pressure:1.},
+        StrokeElement{x:10.883236,y:1.8857709,pressure:1.},
+        StrokeElement{x:10.988024,y:2.2325838,pressure:1.},
+        StrokeElement{x:11.094946,y:2.5899289,pressure:1.},
+    ], [0,0,0xff]));
+
+    //#[rustfmt::skip]
+    //strokes.push(Stroke::with_points(vec![ StrokeElement { x: 8.148584, y: -3.3291578 ,pressure:1.}, StrokeElement { x: 8.148584, y: -3.3291578 ,pressure:1.}, StrokeElement { x: 8.461885, y: -3.1091926 ,pressure:1.}, StrokeElement { x: 9.155146, y: -2.269322 ,pressure:1.}, StrokeElement { x: 10.121714, y: -0.50959253 ,pressure:1.}, StrokeElement { x: 10.555004, y: 0.776875 ,pressure:1.}, StrokeElement { x: 11.094946, y: 2.5899289 ,pressure:1.}, StrokeElement { x: 11.094946, y: 2.5899289 ,pressure:1.}, ], Color::WHITE));
+
     strokes
 }
