@@ -1,3 +1,5 @@
+use std::ops::Index;
+
 pub trait ToBezier<P: Point> {
     fn quadratic(&self) -> Quadratic<P>;
     fn cubic(&self) -> Cubic<P>;
@@ -182,5 +184,59 @@ impl<P: Point> Bezier<P> for Cubic<P> {
             + 3. * tn * t * (self.c.y() - self.b.y())
             + 3. * t * t * (self.d.y() - self.c.y());
         P::new(dx, dy)
+    }
+}
+
+// Cubic Hermite interpolator
+//
+// https://en.wikipedia.org/wiki/Cubic_Hermite_spline#Interpolation_on_the_unit_interval_with_matched_derivatives_at_endpoints
+// https://www.youtube.com/watch?v=9_aJGUTePYo
+pub trait Hermite<P: Point>: Index<usize, Output = P> {
+    fn len(&self) -> usize;
+
+    fn indices(&self, t: f32) -> (usize, usize, usize, usize) {
+        assert!(self.len() >= 4);
+        let p0 = t.trunc() as usize;
+        let p1 = p0 + 1;
+        let p2 = p1 + 1;
+        let p3 = p2 + 1;
+        (p0, p1, p2, p3)
+    }
+
+    fn dot(&self, t: f32, q1: f32, q2: f32, q3: f32, q4: f32) -> P {
+        let (p0, p1, p2, p3) = self.indices(t);
+        if p0 + 3 >= self.len() {
+            return self[self.len() - 2];
+        }
+        let tx = self[p0].x() * q1 + self[p1].x() * q2 + self[p2].x() * q3 + self[p3].x() * q4;
+        let ty = self[p0].y() * q1 + self[p1].y() * q2 + self[p2].y() * q3 + self[p3].y() * q4;
+        P::new(0.5 * tx, 0.5 * ty)
+    }
+
+    fn interpolate(&self, t: f32) -> P {
+        let u = t.fract();
+        let uu = u * u;
+        let uuu = uu * u;
+        let q1 = -uuu + 2. * uu - u + 0.;
+        let q2 = 3. * uuu - 5. * uu + 0. + 2.;
+        let q3 = -3. * uuu + 4. * uu + u + 0.;
+        let q4 = uuu - uu + 0. + 0.;
+        self.dot(t, q1, q2, q3, q4)
+    }
+
+    fn derivative(&self, t: f32) -> P {
+        let u = t.fract();
+        let uu = u * u;
+        let q1 = -3. * uu + 4. * u - 1.;
+        let q2 = 9. * uu - 10. * u;
+        let q3 = -9. * uu + 8. * u + 1.;
+        let q4 = 3. * uu - 2. * u;
+        self.dot(t, q1, q2, q3, q4)
+    }
+}
+
+impl<P: Point> Hermite<P> for [P] {
+    fn len(&self) -> usize {
+        self.as_ref().len()
     }
 }
