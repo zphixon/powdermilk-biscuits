@@ -27,6 +27,7 @@ use std::{
     path::Path,
 };
 
+#[derive(Debug)]
 pub enum UpgradeType {
     Smooth,
     Rocky,
@@ -66,6 +67,13 @@ where
     B: Backend,
     S: StrokeBackend,
 {
+    log::info!(
+        "upgrading from {} to {} is {:?}",
+        version,
+        Version::CURRENT,
+        Version::upgrade_type(version)
+    );
+
     use crate::{graphics::StrokePoint, stroke::*};
     let file = std::fs::File::open(&path)?;
 

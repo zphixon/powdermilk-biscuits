@@ -7,6 +7,7 @@ edition = '2021'
 default = []
 
 [dependencies]
+log = '0.4.17'
 rand = '0.8.5'
 derive-evc = { path = '../derive-evc' }
 derive-disk = { path = '../derive-disk' }

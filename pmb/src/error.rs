@@ -17,6 +17,7 @@ impl<T> PmbErrorExt for Result<T, PmbError> {
                     .why
                     .iter()
                     .fold(String::new(), |acc, why| format!("{why} {acc}"));
+                log::error!("{msg}");
                 crate::ui::error(&msg);
             }
             _ => {}

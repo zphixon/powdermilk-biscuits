@@ -1,13 +1,13 @@
 use crate::graphics::PixelPos;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct PenInfo {
     pub barrel: bool,
     pub inverted: bool,
     pub eraser: bool,
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum TouchPhase {
     Start,
     Move,
@@ -15,6 +15,7 @@ pub enum TouchPhase {
     Cancel,
 }
 
+#[derive(Debug)]
 pub struct Touch {
     pub force: Option<f64>,
     pub phase: TouchPhase,

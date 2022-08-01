@@ -19,7 +19,7 @@ pub enum Keycode {
     WebHome, WebRefresh, WebSearch, WebStop, Yen, Copy, Paste, Cut
 }
 
-#[derive(Eq, Hash, PartialEq, Clone, Copy)]
+#[derive(Eq, Hash, PartialEq, Clone, Copy, Debug)]
 pub enum MouseButton {
     Left,
     Middle,

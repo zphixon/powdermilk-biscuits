@@ -39,10 +39,12 @@ where
     reader.read_exact(&mut version_bytes)?;
     let version = migrate::Version(u64::from_le_bytes(version_bytes));
 
+    log::debug!("got version {}", version);
     if version != Version::CURRENT {
         return Err(PmbError::new(ErrorKind::VersionMismatch(version)));
     }
 
+    log::debug!("inflating");
     let mut deflate_reader = flate2::read::DeflateDecoder::new(reader);
     Ok(bincode::decode_from_std_read(
         &mut deflate_reader,
@@ -55,6 +57,8 @@ where
     B: Backend,
     S: StrokeBackend,
 {
+    log::debug!("truncating {} and deflating", path.as_ref().display());
+
     let mut file = std::fs::File::create(&path)?;
     file.write_all(&PMB_MAGIC)?;
     file.write_all(&u64::to_le_bytes(Version::CURRENT.0))?;
@@ -145,7 +149,7 @@ impl GestureState {
         };
 
         if self.active() {
-            println!("do gesture {self:?}");
+            log::debug!("do gesture {self:?}");
         }
 
         matches!(prev, Stroke) && matches!(self, Active(2))
@@ -159,7 +163,7 @@ impl GestureState {
         };
 
         if self.active() {
-            println!("do gesture {self:?}");
+            log::debug!("do gesture {self:?}");
         }
     }
 }
@@ -238,10 +242,13 @@ where
     }
 
     pub fn with_filename(path: impl AsRef<std::path::Path>) -> Self {
+        log::info!("create State from {}", path.as_ref().display());
+
         let mut this = State::new();
         this.read_file(Some(path))
             .problem(String::from("Could not open file"))
             .display();
+
         this
     }
 
@@ -251,6 +258,8 @@ where
     }
 
     pub fn handle_key(&mut self, key: input::Keycode, state: input::ElementState) {
+        log::debug!("handle key {key:?} {state:?}");
+
         use input::Keycode::*;
         self.input.handle_key(key, state);
 
@@ -337,13 +346,11 @@ where
         self.input.upstrokes();
     }
 
-    pub fn handle_mouse_move(&mut self, location: PixelPos) {
-        self.input.handle_mouse_move(location);
-    }
-
     pub fn handle_touch(&mut self, touch: Touch, width: u32, height: u32) {
+        log::trace!("handle touch {touch:?}");
+
         let prev_y = self.input.cursor_pos().y;
-        self.handle_mouse_move(touch.location);
+        self.input.handle_mouse_move(touch.location);
         let next_y = self.input.cursor_pos().y;
         let dy = next_y - prev_y;
 
@@ -372,6 +379,8 @@ where
     }
 
     pub fn handle_cursor_move(&mut self, width: u32, height: u32, position: PixelPos) {
+        log::trace!("handle cursor move {position:?}");
+
         let prev = self.input.cursor_pos();
         self.input.handle_mouse_move(position);
 
@@ -382,17 +391,22 @@ where
     }
 
     pub fn handle_mouse_button(&mut self, button: input::MouseButton, state: input::ElementState) {
+        log::trace!("handle mouse button {button:?} {state:?}");
         self.input.handle_mouse_button(button, state);
     }
 
     pub fn increase_brush(&mut self) {
         self.brush_size += BRUSH_DELTA;
         self.brush_size = self.brush_size.clamp(MIN_BRUSH, MAX_BRUSH);
+
+        log::debug!("increase brush {}", self.brush_size);
     }
 
     pub fn decrease_brush(&mut self) {
         self.brush_size -= BRUSH_DELTA;
         self.brush_size = self.brush_size.clamp(MIN_BRUSH, MAX_BRUSH);
+
+        log::debug!("decrease brush {}", self.brush_size);
     }
 
     fn move_origin(&mut self, width: u32, height: u32, prev: PixelPos, next: PixelPos) {
@@ -412,6 +426,8 @@ where
         let dy = next_xformed.y - prev_xformed.y;
         self.origin.x += dx;
         self.origin.y += dy;
+
+        log::trace!("move origin {}", self.origin);
     }
 
     pub fn change_zoom(&mut self, dz: f32) {
@@ -420,14 +436,17 @@ where
         }
 
         self.zoom = self.zoom.clamp(MIN_ZOOM, MAX_ZOOM);
+        log::debug!("change zoom {}", self.zoom);
     }
 
     fn clear_strokes(&mut self) {
+        log::debug!("clear strokes");
         self.modified = true;
         std::mem::take(&mut self.strokes);
     }
 
     pub fn undo_stroke(&mut self) {
+        log::info!("undo stroke");
         self.modified = true;
         self.strokes.pop();
     }
@@ -497,6 +516,14 @@ where
             }
         };
 
+        log::trace!(
+            "update stylus {:?} {:?} {:?} {:?}",
+            point,
+            pos,
+            pressure,
+            state
+        );
+
         self.stylus.point = point;
         self.stylus.pos = pos;
         self.stylus.pressure = pressure as f32;
@@ -511,6 +538,8 @@ where
     }
 
     fn handle_update(&mut self, width: u32, height: u32, phase: TouchPhase) {
+        log::trace!("handle update {phase:?}");
+
         if self.stylus.inverted() {
             let stylus_ndc = self.backend.stroke_to_ndc(
                 width,
@@ -554,6 +583,7 @@ where
                         if dist < self.brush_size as f32 {
                             stroke.erase();
                             self.modified = true;
+                            log::info!("erase stroke at {}", point_pix);
                             break 'inner;
                         }
                     }
@@ -587,9 +617,11 @@ where
 
     // returns whether to exit or overwrite state
     pub fn ask_to_save_then_save(&mut self, why: &str) -> Result<bool, PmbError> {
+        log::info!("asking to save {why:?}");
         match (ui::ask_to_save(why), self.path.as_ref()) {
             // if they say yes and the file we're editing has a path
             (rfd::MessageDialogResult::Yes, Some(path)) => {
+                log::info!("writing as {}", path.display());
                 write(path, self).problem(format!("{}", path.display()))?;
                 self.modified = false;
                 Ok(true)
@@ -597,9 +629,11 @@ where
 
             // they say yes and the file doesn't have a path yet
             (rfd::MessageDialogResult::Yes, None) => {
+                log::info!("asking where to save");
                 // ask where to save it
                 match ui::save_dialog("Save unnamed file", None) {
                     Some(new_filename) => {
+                        log::info!("writing as {}", new_filename.display());
                         // try write to disk
                         write(&new_filename, self)
                             .problem(format!("{}", new_filename.display()))?;
@@ -631,6 +665,7 @@ where
         }
 
         // if we were passed a path, use that, otherwise ask for one
+        log::info!("finding where to read from");
         let path = match path
             .map(|path| path.as_ref().to_path_buf())
             .or_else(ui::open_dialog)
@@ -645,6 +680,7 @@ where
         let file = match std::fs::File::open(&path) {
             Ok(file) => file,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                log::info!("using a new file");
                 // if it doesn't exist don't try to read it
                 *self = State::default();
                 self.path = Some(path);
@@ -661,31 +697,35 @@ where
             Err(PmbError {
                 kind: ErrorKind::VersionMismatch(version),
                 ..
-            }) => match Version::upgrade_type(version) {
-                UpgradeType::Smooth => migrate::from(version, &path)?,
+            }) => {
+                log::warn!("version mismatch, got {version} want {}", Version::CURRENT);
 
-                UpgradeType::Rocky => match rfd::MessageDialog::new()
-                    .set_title("Migrate version")
-                    .set_buttons(rfd::MessageButtons::YesNo)
-                    .set_description("Significant internal changes have been made to Powdermilk Biscuits since you last opened this file. Although it has not been marked as significantly incompatible with the current version, you may still experience data loss by attempting to upgrade this file to the most recent version.\n\nNo changes will be made to the file as is, and you will be prompted to save the file in a new location instead of overwriting it.\n\nProceed?")
-                    .show()
-                {
-                    rfd::MessageDialogResult::Yes => {
-                        let state = migrate::from(version, &path)?;
-                        self.update_from(state);
-                        self.modified = true;
-                        self.path = None;
+                match Version::upgrade_type(version) {
+                    UpgradeType::Smooth => migrate::from(version, &path)?,
 
-                        return Ok(());
+                    UpgradeType::Rocky => match rfd::MessageDialog::new()
+                        .set_title("Migrate version")
+                        .set_buttons(rfd::MessageButtons::YesNo)
+                        .set_description("Significant internal changes have been made to Powdermilk Biscuits since you last opened this file. Although it has not been marked as significantly incompatible with the current version, you may still experience data loss by attempting to upgrade this file to the most recent version.\n\nNo changes will be made to the file as is, and you will be prompted to save the file in a new location instead of overwriting it.\n\nProceed?")
+                        .show()
+                    {
+                        rfd::MessageDialogResult::Yes => {
+                            let state = migrate::from(version, &path)?;
+                            self.update_from(state);
+                            self.modified = true;
+                            self.path = None;
+
+                            return Ok(());
+                        },
+
+                        _ => return Ok(()),
                     },
 
-                    _ => return Ok(()),
-                },
-
-                UpgradeType::Incompatible => {
-                    return Err(PmbError::new(ErrorKind::IncompatibleVersion(version)));
+                    UpgradeType::Incompatible => {
+                        return Err(PmbError::new(ErrorKind::IncompatibleVersion(version)));
+                    }
                 }
-            },
+            }
 
             err => err?,
         };
@@ -693,6 +733,11 @@ where
         self.update_from(disk);
         self.modified = false;
         self.path = Some(path);
+
+        log::info!(
+            "success, read from {}",
+            self.path.as_ref().unwrap().display()
+        );
 
         Ok(())
     }
@@ -708,6 +753,7 @@ where
             self.modified = false;
         }
 
+        log::info!("saved file as {}", self.path.as_ref().unwrap().display());
         Ok(())
     }
 }
