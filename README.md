@@ -81,3 +81,5 @@ Keybinds:
 - p: eq 4
 - Ψ: eq 5
 - δ: eq 6
+
+![Plot of a Catmull-Rom spline with ribs](rib-plot.png)
