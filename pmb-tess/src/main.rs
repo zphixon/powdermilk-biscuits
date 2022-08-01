@@ -56,9 +56,8 @@ const bigpoints: &[Pos] = &[
     Pos { x: -3.120101, y: 4.910461, },
 ];
 
-use std::fmt::{Display, Formatter, Result as FmtResult};
-
 use pmb_tess::*;
+use std::fmt::{Display, Formatter, Result as FmtResult};
 
 #[derive(Clone, Copy, Debug)]
 struct Pos {
@@ -86,147 +85,16 @@ impl Display for Pos {
     }
 }
 
-fn as_storkeelment(int: Pos) {
-    println!(
-        "        StrokeElement{{x:{},y:{},pressure:1.}},",
-        int.x, int.y
-    );
-}
-
-#[rustfmt::skip]
-fn print(c: &[Pos], bez: &impl Bezier<Pos>) {
-    println!("\n\n\n\nimport matplotlib.pyplot as plt\nfig,ax=plt.subplots()\nax.grid(True)");
-    print!("xp=["); c.iter().for_each(|p| print!("{:.05},", p.x())); println!("]");
-    print!("yp=["); c.iter().for_each(|p| print!("{:.05},", p.y())); println!("]");
-
-    let steps: Vec<Pos> = bez.flatten(32);
-    print!("xc=["); steps.iter().for_each(|p| print!("{:.05},", p.x())); println!("]");
-    print!("yc=["); steps.iter().for_each(|p| print!("{:.05},", p.y())); println!("]");
-
-    let steps: Vec<Pos> = pmb_tess::steps(32).map(|t| bez.casteljau(t)).collect();
-    print!("xw=["); steps.iter().for_each(|p| print!("{:.05},", p.x())); println!("]");
-    print!("yw=["); steps.iter().for_each(|p| print!("{:.05},", p.y())); println!("]");
-
-    let steps: Vec<Pos> = pmb_tess::steps(32).map(|t| bez.derivative(t)).collect();
-    print!("xd=["); steps.iter().for_each(|p| print!("{:.05},", p.x())); println!("]");
-    print!("yd=["); steps.iter().for_each(|p| print!("{:.05},", p.y())); println!("]");
-
-    let steps: Vec<Pos> = pmb_tess::steps(32).map(|t| bez.direction(t)).collect();
-    print!("xdd=["); steps.iter().for_each(|p| print!("{:.05},", p.x())); println!("]");
-    print!("ydd=["); steps.iter().for_each(|p| print!("{:.05},", p.y())); println!("]");
-
-    let steps: Vec<Pos> = pmb_tess::steps(32).map(|t| {
-        let p = bez.casteljau(t);
-        let n = bez.normal(t);
-        Pos { x: p.x + n.x, y: p.y + n.y }
-    }).collect();
-    print!("xn=["); steps.iter().for_each(|p| print!("{:.05},", p.x())); println!("]");
-    print!("yn=["); steps.iter().for_each(|p| print!("{:.05},", p.y())); println!("]");
-
-    println!("ax.plot(xp, yp, c='black')");
-    println!("ax.plot(xc, yc, c='firebrick')");
-    println!("ax.plot(xw, yc, c='lightcoral')");
-    println!("ax.plot(xd, yd, c='seagreen')");
-    println!("ax.plot(xdd, ydd, c='palegreen')");
-    println!("ax.plot(xn, yn, c='darkorchid')");
-    println!("plt.show()\n\n\n\n");
-}
-
 fn main() {
-    #[rustfmt::skip]
-    let points = &[
-        Pos { x: 8.148584, y: -3.3291578 },
-        Pos { x: -9.155146, y: -2.269322 },
-        Pos { x: 10.121714, y: 0.50959253 },
-        Pos { x: 11.094946, y: 8.5899289 },
-    ];
-    let cub = points.cubic();
-    let quad = (&points[1..]).quadratic();
+    let segments = 30;
 
-    print(points, &cub);
-    print(bigpoints, &quad);
-
-    println!("\n\n\n\nimport matplotlib.pyplot as plt\nfig,ax=plt.subplots()\nax.grid(True)");
-
-    print!("xp=[");
-    bigpoints.iter().for_each(|p| print!("{:.05},", p.x()));
-    println!("]");
-    print!("yp=[");
-    bigpoints.iter().for_each(|p| print!("{:.05},", p.y()));
-    println!("]");
-    println!("ax.plot(xp, yp, c='black')");
-
-    let pts: Vec<_> = pmb_tess::steps(50)
-        .map(|t| t * (bigpoints.len() - 2) as f32)
-        .map(|t| bigpoints.interpolate(t))
-        .collect();
-    print!("x=[");
-    pts.iter().for_each(|pt| print!("{:.05},", pt.x));
-    println!("]");
-    print!("y=[");
-    pts.iter().for_each(|pt| print!("{:.05},", pt.y));
-    println!("]");
-    println!("ax.plot(x, y, c='lightcoral')");
-
-    print!("xth=[");
-    (0..pts.len()).for_each(|i| print!("{i},"));
-    println!("]");
-    use itertools::Itertools;
-    print!("yth=[");
-    pmb_tess::steps(50)
-        .map(|t| t * (bigpoints.len() - 2) as f32)
-        .tuple_windows()
-        .for_each(|(t1, t2)| print!("{},", bigpoints.angle_change(t1, t2)));
-    println!("]");
-    println!("ax.plot(xth,yth,color='seagreen')");
-
-    let pts: Vec<_> = pmb_tess::steps(50)
-        .map(|t| t * (bigpoints.len() - 2) as f32)
-        .map(|t| bigpoints.rib(t, 20.))
-        .collect();
-
-    for (rib1, rib2) in pts {
-        println!("x=[{},{}]", rib1.x, rib2.x);
-        println!("y=[{},{}]", rib1.y, rib2.y);
-        println!("ax.plot(x,y,color='cornflowerblue')");
-    }
-    println!("plt.show()\n\n\n\n");
-
-    println!("\n\n\n\nimport matplotlib.pyplot as plt\nfig,ax=plt.subplots()\nax.grid(True)");
-    let press = [
-        0.45214844, 0.4794922, 0.55078125, 0.55078125, 0.5839844, 0.6152344, 0.6435547, 0.6699219,
-        0.69433594, 0.7207031, 0.7470703, 0.7734375, 0.7988281, 0.8232422, 0.8652344, 0.8652344,
-        0.88378906, 0.9013672, 0.9189453, 0.9345703, 0.96484375, 0.96484375, 0.9785156, 0.9941406,
-        1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
-        1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
-        1., 1., 1., 1., 1., 1., 0.953125, 0.89941406, 0.8330078, 0.7529297, 0.5019531, 0.33398438,
-        0.22265625,
-    ];
-
-    let p: Vec<_> = press
+    bigpoints
+        .flatten(segments)
         .iter()
-        .enumerate()
-        .map(|(i, p)| Pos { x: i as f32, y: *p })
-        .collect();
+        .for_each(|p| println!("({p})"));
 
-    print!("x=[");
-    p.iter().for_each(|p| print!("{},", p.x));
-    println!("]");
-
-    print!("p=[");
-    p.iter().for_each(|p| print!("{},", p.y));
-    println!("]");
-
-    print!("a=[{}", press[0]);
-    press.windows(3).for_each(|w| {
-        if let &[a, b, c] = w {
-            let avg = (a + b + c) / 3.;
-            print!("{},", avg);
-        } else {
-            unreachable!()
-        }
-    });
-    println!("{}]", press.last().unwrap());
-
-    println!("ax.plot(x,p,c='lightcoral')\nax.plot(x,a,c='cornflowerblue')\nplt.show()\n\n\n");
+    for rib in bigpoints.flat_ribs(segments, 20.) {
+        println!("({rib})");
+        std::io::stdin().read_line(&mut String::new()).unwrap();
+    }
 }

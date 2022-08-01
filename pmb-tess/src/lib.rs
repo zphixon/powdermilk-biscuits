@@ -83,6 +83,11 @@ pub trait Point: Clone + Copy {
     }
 }
 
+/// Helper function that gives `steps` uniform steps between [0,1].
+pub fn steps_normalized(steps: usize) -> impl Iterator<Item = f32> {
+    (0..=steps).map(move |t| t as f32 / steps as f32)
+}
+
 /// A Bezier curve.
 pub trait Bezier<P: Point> {
     /// Evaluate the curve at `t` using Bernstein polynomials.
@@ -93,7 +98,9 @@ pub trait Bezier<P: Point> {
 
     /// Flatten the curve into non-uniform segments.
     fn flatten(&self, segments: usize) -> Vec<P> {
-        steps(segments).map(|t| self.casteljau(t)).collect()
+        steps_normalized(segments)
+            .map(|t| self.casteljau(t))
+            .collect()
     }
 
     /// Evaluate the first derivative at `t`.
@@ -135,11 +142,6 @@ pub struct Cubic<P: Point> {
     pub b: P,
     pub c: P,
     pub d: P,
-}
-
-/// Helper function that gives `steps` uniform steps between [0,1].
-pub fn steps(steps: usize) -> impl Iterator<Item = f32> {
-    (0..=steps).map(move |t| t as f32 / steps as f32)
 }
 
 impl<P: Point> Bezier<P> for Quadratic<P> {
@@ -248,6 +250,14 @@ impl<P: Point> Bezier<P> for Cubic<P> {
     }
 }
 
+pub fn steps_non_normalized(len: usize, segments: usize) -> impl Iterator<Item = f32> {
+    let dt = (len - 3) as f32 / segments as f32;
+    std::iter::repeat(())
+        .enumerate()
+        .take(segments)
+        .map(move |(i, _)| i as f32 * dt)
+}
+
 /// Cubic Hermite (Catmull-Rom) interpolator.
 ///
 /// https://en.wikipedia.org/wiki/Cubic_Hermite_spline#Interpolation_on_the_unit_interval_with_matched_derivatives_at_endpoints
@@ -271,9 +281,8 @@ pub trait Hermite<P: Point>: Index<usize, Output = P> {
     /// The dot product of the interpolands and the transposed interpolation polynomial.
     fn dot(&self, t: f32, q1: f32, q2: f32, q3: f32, q4: f32) -> P {
         let (p0, p1, p2, p3) = self.indices(t);
-        if p0 + 3 >= self.len() {
-            return self[self.len() - 2];
-        }
+        assert!(p3 < self.len());
+
         let tx = self[p0].x() * q1 + self[p1].x() * q2 + self[p2].x() * q3 + self[p3].x() * q4;
         let ty = self[p0].y() * q1 + self[p1].y() * q2 + self[p2].y() * q3 + self[p3].y() * q4;
         P::new(0.5 * tx, 0.5 * ty)
@@ -289,6 +298,12 @@ pub trait Hermite<P: Point>: Index<usize, Output = P> {
         let q3 = -3. * uuu + 4. * uu + u + 0.;
         let q4 = uuu - uu + 0. + 0.;
         self.dot(t, q1, q2, q3, q4)
+    }
+
+    fn flatten(&self, segments: usize) -> Vec<P> {
+        steps_non_normalized(self.len(), segments)
+            .map(|t| self.interpolate(t))
+            .collect()
     }
 
     /// Evaluate the first derivative at non-uniform `t`.
@@ -313,10 +328,32 @@ pub trait Hermite<P: Point>: Index<usize, Output = P> {
         )
     }
 
+    fn ribs(&self, segments: usize, scale: f32) -> Vec<(P, P)> {
+        steps_non_normalized(self.len(), segments)
+            .map(|t| self.rib(t, scale))
+            .collect()
+    }
+
+    fn flat_ribs(&self, segments: usize, scale: f32) -> Vec<P> {
+        steps_non_normalized(self.len(), segments)
+            .map(|t| {
+                let (rib1, rib2) = self.rib(t, scale);
+                [rib1, rib2]
+            })
+            .flatten()
+            .collect()
+    }
+
     fn angle_change(&self, t1: f32, t2: f32) -> f32 {
         let a = self.derivative(t1).unit();
         let b = self.derivative(t2).unit();
         a.dot(&b) / (a.magnitude() * b.magnitude())
+    }
+}
+
+impl<P: Point, const N: usize> Hermite<P> for [P; N] {
+    fn len(&self) -> usize {
+        self.as_ref().len()
     }
 }
 
