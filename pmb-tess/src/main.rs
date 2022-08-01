@@ -170,26 +170,10 @@ fn main() {
 
     let pts: Vec<_> = pmb_tess::steps(50)
         .map(|t| t * (bigpoints.len() - 2) as f32)
-        .map(|t| (bigpoints.derivative(t), bigpoints.interpolate(t)))
+        .map(|t| bigpoints.rib(t, 20.))
         .collect();
 
-    for (deriv, interp) in pts {
-        let dir = deriv.unit();
-        let norm = Pos {
-            x: -dir.y() / 20.,
-            y: dir.x() / 20.,
-        };
-
-        let rib1 = Pos {
-            x: interp.x + norm.x,
-            y: interp.y + norm.y,
-        };
-
-        let rib2 = Pos {
-            x: interp.x - norm.x,
-            y: interp.y - norm.y,
-        };
-
+    for (rib1, rib2) in pts {
         println!("x=[{},{}]", rib1.x, rib2.x);
         println!("y=[{},{}]", rib1.y, rib2.y);
         println!("ax.plot(x,y,color='cornflowerblue')");

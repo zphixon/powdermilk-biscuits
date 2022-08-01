@@ -294,10 +294,10 @@ pub trait Hermite<P: Point>: Index<usize, Output = P> {
         self.dot(t, q1, q2, q3, q4)
     }
 
-    fn rib(&self, t: f32) -> (P, P) {
+    fn rib(&self, t: f32, scale: f32) -> (P, P) {
         let (point, derivative) = (self.interpolate(t), self.derivative(t));
         let direction = derivative.unit();
-        let normal = P::new(-direction.y(), direction.x());
+        let normal = P::new(-direction.y() / scale, direction.x() / scale);
 
         (
             P::new(point.x() + normal.x(), point.y() + normal.y()),
