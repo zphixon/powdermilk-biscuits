@@ -274,10 +274,12 @@ pub struct Graphics {
 
 impl Graphics {
     pub async fn new(window: &Window) -> Self {
+        log::info!("setting up wgpu");
         let size = window.inner_size();
         let instance = Instance::new(Backends::all());
         let surface = unsafe { instance.create_surface(window) };
 
+        log::debug!("requesting adapter");
         let adapter = instance
             .request_adapter(&RequestAdapterOptions {
                 power_preference: PowerPreference::LowPower,
@@ -292,7 +294,7 @@ impl Graphics {
             ..Default::default()
         };
 
-        // segfault on linux here :(
+        log::debug!("requesting device");
         let (device, queue) = adapter
             .request_device(
                 &DeviceDescriptor {
@@ -305,6 +307,7 @@ impl Graphics {
             .await
             .unwrap();
 
+        log::debug!("setting up pipeline stuff");
         let surface_format = surface.get_supported_formats(&adapter)[0];
 
         let config = SurfaceConfiguration {
@@ -505,6 +508,7 @@ impl Graphics {
 
         let cursor_pipeline = device.create_render_pipeline(&cursor_desc);
 
+        log::debug!("creating smaa target");
         let smaa_target = smaa::SmaaTarget::new(
             &device,
             &queue,
@@ -514,6 +518,7 @@ impl Graphics {
             smaa::SmaaMode::Smaa1X,
         );
 
+        log::info!("done!");
         Graphics {
             surface,
             surface_format,
