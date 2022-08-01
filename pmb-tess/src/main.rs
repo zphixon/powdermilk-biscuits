@@ -168,6 +168,18 @@ fn main() {
     println!("]");
     println!("ax.plot(x, y, c='lightcoral')");
 
+    print!("xth=[");
+    (0..pts.len()).for_each(|i| print!("{i},"));
+    println!("]");
+    use itertools::Itertools;
+    print!("yth=[");
+    pmb_tess::steps(50)
+        .map(|t| t * (bigpoints.len() - 2) as f32)
+        .tuple_windows()
+        .for_each(|(t1, t2)| print!("{},", bigpoints.angle_change(t1, t2)));
+    println!("]");
+    println!("ax.plot(xth,yth,color='seagreen')");
+
     let pts: Vec<_> = pmb_tess::steps(50)
         .map(|t| t * (bigpoints.len() - 2) as f32)
         .map(|t| bigpoints.rib(t, 20.))

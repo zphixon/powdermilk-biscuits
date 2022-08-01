@@ -62,16 +62,24 @@ impl<P: Point> ToBezier<P> for &[P] {
 pub trait Point: Clone + Copy {
     fn new(x: f32, y: f32) -> Self;
 
-    fn x(&self) -> f32;
-    fn y(&self) -> f32;
-
     fn zero() -> Self {
         Self::new(0., 0.)
     }
 
+    fn x(&self) -> f32;
+    fn y(&self) -> f32;
+
+    fn magnitude(&self) -> f32 {
+        (self.x().powi(2) + self.y().powi(2)).sqrt()
+    }
+
     fn unit(&self) -> Self {
-        let d = (self.x().powi(2) + self.y().powi(2)).sqrt();
+        let d = self.magnitude();
         Self::new(self.x() / d, self.y() / d)
+    }
+
+    fn dot(&self, other: &impl Point) -> f32 {
+        self.x() * other.x() + self.y() * other.y()
     }
 }
 
@@ -101,7 +109,7 @@ pub trait Bezier<P: Point> {
     /// Evaluate the direction unit vector at `t`.
     fn direction(&self, t: f32) -> P {
         let tan = self.tangent(t);
-        let d = (tan.x().powi(2) + tan.y().powi(2)).sqrt();
+        let d = tan.magnitude();
         P::new(tan.x() / d, tan.y() / d)
     }
 
@@ -240,7 +248,7 @@ impl<P: Point> Bezier<P> for Cubic<P> {
     }
 }
 
-/// Cubic Hermite interpolator.
+/// Cubic Hermite (Catmull-Rom) interpolator.
 ///
 /// https://en.wikipedia.org/wiki/Cubic_Hermite_spline#Interpolation_on_the_unit_interval_with_matched_derivatives_at_endpoints
 /// https://www.youtube.com/watch?v=9_aJGUTePYo
@@ -303,6 +311,12 @@ pub trait Hermite<P: Point>: Index<usize, Output = P> {
             P::new(point.x() + normal.x(), point.y() + normal.y()),
             P::new(point.x() - normal.x(), point.y() - normal.y()),
         )
+    }
+
+    fn angle_change(&self, t1: f32, t2: f32) -> f32 {
+        let a = self.derivative(t1).unit();
+        let b = self.derivative(t2).unit();
+        a.dot(&b) / (a.magnitude() * b.magnitude())
     }
 }
 
