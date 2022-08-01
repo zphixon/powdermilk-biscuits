@@ -66,16 +66,6 @@ struct Pos {
     pub y: f32,
 }
 
-impl Pos {
-    fn unit(&self) -> Pos {
-        let d = (self.x.powi(2) + self.y.powi(2)).sqrt();
-        Pos {
-            x: self.x / d,
-            y: self.y / d,
-        }
-    }
-}
-
 impl Point for Pos {
     fn new(x: f32, y: f32) -> Self {
         Self { x, y }
@@ -204,6 +194,43 @@ fn main() {
         println!("y=[{},{}]", rib1.y, rib2.y);
         println!("ax.plot(x,y,color='cornflowerblue')");
     }
-
     println!("plt.show()\n\n\n\n");
+
+    println!("\n\n\n\nimport matplotlib.pyplot as plt\nfig,ax=plt.subplots()\nax.grid(True)");
+    let press = [
+        0.45214844, 0.4794922, 0.55078125, 0.55078125, 0.5839844, 0.6152344, 0.6435547, 0.6699219,
+        0.69433594, 0.7207031, 0.7470703, 0.7734375, 0.7988281, 0.8232422, 0.8652344, 0.8652344,
+        0.88378906, 0.9013672, 0.9189453, 0.9345703, 0.96484375, 0.96484375, 0.9785156, 0.9941406,
+        1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
+        1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
+        1., 1., 1., 1., 1., 1., 0.953125, 0.89941406, 0.8330078, 0.7529297, 0.5019531, 0.33398438,
+        0.22265625,
+    ];
+
+    let p: Vec<_> = press
+        .iter()
+        .enumerate()
+        .map(|(i, p)| Pos { x: i as f32, y: *p })
+        .collect();
+
+    print!("x=[");
+    p.iter().for_each(|p| print!("{},", p.x));
+    println!("]");
+
+    print!("p=[");
+    p.iter().for_each(|p| print!("{},", p.y));
+    println!("]");
+
+    print!("a=[{}", press[0]);
+    press.windows(3).for_each(|w| {
+        if let &[a, b, c] = w {
+            let avg = (a + b + c) / 3.;
+            print!("{},", avg);
+        } else {
+            unreachable!()
+        }
+    });
+    println!("{}]", press.last().unwrap());
+
+    println!("ax.plot(x,p,c='lightcoral')\nax.plot(x,a,c='cornflowerblue')\nplt.show()\n\n\n");
 }

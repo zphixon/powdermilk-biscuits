@@ -1,8 +1,30 @@
+//! Powdermilk Biscuits curve and tesselation library
+
 use std::ops::Index;
 
+/// Create a bezier curve from a list of points.
+///
+/// These methods do not create any geometry by themselves.
 pub trait ToBezier<P: Point> {
+    /// Create a quadratic Bezier curve.
+    ///
+    /// Panics if the length of the collection is not 3.
     fn quadratic(&self) -> Quadratic<P>;
+
+    /// Create a cubic bezier curve.
+    ///
+    /// Panics if the length of the collection is not 4.
     fn cubic(&self) -> Cubic<P>;
+}
+
+impl<P: Point> ToBezier<P> for Vec<P> {
+    fn quadratic(&self) -> Quadratic<P> {
+        self.as_slice().quadratic()
+    }
+
+    fn cubic(&self) -> Cubic<P> {
+        self.as_slice().cubic()
+    }
 }
 
 impl<P: Point, const N: usize> ToBezier<P> for &[P; N] {
@@ -36,36 +58,61 @@ impl<P: Point> ToBezier<P> for &[P] {
     }
 }
 
+/// A point in two-dimensional space.
 pub trait Point: Clone + Copy {
     fn new(x: f32, y: f32) -> Self;
+
     fn x(&self) -> f32;
     fn y(&self) -> f32;
+
     fn zero() -> Self {
         Self::new(0., 0.)
     }
+
+    fn unit(&self) -> Self {
+        let d = (self.x().powi(2) + self.y().powi(2)).sqrt();
+        Self::new(self.x() / d, self.y() / d)
+    }
 }
 
+/// A Bezier curve.
 pub trait Bezier<P: Point> {
+    /// Evaluate the curve at `t` using Bernstein polynomials.
     fn weighted_basis(&self, t: f32) -> P;
+
+    /// Evalute the curve at `t` using de Casteljau's altorithm.
     fn casteljau(&self, t: f32) -> P;
+
+    /// Flatten the curve into non-uniform segments.
     fn flatten(&self, segments: usize) -> Vec<P> {
         steps(segments).map(|t| self.casteljau(t)).collect()
     }
+
+    /// Evaluate the first derivative at `t`.
     fn derivative(&self, t: f32) -> P;
+
+    /// Evaluate the tangent at `t`.
+    ///
+    /// This is equivalent to [derivative].
     fn tangent(&self, t: f32) -> P {
         self.derivative(t)
     }
+
+    /// Evaluate the direction unit vector at `t`.
     fn direction(&self, t: f32) -> P {
         let tan = self.tangent(t);
         let d = (tan.x().powi(2) + tan.y().powi(2)).sqrt();
         P::new(tan.x() / d, tan.y() / d)
     }
+
+    /// Evaluate the normal unit vector at `t`.
     fn normal(&self, t: f32) -> P {
         let dir = self.direction(t);
         P::new(-dir.y(), dir.x())
     }
 }
 
+/// A quadratic Bezier curve.
 #[derive(Clone)]
 pub struct Quadratic<P: Point> {
     pub a: P,
@@ -73,6 +120,7 @@ pub struct Quadratic<P: Point> {
     pub c: P,
 }
 
+/// A cubic Bezier curve.
 #[derive(Clone)]
 pub struct Cubic<P: Point> {
     pub a: P,
@@ -81,6 +129,7 @@ pub struct Cubic<P: Point> {
     pub d: P,
 }
 
+/// Helper function that gives `steps` uniform steps between [0,1].
 pub fn steps(steps: usize) -> impl Iterator<Item = f32> {
     (0..=steps).map(move |t| t as f32 / steps as f32)
 }
@@ -115,6 +164,9 @@ impl<P: Point> Bezier<P> for Quadratic<P> {
 }
 
 impl<P: Point> Cubic<P> {
+    /// The second derivative of the cubic Bezier curve.
+    ///
+    /// This is probably incorrect.
     pub fn derivative2(&self, t: f32) -> P {
         let apx = 3. * (self.b.x() - self.a.x());
         let apy = 3. * (self.b.y() - self.a.y());
@@ -127,6 +179,7 @@ impl<P: Point> Cubic<P> {
         P::new(ddx, ddy)
     }
 
+    // Bernstein polynomals for quadratic bezier curve
     fn basis(k: usize, t: f32) -> f32 {
         assert!((0..=2).contains(&k));
         if k == 0 {
@@ -187,13 +240,17 @@ impl<P: Point> Bezier<P> for Cubic<P> {
     }
 }
 
-// Cubic Hermite interpolator
-//
-// https://en.wikipedia.org/wiki/Cubic_Hermite_spline#Interpolation_on_the_unit_interval_with_matched_derivatives_at_endpoints
-// https://www.youtube.com/watch?v=9_aJGUTePYo
+/// Cubic Hermite interpolator.
+///
+/// https://en.wikipedia.org/wiki/Cubic_Hermite_spline#Interpolation_on_the_unit_interval_with_matched_derivatives_at_endpoints
+/// https://www.youtube.com/watch?v=9_aJGUTePYo
 pub trait Hermite<P: Point>: Index<usize, Output = P> {
+    /// The length of the collection.
+    ///
+    /// Must be >= 4.
     fn len(&self) -> usize;
 
+    /// The indices into the collection which will be interpolated between.
     fn indices(&self, t: f32) -> (usize, usize, usize, usize) {
         assert!(self.len() >= 4);
         let p0 = t.trunc() as usize;
@@ -203,6 +260,7 @@ pub trait Hermite<P: Point>: Index<usize, Output = P> {
         (p0, p1, p2, p3)
     }
 
+    /// The dot product of the interpolands and the transposed interpolation polynomial.
     fn dot(&self, t: f32, q1: f32, q2: f32, q3: f32, q4: f32) -> P {
         let (p0, p1, p2, p3) = self.indices(t);
         if p0 + 3 >= self.len() {
@@ -213,6 +271,7 @@ pub trait Hermite<P: Point>: Index<usize, Output = P> {
         P::new(0.5 * tx, 0.5 * ty)
     }
 
+    /// Evaluate the spline at non-uniform `t`.
     fn interpolate(&self, t: f32) -> P {
         let u = t.fract();
         let uu = u * u;
@@ -224,6 +283,7 @@ pub trait Hermite<P: Point>: Index<usize, Output = P> {
         self.dot(t, q1, q2, q3, q4)
     }
 
+    /// Evaluate the first derivative at non-uniform `t`.
     fn derivative(&self, t: f32) -> P {
         let u = t.fract();
         let uu = u * u;
@@ -232,6 +292,17 @@ pub trait Hermite<P: Point>: Index<usize, Output = P> {
         let q3 = -9. * uu + 8. * u + 1.;
         let q4 = 3. * uu - 2. * u;
         self.dot(t, q1, q2, q3, q4)
+    }
+
+    fn rib(&self, t: f32) -> (P, P) {
+        let (point, derivative) = (self.interpolate(t), self.derivative(t));
+        let direction = derivative.unit();
+        let normal = P::new(-direction.y(), direction.x());
+
+        (
+            P::new(point.x() + normal.x(), point.y() + normal.y()),
+            P::new(point.x() - normal.x(), point.y() - normal.y()),
+        )
     }
 }
 
