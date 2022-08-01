@@ -89,3 +89,17 @@ impl Display for StrokePos {
         write!(f, "{:.02},{:.02}", self.x, self.y)
     }
 }
+
+impl pmb_tess::Point for StrokePoint {
+    fn new(x: f32, y: f32) -> Self {
+        StrokePoint { x, y }
+    }
+
+    fn x(&self) -> f32 {
+        self.x
+    }
+
+    fn y(&self) -> f32 {
+        self.y
+    }
+}

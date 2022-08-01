@@ -1452,6 +1452,7 @@ dependencies = [
  "derive-disk",
  "derive-evc",
  "flate2",
+ "pmb-tess",
  "rand",
  "rfd",
 ]

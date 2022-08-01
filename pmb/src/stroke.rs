@@ -1,39 +1,7 @@
 use crate::{
-    graphics::{Color, ColorExt},
+    graphics::{Color, ColorExt, StrokePoint},
     StrokeBackend,
 };
-
-#[derive(Default, Debug, Clone, Copy)]
-#[repr(C)]
-pub struct StrokeElement {
-    pub x: f32,
-    pub y: f32,
-    pub pressure: f32,
-}
-
-impl bincode::Encode for StrokeElement {
-    fn encode<E: bincode::enc::Encoder>(
-        &self,
-        encoder: &mut E,
-    ) -> Result<(), bincode::error::EncodeError> {
-        self.x.encode(encoder)?;
-        self.y.encode(encoder)?;
-        self.pressure.encode(encoder)?;
-        Ok(())
-    }
-}
-
-impl bincode::Decode for StrokeElement {
-    fn decode<D: bincode::de::Decoder>(
-        decoder: &mut D,
-    ) -> Result<Self, bincode::error::DecodeError> {
-        Ok(Self {
-            x: bincode::Decode::decode(decoder)?,
-            y: bincode::Decode::decode(decoder)?,
-            pressure: bincode::Decode::decode(decoder)?,
-        })
-    }
-}
 
 #[rustfmt::skip]
 #[derive(derive_disk::Disk)]
@@ -41,7 +9,8 @@ pub struct Stroke<S>
 where
     S: StrokeBackend,
 {
-    pub points: Vec<StrokeElement>,
+    pub points: Vec<StrokePoint>,
+    pub pressure: Vec<f32>,
     pub color: Color,
     pub brush_size: f32,
     pub erased: bool,
@@ -57,6 +26,7 @@ where
     fn default() -> Self {
         Self {
             points: Default::default(),
+            pressure: Default::default(),
             color: Color::WHITE,
             brush_size: crate::DEFAULT_BRUSH as f32,
             erased: false,
@@ -82,8 +52,9 @@ impl<S> Stroke<S>
 where
     S: StrokeBackend,
 {
-    pub fn with_points(points: Vec<StrokeElement>, color: Color) -> Self {
+    pub fn with_points(points: Vec<StrokePoint>, color: Color) -> Self {
         Self {
+            pressure: std::iter::repeat(1.).take(points.len()).collect(),
             points,
             color,
             backend: None,
@@ -91,11 +62,25 @@ where
         }
     }
 
-    pub fn as_bytes(&self) -> &[u8] {
+    pub fn points_as_bytes(&self) -> &[u8] {
         unsafe {
             let points_flat = std::slice::from_raw_parts(
                 self.points().as_ptr() as *const f32,
-                self.points().len() * 3,
+                self.points().len() * 2,
+            );
+
+            std::slice::from_raw_parts(
+                points_flat.as_ptr() as *const u8,
+                points_flat.len() * std::mem::size_of::<f32>(),
+            )
+        }
+    }
+
+    pub fn pressure_as_bytes(&self) -> &[u8] {
+        unsafe {
+            let points_flat = std::slice::from_raw_parts(
+                self.pressure.as_ptr() as *const f32,
+                self.points().len(),
             );
 
             std::slice::from_raw_parts(
@@ -114,11 +99,11 @@ where
         }
     }
 
-    pub fn points(&self) -> &[StrokeElement] {
+    pub fn points(&self) -> &[StrokePoint] {
         &self.points
     }
 
-    pub fn points_mut(&mut self) -> &mut Vec<StrokeElement> {
+    pub fn points_mut(&mut self) -> &mut Vec<StrokePoint> {
         &mut self.points
     }
 
@@ -148,9 +133,9 @@ where
 
     pub fn replace_backend_with<F>(&mut self, mut with: F)
     where
-        F: FnMut(&[u8]) -> S,
+        F: FnMut(&[u8], &[u8]) -> S,
     {
-        let backend = with(self.as_bytes());
+        let backend = with(self.points_as_bytes(), self.pressure_as_bytes());
         self.backend = Some(backend);
     }
 
@@ -159,10 +144,10 @@ where
     }
 
     pub fn add_point(&mut self, stylus: &crate::Stylus) {
-        self.points_mut().push(StrokeElement {
+        self.pressure.push(stylus.pressure);
+        self.points_mut().push(StrokePoint {
             x: stylus.pos.x,
             y: stylus.pos.y,
-            pressure: stylus.pressure,
         });
 
         if let Some(backend) = self.backend_mut() {

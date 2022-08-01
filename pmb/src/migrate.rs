@@ -44,7 +44,7 @@ impl Display for Version {
 }
 
 impl Version {
-    pub const CURRENT: Self = Version(2);
+    pub const CURRENT: Self = Version(3);
 
     pub fn upgrade_type(from: Self) -> UpgradeType {
         use UpgradeType::*;
@@ -54,6 +54,7 @@ impl Version {
         }
 
         match from {
+            Version(2) => Smooth,
             Version(1) => Smooth,
             _ => Incompatible,
         }
@@ -65,11 +66,39 @@ where
     B: Backend,
     S: StrokeBackend,
 {
-    use crate::stroke::*;
+    use crate::{graphics::StrokePoint, stroke::*};
     let file = std::fs::File::open(&path)?;
 
     match version {
         version if version == Version::CURRENT => unreachable!(),
+
+        Version(2) => {
+            let v2: v2::StateV1 = v2::read(file)?.into();
+
+            let state = State {
+                strokes: v2
+                    .strokes
+                    .into_iter()
+                    .map(|v2| Stroke {
+                        points: v2
+                            .points
+                            .iter()
+                            .map(|v2| StrokePoint { x: v2.x, y: v2.y })
+                            .collect(),
+                        pressure: v2.points.iter().map(|v2| v2.pressure).collect(),
+                        color: v2.color,
+                        brush_size: v2.brush_size,
+                        erased: v2.erased,
+                        ..Default::default()
+                    })
+                    .collect(),
+                brush_size: v2.brush_size,
+                zoom: v2.zoom,
+                ..Default::default()
+            };
+
+            return Ok(state);
+        }
 
         Version(1) => {
             let v1: v1::StateV1 = v1::read(file)?.into();
@@ -81,13 +110,10 @@ where
                     .map(|v1| Stroke {
                         points: v1
                             .points
-                            .into_iter()
-                            .map(|v1| StrokeElement {
-                                x: v1.x,
-                                y: v1.y,
-                                pressure: v1.pressure,
-                            })
+                            .iter()
+                            .map(|v1| StrokePoint { x: v1.x, y: v1.y })
                             .collect(),
+                        pressure: v1.points.iter().map(|v1| v1.pressure).collect(),
                         color: v1.color,
                         brush_size: v1.brush_size,
                         erased: v1.erased,
@@ -104,6 +130,10 @@ where
 
         _ => Err(PmbError::new(ErrorKind::UnknownVersion(version))),
     }
+}
+
+mod v2 {
+    pub use super::v1::*;
 }
 
 mod v1 {

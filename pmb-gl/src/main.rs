@@ -325,21 +325,30 @@ fn main() {
                 for stroke in state.strokes.iter_mut() {
                     unsafe {
                         if stroke.is_dirty() {
-                            stroke.replace_backend_with(|bytes| {
-                                let vbo = gl.create_buffer().unwrap();
+                            stroke.replace_backend_with(|points_bytes, pressure_bytes| {
                                 let vao = gl.create_vertex_array().unwrap();
-
-                                gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
                                 gl.bind_vertex_array(Some(vao));
+
+                                let points = gl.create_buffer().unwrap();
+                                gl.bind_buffer(glow::ARRAY_BUFFER, Some(points));
                                 gl.buffer_data_u8_slice(
                                     glow::ARRAY_BUFFER,
-                                    bytes,
+                                    points_bytes,
+                                    glow::STATIC_DRAW,
+                                );
+
+                                let pressure = gl.create_buffer().unwrap();
+                                gl.bind_buffer(glow::ARRAY_BUFFER, Some(pressure));
+                                gl.buffer_data_u8_slice(
+                                    glow::ARRAY_BUFFER,
+                                    pressure_bytes,
                                     glow::STATIC_DRAW,
                                 );
 
                                 StrokeBackend {
-                                    vbo,
                                     vao,
+                                    points,
+                                    pressure,
                                     dirty: false,
                                 }
                             });
@@ -353,29 +362,23 @@ fn main() {
                     }
 
                     unsafe {
-                        let StrokeBackend { vbo, vao, .. } = stroke.backend().unwrap();
+                        let StrokeBackend {
+                            vao,
+                            points,
+                            pressure,
+                            ..
+                        } = stroke.backend().unwrap();
 
-                        gl.bind_buffer(glow::ARRAY_BUFFER, Some(*vbo));
+                        let f32_size = size_of::<f32>() as i32;
                         gl.bind_vertex_array(Some(*vao));
 
-                        gl.vertex_attrib_pointer_f32(
-                            0,
-                            2,
-                            glow::FLOAT,
-                            false,
-                            size_of::<f32>() as i32 * 3,
-                            0,
-                        );
-                        gl.enable_vertex_attrib_array(0);
+                        gl.bind_buffer(glow::ARRAY_BUFFER, Some(*points));
+                        gl.vertex_attrib_pointer_f32(0, 2, glow::FLOAT, false, f32_size * 2, 0);
 
-                        gl.vertex_attrib_pointer_f32(
-                            1,
-                            1,
-                            glow::FLOAT,
-                            false,
-                            size_of::<f32>() as i32 * 3,
-                            size_of::<f32>() as i32 * 2,
-                        );
+                        gl.bind_buffer(glow::ARRAY_BUFFER, Some(*pressure));
+                        gl.vertex_attrib_pointer_f32(1, 1, glow::FLOAT, false, f32_size, 0);
+
+                        gl.enable_vertex_attrib_array(0);
                         gl.enable_vertex_attrib_array(1);
 
                         gl.uniform_3_f32(

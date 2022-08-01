@@ -2,7 +2,7 @@ use powdermilk_biscuits::{
     event::{PenInfo, Touch, TouchPhase},
     graphics::{ColorExt, PixelPos, StrokePoint},
     input::{ElementState, Keycode, MouseButton},
-    stroke::{Stroke, StrokeElement},
+    stroke::Stroke,
     State,
 };
 use std::mem::size_of;
@@ -73,7 +73,8 @@ pub fn view_matrix(
 
 #[derive(Debug)]
 pub struct StrokeBackend {
-    pub buffer: Buffer,
+    pub points: Buffer,
+    pub pressure: Buffer,
     pub dirty: bool,
 }
 
@@ -369,22 +370,26 @@ impl Graphics {
             vertex: VertexState {
                 module: &stroke_shader,
                 entry_point: "vmain",
-                buffers: &[VertexBufferLayout {
-                    array_stride: size_of::<StrokeElement>() as BufferAddress,
-                    step_mode: VertexStepMode::Vertex,
-                    attributes: &[
-                        VertexAttribute {
+                buffers: &[
+                    VertexBufferLayout {
+                        array_stride: (size_of::<f32>() * 2) as BufferAddress,
+                        step_mode: VertexStepMode::Vertex,
+                        attributes: &[VertexAttribute {
                             offset: 0,
                             shader_location: 0,
                             format: VertexFormat::Float32x2,
-                        },
-                        VertexAttribute {
-                            offset: 2 * size_of::<f32>() as u64,
+                        }],
+                    },
+                    VertexBufferLayout {
+                        array_stride: size_of::<f32>() as BufferAddress,
+                        step_mode: VertexStepMode::Vertex,
+                        attributes: &[VertexAttribute {
+                            offset: 0,
                             shader_location: 1,
                             format: VertexFormat::Float32,
-                        },
-                    ],
-                }],
+                        }],
+                    },
+                ],
             },
             fragment: Some(FragmentState {
                 module: &stroke_shader,
@@ -548,10 +553,15 @@ impl Graphics {
     }
 
     pub fn buffer_stroke(&mut self, stroke: &mut Stroke<StrokeBackend>) {
-        stroke.replace_backend_with(|bytes| StrokeBackend {
-            buffer: self.device.create_buffer_init(&BufferInitDescriptor {
+        stroke.replace_backend_with(|points, pressure| StrokeBackend {
+            points: self.device.create_buffer_init(&BufferInitDescriptor {
                 label: None,
-                contents: bytes,
+                contents: points,
+                usage: BufferUsages::VERTEX,
+            }),
+            pressure: self.device.create_buffer_init(&BufferInitDescriptor {
+                label: None,
+                contents: pressure,
                 usage: BufferUsages::VERTEX,
             }),
             dirty: false,
@@ -633,7 +643,8 @@ impl Graphics {
                             bytemuck::cast_slice(&stroke.color().to_float()),
                         );
 
-                        pass.set_vertex_buffer(0, stroke.backend().unwrap().buffer.slice(..));
+                        pass.set_vertex_buffer(0, stroke.backend().unwrap().points.slice(..));
+                        pass.set_vertex_buffer(1, stroke.backend().unwrap().pressure.slice(..));
                         pass.draw(0..stroke.points().len() as u32, 0..1);
                     }
                 }
