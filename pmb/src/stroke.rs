@@ -104,7 +104,7 @@ where
     pub fn mesh_as_bytes(&self) -> &[u8] {
         unsafe {
             let mesh_flat =
-                std::slice::from_raw_parts(self.mesh.as_ptr() as *const f32, self.mesh.len() * 2);
+                std::slice::from_raw_parts(self.mesh.as_ptr() as *const f32, self.mesh.len() * 3);
 
             std::slice::from_raw_parts(
                 mesh_flat.as_ptr() as *const u8,
@@ -156,10 +156,9 @@ where
 
     pub fn replace_backend_with<F>(&mut self, mut with: F)
     where
-        F: FnMut(&[u8]) -> S,
+        F: FnMut(&[u8], &[u8]) -> S,
     {
-        let backend = with(self.points_as_bytes());
-        //let backend = with(self.points_as_bytes(), self.mesh_as_bytes());
+        let backend = with(self.points_as_bytes(), self.mesh_as_bytes());
         self.backend = Some(backend);
     }
 

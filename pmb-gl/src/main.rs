@@ -325,7 +325,7 @@ fn main() {
                 for stroke in state.strokes.iter_mut() {
                     unsafe {
                         if stroke.is_dirty() {
-                            stroke.replace_backend_with(|points_bytes| {
+                            stroke.replace_backend_with(|points_bytes, _mesh| {
                                 let f32_size = size_of::<f32>() as i32;
 
                                 let vao = gl.create_vertex_array().unwrap();
