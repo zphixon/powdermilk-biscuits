@@ -250,19 +250,18 @@ impl<T> EventExt for winit::event::Event<'_, T> {
     }
 }
 
-struct StrokeRenderer {
-    stroke_pipeline: RenderPipeline,
-    stroke_view_bind_group: BindGroup,
-    stroke_view_uniform_buffer: Buffer,
+struct StrokeLineRenderer {
+    pipeline: RenderPipeline,
+    view_bind_group: BindGroup,
+    view_uniform_buffer: Buffer,
 }
 
-impl StrokeRenderer {
+impl StrokeLineRenderer {
     fn new(device: &Device, format: TextureFormat) -> Self {
-        let stroke_shader =
-            device.create_shader_module(wgpu::include_wgsl!("shaders/stroke_line.wgsl"));
+        let shader = device.create_shader_module(wgpu::include_wgsl!("shaders/stroke_line.wgsl"));
 
-        let stroke_view_bind_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("view bl"),
+        let view_bind_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("stroke bind layout"),
             entries: &[BindGroupLayoutEntry {
                 binding: 0,
                 visibility: ShaderStages::VERTEX,
@@ -275,24 +274,24 @@ impl StrokeRenderer {
             }],
         });
 
-        let stroke_view_uniform_buffer = device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("view ub"),
+        let view_uniform_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("stroke view uniform buffer"),
             contents: bytemuck::cast_slice(&glam::Mat4::IDENTITY.to_cols_array()),
             usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
         });
 
-        let stroke_view_bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("view bg"),
-            layout: &stroke_view_bind_layout,
+        let view_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("stroke view bind group"),
+            layout: &view_bind_layout,
             entries: &[BindGroupEntry {
                 binding: 0,
-                resource: stroke_view_uniform_buffer.as_entire_binding(),
+                resource: view_uniform_buffer.as_entire_binding(),
             }],
         });
 
-        let stroke_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("pipeline layout"),
-            bind_group_layouts: &[&stroke_view_bind_layout],
+        let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("stroke pipeline layout"),
+            bind_group_layouts: &[&view_bind_layout],
             push_constant_ranges: &[PushConstantRange {
                 stages: ShaderStages::VERTEX,
                 range: 0..12,
@@ -305,11 +304,11 @@ impl StrokeRenderer {
             write_mask: ColorWrites::ALL,
         })];
 
-        let stroke_desc = RenderPipelineDescriptor {
+        let pipeline_desc = RenderPipelineDescriptor {
             label: Some("stroke pipeline"),
-            layout: Some(&stroke_layout),
+            layout: Some(&pipeline_layout),
             vertex: VertexState {
-                module: &stroke_shader,
+                module: &shader,
                 entry_point: "vmain",
                 buffers: &[
                     VertexBufferLayout {
@@ -333,7 +332,7 @@ impl StrokeRenderer {
                 ],
             },
             fragment: Some(FragmentState {
-                module: &stroke_shader,
+                module: &shader,
                 entry_point: "fmain",
                 targets: &cts,
             }),
@@ -355,12 +354,12 @@ impl StrokeRenderer {
             multiview: None,
         };
 
-        let stroke_pipeline = device.create_render_pipeline(&stroke_desc);
+        let pipeline = device.create_render_pipeline(&pipeline_desc);
 
-        StrokeRenderer {
-            stroke_pipeline,
-            stroke_view_bind_group,
-            stroke_view_uniform_buffer,
+        StrokeLineRenderer {
+            pipeline,
+            view_bind_group,
+            view_uniform_buffer,
         }
     }
 
@@ -374,7 +373,7 @@ impl StrokeRenderer {
     ) {
         let stroke_view = view_matrix(state.zoom, state.zoom, size, state.origin);
         queue.write_buffer(
-            &self.stroke_view_uniform_buffer,
+            &self.view_uniform_buffer,
             0,
             bytemuck::cast_slice(&stroke_view.to_cols_array()),
         );
@@ -382,7 +381,7 @@ impl StrokeRenderer {
         queue.submit(None);
 
         let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
-            label: Some("render pass"),
+            label: Some("stroke render pass"),
             color_attachments: &[Some(RenderPassColorAttachment {
                 view: frame,
                 resolve_target: None,
@@ -394,8 +393,8 @@ impl StrokeRenderer {
             depth_stencil_attachment: None,
         });
 
-        pass.set_pipeline(&self.stroke_pipeline);
-        pass.set_bind_group(0, &self.stroke_view_bind_group, &[]);
+        pass.set_pipeline(&self.pipeline);
+        pass.set_bind_group(0, &self.view_bind_group, &[]);
 
         for stroke in state.strokes.iter() {
             if stroke.erased() || stroke.points().is_empty() {
@@ -416,26 +415,26 @@ impl StrokeRenderer {
 }
 
 struct CursorRenderer {
-    cursor_buffer: Buffer,
-    cursor_pipeline: RenderPipeline,
-    cursor_bind_group: BindGroup,
-    cursor_view_uniform_buffer: Buffer,
+    vertex_buffer: Buffer,
+    pipeline: RenderPipeline,
+    bind_group: BindGroup,
+    view_uniform_buffer: Buffer,
 }
 
 impl CursorRenderer {
     fn new(device: &Device, format: TextureFormat) -> Self {
         let cursor_points = powdermilk_biscuits::graphics::circle_points(1., NUM_SEGMENTS);
 
-        let cursor_buffer = device.create_buffer_init(&BufferInitDescriptor {
+        let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("cursor points"),
             contents: bytemuck::cast_slice(cursor_points.as_slice()),
             usage: BufferUsages::VERTEX,
         });
 
-        let cursor_shader = device.create_shader_module(wgpu::include_wgsl!("shaders/cursor.wgsl"));
+        let shader = device.create_shader_module(wgpu::include_wgsl!("shaders/cursor.wgsl"));
 
-        let cursor_bind_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("cursor"),
+        let bind_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("cursor bind layout"),
             entries: &[BindGroupLayoutEntry {
                 binding: 0,
                 ty: BindingType::Buffer {
@@ -448,27 +447,27 @@ impl CursorRenderer {
             }],
         });
 
-        let cursor_view_uniform_buffer = device.create_buffer_init(&BufferInitDescriptor {
-            label: None,
+        let view_uniform_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("cursor uniform buffer"),
             contents: bytemuck::cast_slice(&glam::Mat4::IDENTITY.to_cols_array()),
             usage: BufferUsages::COPY_DST | BufferUsages::UNIFORM,
         });
 
-        let cursor_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("cursor"),
-            bind_group_layouts: &[&cursor_bind_layout],
+        let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("cursor pipeline layout"),
+            bind_group_layouts: &[&bind_layout],
             push_constant_ranges: &[PushConstantRange {
                 stages: ShaderStages::VERTEX,
                 range: 0..8,
             }],
         });
 
-        let cursor_bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: None,
-            layout: &cursor_bind_layout,
+        let bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("cursor bind group"),
+            layout: &bind_layout,
             entries: &[BindGroupEntry {
                 binding: 0,
-                resource: cursor_view_uniform_buffer.as_entire_binding(),
+                resource: view_uniform_buffer.as_entire_binding(),
             }],
         });
 
@@ -478,11 +477,11 @@ impl CursorRenderer {
             write_mask: ColorWrites::ALL,
         })];
 
-        let cursor_desc = RenderPipelineDescriptor {
+        let pipeline_desc = RenderPipelineDescriptor {
             label: Some("cursor pipeline"),
-            layout: Some(&cursor_layout),
+            layout: Some(&pipeline_layout),
             vertex: VertexState {
-                module: &cursor_shader,
+                module: &shader,
                 entry_point: "vmain",
                 buffers: &[VertexBufferLayout {
                     array_stride: (size_of::<f32>() * 2) as BufferAddress,
@@ -495,7 +494,7 @@ impl CursorRenderer {
                 }],
             },
             fragment: Some(FragmentState {
-                module: &cursor_shader,
+                module: &shader,
                 entry_point: "fmain",
                 targets: &cts,
             }),
@@ -517,13 +516,13 @@ impl CursorRenderer {
             multiview: None,
         };
 
-        let cursor_pipeline = device.create_render_pipeline(&cursor_desc);
+        let pipeline = device.create_render_pipeline(&pipeline_desc);
 
         CursorRenderer {
-            cursor_buffer,
-            cursor_pipeline,
-            cursor_bind_group,
-            cursor_view_uniform_buffer,
+            vertex_buffer,
+            pipeline,
+            bind_group,
+            view_uniform_buffer,
         }
     }
 
@@ -543,13 +542,13 @@ impl CursorRenderer {
         );
 
         queue.write_buffer(
-            &self.cursor_view_uniform_buffer,
+            &self.view_uniform_buffer,
             0,
             bytemuck::cast_slice(&cursor_view.to_cols_array()),
         );
 
         let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
-            label: Some("cursor"),
+            label: Some("cursor render pass"),
             color_attachments: &[Some(RenderPassColorAttachment {
                 view: frame,
                 resolve_target: None,
@@ -566,10 +565,10 @@ impl CursorRenderer {
             if state.stylus.inverted() { 1. } else { 0. },
         ];
 
-        pass.set_pipeline(&self.cursor_pipeline);
-        pass.set_bind_group(0, &self.cursor_bind_group, &[]);
+        pass.set_pipeline(&self.pipeline);
+        pass.set_bind_group(0, &self.bind_group, &[]);
         pass.set_push_constants(ShaderStages::VERTEX, 0, bytemuck::cast_slice(&info_buffer));
-        pass.set_vertex_buffer(0, self.cursor_buffer.slice(..));
+        pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         pass.draw(0..(NUM_SEGMENTS + 1) as u32, 0..1);
     }
 }
@@ -585,7 +584,7 @@ pub struct Graphics {
     pub size: Size,
     pub aa: bool,
     smaa_target: smaa::SmaaTarget,
-    stroke_renderer: StrokeRenderer,
+    stroke_renderer: StrokeLineRenderer,
     cursor_renderer: CursorRenderer,
 }
 
@@ -615,7 +614,7 @@ impl Graphics {
         let (device, queue) = adapter
             .request_device(
                 &DeviceDescriptor {
-                    label: None,
+                    label: Some("device descriptor"),
                     features: Features::PUSH_CONSTANTS,
                     limits,
                 },
@@ -649,7 +648,7 @@ impl Graphics {
 
         log::info!("done!");
         Graphics {
-            stroke_renderer: StrokeRenderer::new(&device, surface_format),
+            stroke_renderer: StrokeLineRenderer::new(&device, surface_format),
             cursor_renderer: CursorRenderer::new(&device, surface_format),
 
             surface,
@@ -683,12 +682,12 @@ impl Graphics {
     pub fn buffer_stroke(&mut self, stroke: &mut Stroke<StrokeBackend>) {
         stroke.replace_backend_with(|points, pressure| StrokeBackend {
             points: self.device.create_buffer_init(&BufferInitDescriptor {
-                label: None,
+                label: Some("points"),
                 contents: points,
                 usage: BufferUsages::VERTEX,
             }),
             pressure: self.device.create_buffer_init(&BufferInitDescriptor {
-                label: None,
+                label: Some("pressure"),
                 contents: pressure,
                 usage: BufferUsages::VERTEX,
             }),
