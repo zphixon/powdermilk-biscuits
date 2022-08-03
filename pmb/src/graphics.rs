@@ -55,6 +55,7 @@ pub struct PixelPos {
 }
 
 #[derive(Default, Debug, Clone, Copy, derive_disk::Disk)]
+#[repr(C)]
 pub struct StrokePoint {
     pub x: f32,
     pub y: f32,
