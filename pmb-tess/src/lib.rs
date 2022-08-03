@@ -320,7 +320,7 @@ pub trait Hermite<P: Point>: Index<usize, Output = P> {
     fn rib(&self, t: f32, scale: f32) -> (P, P) {
         let (point, derivative) = (self.interpolate(t), self.derivative(t));
         let direction = derivative.unit();
-        let normal = P::new(-direction.y() / scale, direction.x() / scale);
+        let normal = P::new(-direction.y() * scale, direction.x() * scale);
 
         (
             P::new(point.x() + normal.x(), point.y() + normal.y()),
@@ -351,14 +351,18 @@ pub trait Hermite<P: Point>: Index<usize, Output = P> {
     }
 }
 
-impl<P: Point, const N: usize> Hermite<P> for [P; N] {
+impl<P: Point> Hermite<P> for [P] {
     fn len(&self) -> usize {
         self.as_ref().len()
     }
 }
 
-impl<P: Point> Hermite<P> for [P] {
+impl<T, P> Hermite<P> for T
+where
+    P: Point,
+    T: std::ops::Deref<Target = [P]> + Index<usize, Output = P>,
+{
     fn len(&self) -> usize {
-        self.as_ref().len()
+        <[P]>::len(&*self)
     }
 }

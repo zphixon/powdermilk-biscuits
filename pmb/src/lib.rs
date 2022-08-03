@@ -239,6 +239,10 @@ where
         self.zoom = other.zoom;
         self.origin = other.origin;
         self.stylus = other.stylus;
+
+        self.strokes
+            .iter_mut()
+            .for_each(|stroke| stroke.generate_full_mesh());
     }
 
     pub fn with_filename(path: impl AsRef<std::path::Path>) -> Self {
@@ -830,6 +834,10 @@ where
             .collect(),
         Color::grey(0.3),
     ));
+
+    strokes
+        .iter_mut()
+        .for_each(|stroke| stroke.generate_full_mesh());
 
     strokes
 }

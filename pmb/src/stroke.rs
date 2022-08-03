@@ -173,25 +173,44 @@ where
             pressure: stylus.pressure,
         });
 
-        use pmb_tess::Hermite;
-
         if self.points.len() >= 4 {
-            // YEEEESH
-            self.mesh = self
-                .points
-                .flat_ribs(self.points.len(), self.brush_size)
-                .into_iter()
-                .zip(self.points.iter())
-                .map(|(mut rib_point, stroke_point)| {
-                    rib_point.pressure = stroke_point.pressure;
-                    rib_point
-                })
-                .collect();
+            self.generate_partial_mesh();
         }
 
         if let Some(backend) = self.backend_mut() {
             backend.make_dirty();
         }
+    }
+
+    fn generate_partial_mesh(&mut self) {
+        use pmb_tess::Hermite;
+        let subset = &self.points[self.points.len() - 4..];
+        self.mesh.pop();
+        self.mesh.pop();
+        self.mesh.extend(
+            subset
+                .flat_ribs(4, self.brush_size())
+                .into_iter()
+                .zip(subset.iter())
+                .map(|(mut rib, stroke)| {
+                    rib.pressure = stroke.pressure;
+                    rib
+                }),
+        );
+    }
+
+    pub fn generate_full_mesh(&mut self) {
+        use pmb_tess::Hermite;
+        self.mesh = self
+            .points
+            .flat_ribs(self.points.len() / 10, self.brush_size())
+            .into_iter()
+            .zip(self.points.iter())
+            .map(|(mut rib, stroke)| {
+                rib.pressure = stroke.pressure;
+                rib
+            })
+            .collect();
     }
 
     pub fn finish(&mut self) {
