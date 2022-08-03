@@ -250,14 +250,14 @@ impl<T> EventExt for winit::event::Event<'_, T> {
     }
 }
 
-struct StrokeLineRenderer {
+struct StrokeRenderer {
     pipeline: RenderPipeline,
     view_bind_group: BindGroup,
     view_uniform_buffer: Buffer,
 }
 
-impl StrokeLineRenderer {
-    fn new(device: &Device, format: TextureFormat) -> Self {
+impl StrokeRenderer {
+    fn new(device: &Device, topology: PrimitiveTopology, format: TextureFormat) -> Self {
         let shader = device.create_shader_module(wgpu::include_wgsl!("shaders/stroke_line.wgsl"));
 
         let view_bind_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
@@ -337,10 +337,10 @@ impl StrokeLineRenderer {
                 targets: &cts,
             }),
             primitive: PrimitiveState {
-                topology: PrimitiveTopology::LineStrip,
+                topology,
                 strip_index_format: None,
                 front_face: FrontFace::Ccw,
-                cull_mode: Some(Face::Back),
+                cull_mode: None,
                 polygon_mode: PolygonMode::Fill,
                 unclipped_depth: false,
                 conservative: false,
@@ -356,7 +356,7 @@ impl StrokeLineRenderer {
 
         let pipeline = device.create_render_pipeline(&pipeline_desc);
 
-        StrokeLineRenderer {
+        StrokeRenderer {
             pipeline,
             view_bind_group,
             view_uniform_buffer,
@@ -583,8 +583,10 @@ pub struct Graphics {
     config: SurfaceConfiguration,
     pub size: Size,
     pub aa: bool,
+    pub tesselated: bool,
     smaa_target: smaa::SmaaTarget,
-    stroke_renderer: StrokeLineRenderer,
+    stroke_line_renderer: StrokeRenderer,
+    stroke_tess_renderer: StrokeRenderer,
     cursor_renderer: CursorRenderer,
 }
 
@@ -648,7 +650,16 @@ impl Graphics {
 
         log::info!("done!");
         Graphics {
-            stroke_renderer: StrokeLineRenderer::new(&device, surface_format),
+            stroke_line_renderer: StrokeRenderer::new(
+                &device,
+                PrimitiveTopology::LineStrip,
+                surface_format,
+            ),
+            stroke_tess_renderer: StrokeRenderer::new(
+                &device,
+                PrimitiveTopology::TriangleStrip,
+                surface_format,
+            ),
             cursor_renderer: CursorRenderer::new(&device, surface_format),
 
             surface,
@@ -658,6 +669,7 @@ impl Graphics {
             config,
             size,
             aa: true,
+            tesselated: true,
             smaa_target,
         }
     }
@@ -719,8 +731,23 @@ impl Graphics {
                         label: Some("encoder"),
                     });
 
-                self.stroke_renderer
-                    .render(&self.queue, $frame, &mut encoder, state, size);
+                if self.tesselated {
+                    self.stroke_tess_renderer.render(
+                        &self.queue,
+                        $frame,
+                        &mut encoder,
+                        state,
+                        size,
+                    );
+                } else {
+                    self.stroke_line_renderer.render(
+                        &self.queue,
+                        $frame,
+                        &mut encoder,
+                        state,
+                        size,
+                    );
+                }
 
                 if !cursor_visible {
                     self.cursor_renderer

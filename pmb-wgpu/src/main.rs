@@ -185,11 +185,14 @@ async fn run() {
             }
 
             Event::MainEventsCleared => {
-                if state
-                    .input
-                    .just_pressed(powdermilk_biscuits::input::Keycode::A)
-                {
+                use powdermilk_biscuits::input::Keycode::*;
+
+                if state.input.just_pressed(A) {
                     graphics.aa = !graphics.aa;
+                }
+
+                if state.input.just_pressed(T) {
+                    graphics.tesselated = !graphics.tesselated;
                 }
 
                 match (state.path.as_ref(), state.modified) {
