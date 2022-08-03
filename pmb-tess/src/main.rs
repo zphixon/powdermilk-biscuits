@@ -93,8 +93,8 @@ fn main() {
         .iter()
         .for_each(|p| println!("({p})"));
 
+    println!("ribs (w/o bbq sauce 😭)");
     for rib in bigpoints.flat_ribs(segments, 20.) {
         println!("({rib})");
-        std::io::stdin().read_line(&mut String::new()).unwrap();
     }
 }
