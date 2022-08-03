@@ -53,6 +53,8 @@ Finger/stylus interaction:
 
 Optimizations:
 - For both backends, we're checking every stroke every frame whether it's been buffered or not
+- We're re-calculating the entire spline on every stroke point addition (i.e. every `Touch` event) and throwing away the old spline, most of which is still fine. The traingles that make up the last two segments of the stroke are all that need to be re-calculated.
+- We also probably don't need to store the spline CPU-side, we could just use a ring buffer and keep track of what mesh data hasn't been buffered to the GPU yet
 
 Keybinds:
 - c: clear strokes

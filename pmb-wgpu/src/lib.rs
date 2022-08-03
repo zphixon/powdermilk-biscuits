@@ -75,6 +75,7 @@ pub fn view_matrix(
 pub struct StrokeBackend {
     pub points: Buffer,
     pub pressure: Buffer,
+    pub mesh: Buffer,
     pub dirty: bool,
 }
 
@@ -252,6 +253,7 @@ impl<T> EventExt for winit::event::Event<'_, T> {
 
 struct StrokeRenderer {
     pipeline: RenderPipeline,
+    topology: PrimitiveTopology,
     view_bind_group: BindGroup,
     view_uniform_buffer: Buffer,
 }
@@ -358,6 +360,7 @@ impl StrokeRenderer {
 
         StrokeRenderer {
             pipeline,
+            topology,
             view_bind_group,
             view_uniform_buffer,
         }
@@ -407,9 +410,15 @@ impl StrokeRenderer {
                 bytemuck::cast_slice(&stroke.color().to_float()),
             );
 
-            pass.set_vertex_buffer(0, stroke.backend().unwrap().points.slice(..));
             pass.set_vertex_buffer(1, stroke.backend().unwrap().pressure.slice(..));
-            pass.draw(0..stroke.points().len() as u32, 0..1);
+
+            if matches!(self.topology, PrimitiveTopology::LineStrip) {
+                pass.set_vertex_buffer(0, stroke.backend().unwrap().points.slice(..));
+                pass.draw(0..stroke.points().len() as u32, 0..1);
+            } else {
+                pass.set_vertex_buffer(0, stroke.backend().unwrap().mesh.slice(..));
+                pass.draw(0..stroke.mesh.len() as u32, 0..1);
+            }
         }
     }
 }
@@ -692,7 +701,7 @@ impl Graphics {
     }
 
     pub fn buffer_stroke(&mut self, stroke: &mut Stroke<StrokeBackend>) {
-        stroke.replace_backend_with(|points, pressure| StrokeBackend {
+        stroke.replace_backend_with(|points, pressure, mesh| StrokeBackend {
             points: self.device.create_buffer_init(&BufferInitDescriptor {
                 label: Some("points"),
                 contents: points,
@@ -701,6 +710,11 @@ impl Graphics {
             pressure: self.device.create_buffer_init(&BufferInitDescriptor {
                 label: Some("pressure"),
                 contents: pressure,
+                usage: BufferUsages::VERTEX,
+            }),
+            mesh: self.device.create_buffer_init(&BufferInitDescriptor {
+                label: Some("mesh"),
+                contents: mesh,
                 usage: BufferUsages::VERTEX,
             }),
             dirty: false,

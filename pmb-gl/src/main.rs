@@ -325,7 +325,7 @@ fn main() {
                 for stroke in state.strokes.iter_mut() {
                     unsafe {
                         if stroke.is_dirty() {
-                            stroke.replace_backend_with(|points_bytes, pressure_bytes| {
+                            stroke.replace_backend_with(|points_bytes, pressure_bytes, _| {
                                 let vao = gl.create_vertex_array().unwrap();
                                 gl.bind_vertex_array(Some(vao));
 

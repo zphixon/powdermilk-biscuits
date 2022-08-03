@@ -15,6 +15,7 @@ where
     pub brush_size: f32,
     pub erased: bool,
 
+    #[disk_skip] pub mesh: Vec<StrokePoint>,
     #[disk_skip] pub backend: Option<S>,
     #[disk_skip] pub done: bool,
 }
@@ -30,6 +31,7 @@ where
             color: Color::WHITE,
             brush_size: crate::DEFAULT_BRUSH as f32,
             erased: false,
+            mesh: Vec::new(),
             backend: None,
             done: false,
         }
@@ -78,14 +80,28 @@ where
 
     pub fn pressure_as_bytes(&self) -> &[u8] {
         unsafe {
-            let points_flat = std::slice::from_raw_parts(
+            let pressure_flat = std::slice::from_raw_parts(
                 self.pressure.as_ptr() as *const f32,
                 self.points().len(),
             );
 
             std::slice::from_raw_parts(
-                points_flat.as_ptr() as *const u8,
-                points_flat.len() * std::mem::size_of::<f32>(),
+                pressure_flat.as_ptr() as *const u8,
+                pressure_flat.len() * std::mem::size_of::<f32>(),
+            )
+        }
+    }
+
+    pub fn mesh_as_bytes(&self) -> &[u8] {
+        unsafe {
+            let mesh_flat = std::slice::from_raw_parts(
+                self.pressure.as_ptr() as *const f32,
+                self.mesh.len() * 2,
+            );
+
+            std::slice::from_raw_parts(
+                mesh_flat.as_ptr() as *const u8,
+                mesh_flat.len() * std::mem::size_of::<f32>(),
             )
         }
     }
@@ -133,9 +149,13 @@ where
 
     pub fn replace_backend_with<F>(&mut self, mut with: F)
     where
-        F: FnMut(&[u8], &[u8]) -> S,
+        F: FnMut(&[u8], &[u8], &[u8]) -> S,
     {
-        let backend = with(self.points_as_bytes(), self.pressure_as_bytes());
+        let backend = with(
+            self.points_as_bytes(),
+            self.pressure_as_bytes(),
+            self.mesh_as_bytes(),
+        );
         self.backend = Some(backend);
     }
 
@@ -149,6 +169,12 @@ where
             x: stylus.pos.x,
             y: stylus.pos.y,
         });
+
+        use pmb_tess::Hermite;
+
+        if self.points.len() >= 4 {
+            self.mesh = self.points.flat_ribs(self.points.len(), self.brush_size);
+        }
 
         if let Some(backend) = self.backend_mut() {
             backend.make_dirty();
