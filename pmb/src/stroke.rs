@@ -53,7 +53,7 @@ where
         Self {
             points: Default::default(),
             color: Color::WHITE,
-            brush_size: crate::DEFAULT_BRUSH as f32,
+            brush_size: 0.01,
             erased: false,
             mesh: Vec::new(),
             backend: None,

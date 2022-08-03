@@ -598,8 +598,21 @@ where
                 TouchPhase::Start => {
                     self.modified = true;
 
-                    let stroke = Stroke::<S>::new(rand::random(), self.brush_size as f32);
-                    self.strokes.push(stroke);
+                    let ndc_brush_size = self.backend.pixel_to_ndc(
+                        width,
+                        height,
+                        PixelPos {
+                            x: ((width / 2) + self.brush_size as u32) as f32,
+                            y: (height / 2) as f32,
+                        },
+                    );
+
+                    let stroke_brush_size =
+                        self.backend
+                            .ndc_to_stroke(width, height, self.zoom, ndc_brush_size);
+
+                    self.strokes
+                        .push(Stroke::new(rand::random(), stroke_brush_size.x / 2.));
                 }
 
                 TouchPhase::Move => {
