@@ -8,15 +8,15 @@ use powdermilk_biscuits::{
 use std::mem::size_of;
 use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
-    Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
-    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BlendState, Buffer,
-    BufferAddress, BufferBindingType, BufferUsages, Color as WgpuColor, ColorTargetState,
-    ColorWrites, CommandEncoderDescriptor, Device, DeviceDescriptor, Face, Features, FragmentState,
-    FrontFace, Instance, Limits, LoadOp, MultisampleState, Operations, PipelineLayoutDescriptor,
-    PolygonMode, PowerPreference, PresentMode, PrimitiveState, PrimitiveTopology,
-    PushConstantRange, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline,
-    RenderPipelineDescriptor, RequestAdapterOptions, ShaderStages, Surface, SurfaceConfiguration,
-    SurfaceError, TextureFormat, TextureUsages, TextureViewDescriptor, VertexAttribute,
+    Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
+    BindGroupLayoutEntry, BindingType, BlendState, Buffer, BufferAddress, BufferBindingType,
+    BufferUsages, Color as WgpuColor, ColorTargetState, ColorWrites, CommandEncoder,
+    CommandEncoderDescriptor, Device, DeviceDescriptor, Face, Features, FragmentState, FrontFace,
+    Instance, Limits, LoadOp, MultisampleState, Operations, PipelineLayoutDescriptor, PolygonMode,
+    PowerPreference, PresentMode, PrimitiveState, PrimitiveTopology, PushConstantRange, Queue,
+    RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor,
+    RequestAdapterOptions, ShaderStages, Surface, SurfaceConfiguration, SurfaceError,
+    TextureFormat, TextureUsages, TextureView, TextureViewDescriptor, VertexAttribute,
     VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
 };
 use winit::{
@@ -250,76 +250,14 @@ impl<T> EventExt for winit::event::Event<'_, T> {
     }
 }
 
-pub type Size = PhysicalSize<u32>;
-
-pub struct Graphics {
-    pub surface: Surface,
-    pub surface_format: TextureFormat,
-    pub device: Device,
-    pub queue: Queue,
-    pub config: SurfaceConfiguration,
-    pub size: Size,
-    pub aa: bool,
-    pub smaa_target: smaa::SmaaTarget,
-    pub stroke_pipeline: RenderPipeline,
-    pub stroke_view_bind_layout: BindGroupLayout,
-    pub stroke_view_bind_group: BindGroup,
-    pub stroke_view_uniform_buffer: Buffer,
-    pub cursor_buffer: Buffer,
-    pub cursor_pipeline: RenderPipeline,
-    pub cursor_bind_layout: BindGroupLayout,
-    pub cursor_bind_group: BindGroup,
-    pub cursor_view_uniform_buffer: Buffer,
+struct StrokeRenderer {
+    stroke_pipeline: RenderPipeline,
+    stroke_view_bind_group: BindGroup,
+    stroke_view_uniform_buffer: Buffer,
 }
 
-impl Graphics {
-    pub async fn new(window: &Window) -> Self {
-        log::info!("setting up wgpu");
-        let size = window.inner_size();
-        let instance = Instance::new(Backends::all());
-        let surface = unsafe { instance.create_surface(window) };
-
-        log::debug!("requesting adapter");
-        let adapter = instance
-            .request_adapter(&RequestAdapterOptions {
-                power_preference: PowerPreference::LowPower,
-                compatible_surface: Some(&surface),
-                force_fallback_adapter: false,
-            })
-            .await
-            .unwrap();
-
-        let limits = Limits {
-            max_push_constant_size: 128,
-            ..Default::default()
-        };
-
-        log::debug!("requesting device");
-        let (device, queue) = adapter
-            .request_device(
-                &DeviceDescriptor {
-                    label: None,
-                    features: Features::PUSH_CONSTANTS,
-                    limits,
-                },
-                None,
-            )
-            .await
-            .unwrap();
-
-        log::debug!("setting up pipeline stuff");
-        let surface_format = surface.get_supported_formats(&adapter)[0];
-
-        let config = SurfaceConfiguration {
-            usage: TextureUsages::RENDER_ATTACHMENT,
-            format: surface_format,
-            width: size.width,
-            height: size.height,
-            present_mode: PresentMode::Immediate,
-        };
-
-        surface.configure(&device, &config);
-
+impl StrokeRenderer {
+    fn new(device: &Device, format: TextureFormat) -> Self {
         let stroke_shader =
             device.create_shader_module(wgpu::include_wgsl!("shaders/stroke_line.wgsl"));
 
@@ -362,7 +300,7 @@ impl Graphics {
         });
 
         let cts = [Some(ColorTargetState {
-            format: config.format,
+            format,
             blend: Some(BlendState::REPLACE),
             write_mask: ColorWrites::ALL,
         })];
@@ -419,6 +357,73 @@ impl Graphics {
 
         let stroke_pipeline = device.create_render_pipeline(&stroke_desc);
 
+        StrokeRenderer {
+            stroke_pipeline,
+            stroke_view_bind_group,
+            stroke_view_uniform_buffer,
+        }
+    }
+
+    fn render(
+        &self,
+        queue: &Queue,
+        frame: &TextureView,
+        encoder: &mut CommandEncoder,
+        state: &WgslState,
+        size: Size,
+    ) {
+        let stroke_view = view_matrix(state.zoom, state.zoom, size, state.origin);
+        queue.write_buffer(
+            &self.stroke_view_uniform_buffer,
+            0,
+            bytemuck::cast_slice(&stroke_view.to_cols_array()),
+        );
+
+        queue.submit(None);
+
+        let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
+            label: Some("render pass"),
+            color_attachments: &[Some(RenderPassColorAttachment {
+                view: frame,
+                resolve_target: None,
+                ops: Operations {
+                    load: LoadOp::Clear(WgpuColor::BLACK),
+                    store: true,
+                },
+            })],
+            depth_stencil_attachment: None,
+        });
+
+        pass.set_pipeline(&self.stroke_pipeline);
+        pass.set_bind_group(0, &self.stroke_view_bind_group, &[]);
+
+        for stroke in state.strokes.iter() {
+            if stroke.erased() || stroke.points().is_empty() {
+                continue;
+            }
+
+            pass.set_push_constants(
+                ShaderStages::VERTEX,
+                0,
+                bytemuck::cast_slice(&stroke.color().to_float()),
+            );
+
+            pass.set_vertex_buffer(0, stroke.backend().unwrap().points.slice(..));
+            pass.set_vertex_buffer(1, stroke.backend().unwrap().pressure.slice(..));
+            pass.draw(0..stroke.points().len() as u32, 0..1);
+        }
+    }
+}
+
+struct CursorRenderer {
+    cursor_buffer: Buffer,
+    cursor_pipeline: RenderPipeline,
+    cursor_bind_group: BindGroup,
+    cursor_view_uniform_buffer: Buffer,
+}
+
+impl CursorRenderer {
+    fn new(device: &Device, format: TextureFormat) -> Self {
         let cursor_points = powdermilk_biscuits::graphics::circle_points(1., NUM_SEGMENTS);
 
         let cursor_buffer = device.create_buffer_init(&BufferInitDescriptor {
@@ -467,6 +472,12 @@ impl Graphics {
             }],
         });
 
+        let cts = [Some(ColorTargetState {
+            format,
+            blend: Some(BlendState::REPLACE),
+            write_mask: ColorWrites::ALL,
+        })];
+
         let cursor_desc = RenderPipelineDescriptor {
             label: Some("cursor pipeline"),
             layout: Some(&cursor_layout),
@@ -508,6 +519,124 @@ impl Graphics {
 
         let cursor_pipeline = device.create_render_pipeline(&cursor_desc);
 
+        CursorRenderer {
+            cursor_buffer,
+            cursor_pipeline,
+            cursor_bind_group,
+            cursor_view_uniform_buffer,
+        }
+    }
+
+    fn render(
+        &self,
+        queue: &Queue,
+        frame: &TextureView,
+        encoder: &mut CommandEncoder,
+        state: &WgslState,
+        size: Size,
+    ) {
+        let cursor_view = view_matrix(
+            state.zoom,
+            state.brush_size as f32,
+            size,
+            state.stylus.point,
+        );
+
+        queue.write_buffer(
+            &self.cursor_view_uniform_buffer,
+            0,
+            bytemuck::cast_slice(&cursor_view.to_cols_array()),
+        );
+
+        let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
+            label: Some("cursor"),
+            color_attachments: &[Some(RenderPassColorAttachment {
+                view: frame,
+                resolve_target: None,
+                ops: Operations {
+                    load: LoadOp::Load,
+                    store: true,
+                },
+            })],
+            depth_stencil_attachment: None,
+        });
+
+        let info_buffer = [
+            if state.stylus.down() { 1.0f32 } else { 0. },
+            if state.stylus.inverted() { 1. } else { 0. },
+        ];
+
+        pass.set_pipeline(&self.cursor_pipeline);
+        pass.set_bind_group(0, &self.cursor_bind_group, &[]);
+        pass.set_push_constants(ShaderStages::VERTEX, 0, bytemuck::cast_slice(&info_buffer));
+        pass.set_vertex_buffer(0, self.cursor_buffer.slice(..));
+        pass.draw(0..(NUM_SEGMENTS + 1) as u32, 0..1);
+    }
+}
+
+pub type Size = PhysicalSize<u32>;
+
+pub struct Graphics {
+    surface: Surface,
+    surface_format: TextureFormat,
+    device: Device,
+    queue: Queue,
+    config: SurfaceConfiguration,
+    pub size: Size,
+    pub aa: bool,
+    smaa_target: smaa::SmaaTarget,
+    stroke_renderer: StrokeRenderer,
+    cursor_renderer: CursorRenderer,
+}
+
+impl Graphics {
+    pub async fn new(window: &Window) -> Self {
+        log::info!("setting up wgpu");
+        let size = window.inner_size();
+        let instance = Instance::new(Backends::all());
+        let surface = unsafe { instance.create_surface(window) };
+
+        log::debug!("requesting adapter");
+        let adapter = instance
+            .request_adapter(&RequestAdapterOptions {
+                power_preference: PowerPreference::LowPower,
+                compatible_surface: Some(&surface),
+                force_fallback_adapter: false,
+            })
+            .await
+            .unwrap();
+
+        let limits = Limits {
+            max_push_constant_size: 128,
+            ..Default::default()
+        };
+
+        log::debug!("requesting device");
+        let (device, queue) = adapter
+            .request_device(
+                &DeviceDescriptor {
+                    label: None,
+                    features: Features::PUSH_CONSTANTS,
+                    limits,
+                },
+                None,
+            )
+            .await
+            .unwrap();
+
+        log::debug!("setting up pipeline stuff");
+        let surface_format = surface.get_supported_formats(&adapter)[0];
+
+        let config = SurfaceConfiguration {
+            usage: TextureUsages::RENDER_ATTACHMENT,
+            format: surface_format,
+            width: size.width,
+            height: size.height,
+            present_mode: PresentMode::Immediate,
+        };
+
+        surface.configure(&device, &config);
+
         log::debug!("creating smaa target");
         let smaa_target = smaa::SmaaTarget::new(
             &device,
@@ -520,6 +649,9 @@ impl Graphics {
 
         log::info!("done!");
         Graphics {
+            stroke_renderer: StrokeRenderer::new(&device, surface_format),
+            cursor_renderer: CursorRenderer::new(&device, surface_format),
+
             surface,
             surface_format,
             device,
@@ -528,15 +660,6 @@ impl Graphics {
             size,
             aa: true,
             smaa_target,
-            stroke_pipeline,
-            stroke_view_bind_layout,
-            stroke_view_bind_group,
-            stroke_view_uniform_buffer,
-            cursor_buffer,
-            cursor_pipeline,
-            cursor_bind_layout,
-            cursor_bind_group,
-            cursor_view_uniform_buffer,
         }
     }
 
@@ -587,105 +710,25 @@ impl Graphics {
         size: PhysicalSize<u32>,
         cursor_visible: bool,
     ) -> Result<(), SurfaceError> {
-        let stroke_view = view_matrix(state.zoom, state.zoom, size, state.origin);
-
-        let cursor_view = view_matrix(
-            state.zoom,
-            state.brush_size as f32,
-            size,
-            state.stylus.point,
-        );
-
-        self.queue.write_buffer(
-            &self.stroke_view_uniform_buffer,
-            0,
-            bytemuck::cast_slice(&stroke_view.to_cols_array()),
-        );
-
-        self.queue.write_buffer(
-            &self.cursor_view_uniform_buffer,
-            0,
-            bytemuck::cast_slice(&cursor_view.to_cols_array()),
-        );
-
         self.buffer_all_strokes(state);
 
-        self.queue.submit(None);
-
         macro_rules! render {
-            ($frame:expr, $end:expr) => {
+            ($frame:expr) => {
                 let mut encoder = self
                     .device
                     .create_command_encoder(&CommandEncoderDescriptor {
                         label: Some("encoder"),
                     });
 
-                {
-                    let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
-                        label: Some("render pass"),
-                        color_attachments: &[Some(RenderPassColorAttachment {
-                            view: $frame,
-                            resolve_target: None,
-                            ops: Operations {
-                                load: LoadOp::Clear(WgpuColor::BLACK),
-                                store: true,
-                            },
-                        })],
-                        depth_stencil_attachment: None,
-                    });
-
-                    pass.set_pipeline(&self.stroke_pipeline);
-                    pass.set_bind_group(0, &self.stroke_view_bind_group, &[]);
-
-                    for stroke in state.strokes.iter() {
-                        if stroke.erased() || stroke.points().is_empty() {
-                            continue;
-                        }
-
-                        pass.set_push_constants(
-                            ShaderStages::VERTEX,
-                            0,
-                            bytemuck::cast_slice(&stroke.color().to_float()),
-                        );
-
-                        pass.set_vertex_buffer(0, stroke.backend().unwrap().points.slice(..));
-                        pass.set_vertex_buffer(1, stroke.backend().unwrap().pressure.slice(..));
-                        pass.draw(0..stroke.points().len() as u32, 0..1);
-                    }
-                }
+                self.stroke_renderer
+                    .render(&self.queue, $frame, &mut encoder, state, size);
 
                 if !cursor_visible {
-                    let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
-                        label: Some("cursor"),
-                        color_attachments: &[Some(RenderPassColorAttachment {
-                            view: $frame,
-                            resolve_target: None,
-                            ops: Operations {
-                                load: LoadOp::Load,
-                                store: true,
-                            },
-                        })],
-                        depth_stencil_attachment: None,
-                    });
-
-                    let info_buffer = [
-                        if state.stylus.down() { 1.0f32 } else { 0. },
-                        if state.stylus.inverted() { 1. } else { 0. },
-                    ];
-
-                    pass.set_pipeline(&self.cursor_pipeline);
-                    pass.set_bind_group(0, &self.cursor_bind_group, &[]);
-                    pass.set_push_constants(
-                        ShaderStages::VERTEX,
-                        0,
-                        bytemuck::cast_slice(&info_buffer),
-                    );
-                    pass.set_vertex_buffer(0, self.cursor_buffer.slice(..));
-                    pass.draw(0..(NUM_SEGMENTS + 1) as u32, 0..1);
+                    self.cursor_renderer
+                        .render(&self.queue, $frame, &mut encoder, state, size);
                 }
 
                 self.queue.submit(Some(encoder.finish()));
-                let _ = $end;
             };
         }
 
@@ -698,11 +741,12 @@ impl Graphics {
             let smaa_frame = self
                 .smaa_target
                 .start_frame(&self.device, &self.queue, &surface_view);
-            render!(&smaa_frame, {
-                smaa_frame.resolve();
-            });
+
+            render!(&smaa_frame);
+
+            smaa_frame.resolve();
         } else {
-            render!(&surface_view, {});
+            render!(&surface_view);
         }
 
         output.present();
