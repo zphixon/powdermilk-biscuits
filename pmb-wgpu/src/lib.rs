@@ -74,7 +74,6 @@ pub fn view_matrix(
 #[derive(Debug)]
 pub struct StrokeBackend {
     pub points: Buffer,
-    pub pressure: Buffer,
     pub mesh: Buffer,
     pub dirty: bool,
 }
@@ -312,26 +311,22 @@ impl StrokeRenderer {
             vertex: VertexState {
                 module: &shader,
                 entry_point: "vmain",
-                buffers: &[
-                    VertexBufferLayout {
-                        array_stride: (size_of::<f32>() * 2) as BufferAddress,
-                        step_mode: VertexStepMode::Vertex,
-                        attributes: &[VertexAttribute {
+                buffers: &[VertexBufferLayout {
+                    array_stride: (size_of::<f32>() * 3) as BufferAddress,
+                    step_mode: VertexStepMode::Vertex,
+                    attributes: &[
+                        VertexAttribute {
                             offset: 0,
                             shader_location: 0,
                             format: VertexFormat::Float32x2,
-                        }],
-                    },
-                    VertexBufferLayout {
-                        array_stride: size_of::<f32>() as BufferAddress,
-                        step_mode: VertexStepMode::Vertex,
-                        attributes: &[VertexAttribute {
+                        },
+                        VertexAttribute {
                             offset: 0,
                             shader_location: 1,
                             format: VertexFormat::Float32,
-                        }],
-                    },
-                ],
+                        },
+                    ],
+                }],
             },
             fragment: Some(FragmentState {
                 module: &shader,
@@ -409,8 +404,6 @@ impl StrokeRenderer {
                 0,
                 bytemuck::cast_slice(&stroke.color().to_float()),
             );
-
-            pass.set_vertex_buffer(1, stroke.backend().unwrap().pressure.slice(..));
 
             if matches!(self.topology, PrimitiveTopology::LineStrip) {
                 pass.set_vertex_buffer(0, stroke.backend().unwrap().points.slice(..));
@@ -701,20 +694,15 @@ impl Graphics {
     }
 
     pub fn buffer_stroke(&mut self, stroke: &mut Stroke<StrokeBackend>) {
-        stroke.replace_backend_with(|points, pressure, mesh| StrokeBackend {
+        stroke.replace_backend_with(|points| StrokeBackend {
             points: self.device.create_buffer_init(&BufferInitDescriptor {
                 label: Some("points"),
                 contents: points,
                 usage: BufferUsages::VERTEX,
             }),
-            pressure: self.device.create_buffer_init(&BufferInitDescriptor {
-                label: Some("pressure"),
-                contents: pressure,
-                usage: BufferUsages::VERTEX,
-            }),
             mesh: self.device.create_buffer_init(&BufferInitDescriptor {
                 label: Some("mesh"),
-                contents: mesh,
+                contents: &[],
                 usage: BufferUsages::VERTEX,
             }),
             dirty: false,

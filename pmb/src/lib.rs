@@ -11,7 +11,7 @@ use crate::{
     event::{Touch, TouchPhase},
     graphics::{Color, ColorExt, PixelPos, StrokePoint, StrokePos},
     migrate::{UpgradeType, Version},
-    stroke::Stroke,
+    stroke::{Stroke, StrokeElement},
 };
 use bincode::config::standard;
 use std::{
@@ -310,8 +310,8 @@ where
         if just_pressed!(D) {
             for stroke in self.strokes.iter() {
                 println!("stroke");
-                for (point, pressure) in stroke.points().iter().zip(stroke.pressure.iter()) {
-                    println!("{},{},{}", point.x, point.y, pressure);
+                for point in stroke.points().iter() {
+                    println!("{},{},{}", point.x, point.y, point.pressure);
                 }
             }
             println!("brush={}", self.brush_size);
@@ -766,9 +766,10 @@ where
     let mut strokes = vec![Stroke::with_points(
         graphics::circle_points(1.0, 50)
             .chunks_exact(2)
-            .map(|arr| StrokePoint {
+            .map(|arr| StrokeElement {
                 x: arr[0],
                 y: arr[1],
+                pressure: 1.,
             })
             .collect(),
         Color::WHITE,
@@ -779,9 +780,10 @@ where
             repeat(-25.0)
                 .take(50)
                 .enumerate()
-                .map(|(j, y)| StrokePoint {
+                .map(|(j, y)| StrokeElement {
                     x: i as f32 + x,
                     y: j as f32 + y,
+                    pressure: 1.,
                 })
                 .collect(),
             Color::grey(0.1),
@@ -793,9 +795,10 @@ where
             repeat(-25.0)
                 .take(50)
                 .enumerate()
-                .map(|(j, x)| StrokePoint {
+                .map(|(j, x)| StrokeElement {
                     x: j as f32 + x,
                     y: i as f32 + y,
+                    pressure: 1.,
                 })
                 .collect(),
             Color::grey(0.1),
@@ -806,9 +809,10 @@ where
         repeat(-25.0)
             .take(50)
             .enumerate()
-            .map(|(i, x)| StrokePoint {
+            .map(|(i, x)| StrokeElement {
                 x: i as f32 + x,
                 y: 0.0,
+                pressure: 1.,
             })
             .collect(),
         Color::grey(0.3),
@@ -818,9 +822,10 @@ where
         repeat(-25.0)
             .take(50)
             .enumerate()
-            .map(|(i, y)| StrokePoint {
+            .map(|(i, y)| StrokeElement {
                 x: 0.0,
                 y: i as f32 + y,
+                pressure: 1.,
             })
             .collect(),
         Color::grey(0.3),

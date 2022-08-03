@@ -1,7 +1,33 @@
 use crate::{
-    graphics::{Color, ColorExt, StrokePoint},
+    graphics::{Color, ColorExt},
     StrokeBackend,
 };
+
+#[derive(Default, Debug, Clone, Copy, derive_disk::Disk)]
+#[repr(C)]
+pub struct StrokeElement {
+    pub x: f32,
+    pub y: f32,
+    pub pressure: f32,
+}
+
+impl pmb_tess::Point for StrokeElement {
+    fn new(x: f32, y: f32) -> Self {
+        StrokeElement {
+            x,
+            y,
+            pressure: -1.,
+        }
+    }
+
+    fn x(&self) -> f32 {
+        self.x
+    }
+
+    fn y(&self) -> f32 {
+        self.y
+    }
+}
 
 #[rustfmt::skip]
 #[derive(derive_disk::Disk)]
@@ -9,13 +35,12 @@ pub struct Stroke<S>
 where
     S: StrokeBackend,
 {
-    pub points: Vec<StrokePoint>,
-    pub pressure: Vec<f32>,
+    pub points: Vec<StrokeElement>,
     pub color: Color,
     pub brush_size: f32,
     pub erased: bool,
 
-    #[disk_skip] pub mesh: Vec<StrokePoint>,
+    #[disk_skip] pub mesh: Vec<StrokeElement>,
     #[disk_skip] pub backend: Option<S>,
     #[disk_skip] pub done: bool,
 }
@@ -27,7 +52,6 @@ where
     fn default() -> Self {
         Self {
             points: Default::default(),
-            pressure: Default::default(),
             color: Color::WHITE,
             brush_size: crate::DEFAULT_BRUSH as f32,
             erased: false,
@@ -54,9 +78,8 @@ impl<S> Stroke<S>
 where
     S: StrokeBackend,
 {
-    pub fn with_points(points: Vec<StrokePoint>, color: Color) -> Self {
+    pub fn with_points(points: Vec<StrokeElement>, color: Color) -> Self {
         Self {
-            pressure: std::iter::repeat(1.).take(points.len()).collect(),
             points,
             color,
             backend: None,
@@ -68,7 +91,7 @@ where
         unsafe {
             let points_flat = std::slice::from_raw_parts(
                 self.points().as_ptr() as *const f32,
-                self.points().len() * 2,
+                self.points().len() * 3,
             );
 
             std::slice::from_raw_parts(
@@ -78,26 +101,10 @@ where
         }
     }
 
-    pub fn pressure_as_bytes(&self) -> &[u8] {
-        unsafe {
-            let pressure_flat = std::slice::from_raw_parts(
-                self.pressure.as_ptr() as *const f32,
-                self.points().len(),
-            );
-
-            std::slice::from_raw_parts(
-                pressure_flat.as_ptr() as *const u8,
-                pressure_flat.len() * std::mem::size_of::<f32>(),
-            )
-        }
-    }
-
     pub fn mesh_as_bytes(&self) -> &[u8] {
         unsafe {
-            let mesh_flat = std::slice::from_raw_parts(
-                self.pressure.as_ptr() as *const f32,
-                self.mesh.len() * 2,
-            );
+            let mesh_flat =
+                std::slice::from_raw_parts(self.mesh.as_ptr() as *const f32, self.mesh.len() * 2);
 
             std::slice::from_raw_parts(
                 mesh_flat.as_ptr() as *const u8,
@@ -115,11 +122,11 @@ where
         }
     }
 
-    pub fn points(&self) -> &[StrokePoint] {
+    pub fn points(&self) -> &[StrokeElement] {
         &self.points
     }
 
-    pub fn points_mut(&mut self) -> &mut Vec<StrokePoint> {
+    pub fn points_mut(&mut self) -> &mut Vec<StrokeElement> {
         &mut self.points
     }
 
@@ -149,13 +156,10 @@ where
 
     pub fn replace_backend_with<F>(&mut self, mut with: F)
     where
-        F: FnMut(&[u8], &[u8], &[u8]) -> S,
+        F: FnMut(&[u8]) -> S,
     {
-        let backend = with(
-            self.points_as_bytes(),
-            self.pressure_as_bytes(),
-            self.mesh_as_bytes(),
-        );
+        let backend = with(self.points_as_bytes());
+        //let backend = with(self.points_as_bytes(), self.mesh_as_bytes());
         self.backend = Some(backend);
     }
 
@@ -164,16 +168,26 @@ where
     }
 
     pub fn add_point(&mut self, stylus: &crate::Stylus) {
-        self.pressure.push(stylus.pressure);
-        self.points_mut().push(StrokePoint {
+        self.points_mut().push(StrokeElement {
             x: stylus.pos.x,
             y: stylus.pos.y,
+            pressure: stylus.pressure,
         });
 
         use pmb_tess::Hermite;
 
         if self.points.len() >= 4 {
-            self.mesh = self.points.flat_ribs(self.points.len(), self.brush_size);
+            // YEEEESH
+            self.mesh = self
+                .points
+                .flat_ribs(self.points.len(), self.brush_size)
+                .into_iter()
+                .zip(self.points.iter())
+                .map(|(mut rib_point, stroke_point)| {
+                    rib_point.pressure = stroke_point.pressure;
+                    rib_point
+                })
+                .collect();
         }
 
         if let Some(backend) = self.backend_mut() {

@@ -45,7 +45,7 @@ impl Display for Version {
 }
 
 impl Version {
-    pub const CURRENT: Self = Version(3);
+    pub const CURRENT: Self = Version(4);
 
     pub fn upgrade_type(from: Self) -> UpgradeType {
         use UpgradeType::*;
@@ -55,6 +55,7 @@ impl Version {
         }
 
         match from {
+            Version(3) => Smooth,
             Version(2) => Smooth,
             Version(1) => Smooth,
             _ => Incompatible,
@@ -74,11 +75,44 @@ where
         Version::upgrade_type(version)
     );
 
-    use crate::{graphics::StrokePoint, stroke::*};
+    use crate::stroke::*;
     let file = std::fs::File::open(&path)?;
 
     match version {
         version if version == Version::CURRENT => unreachable!(),
+
+        Version(3) => {
+            let v3: v3::StateV3 = v3::read(file)?.into();
+
+            let state = State {
+                strokes: v3
+                    .strokes
+                    .into_iter()
+                    .map(|v3| Stroke {
+                        points: {
+                            v3.points
+                                .iter()
+                                .zip(v3.pressure.iter())
+                                .map(|(point, &pressure)| StrokeElement {
+                                    x: point.x,
+                                    y: point.y,
+                                    pressure,
+                                })
+                                .collect()
+                        },
+                        color: v3.color,
+                        brush_size: v3.brush_size,
+                        erased: v3.erased,
+                        ..Default::default()
+                    })
+                    .collect(),
+                brush_size: v3.brush_size,
+                zoom: v3.zoom,
+                ..Default::default()
+            };
+
+            return Ok(state);
+        }
 
         Version(2) => {
             let v2: v2::StateV2 = v2::read(file)?.into();
@@ -91,9 +125,12 @@ where
                         points: v2
                             .points
                             .iter()
-                            .map(|v2| StrokePoint { x: v2.x, y: v2.y })
+                            .map(|v2| StrokeElement {
+                                x: v2.x,
+                                y: v2.y,
+                                pressure: v2.pressure,
+                            })
                             .collect(),
-                        pressure: v2.points.iter().map(|v2| v2.pressure).collect(),
                         color: v2.color,
                         brush_size: v2.brush_size,
                         erased: v2.erased,
@@ -119,9 +156,12 @@ where
                         points: v1
                             .points
                             .iter()
-                            .map(|v1| StrokePoint { x: v1.x, y: v1.y })
+                            .map(|v1| StrokeElement {
+                                x: v1.x,
+                                y: v1.y,
+                                pressure: v1.pressure,
+                            })
                             .collect(),
-                        pressure: v1.points.iter().map(|v1| v1.pressure).collect(),
                         color: v1.color,
                         brush_size: v1.brush_size,
                         erased: v1.erased,
@@ -137,6 +177,57 @@ where
         }
 
         _ => Err(PmbError::new(ErrorKind::UnknownVersion(version))),
+    }
+}
+
+mod v3 {
+    use super::*;
+    use bincode::config::standard;
+
+    #[derive(bincode::Decode)]
+    pub struct StrokePointV3 {
+        pub x: f32,
+        pub y: f32,
+    }
+
+    #[derive(bincode::Decode)]
+    pub struct StrokeV3 {
+        pub points: Vec<StrokePointV3>,
+        pub pressure: Vec<f32>,
+        pub color: [u8; 3],
+        pub brush_size: f32,
+        pub erased: bool,
+    }
+
+    #[derive(bincode::Decode)]
+    pub struct StateV3 {
+        pub strokes: Vec<StrokeV3>,
+        pub brush_size: usize,
+        pub zoom: f32,
+        pub origin: StrokePointV3,
+    }
+
+    pub fn read(mut reader: impl Read) -> Result<StateV3, PmbError> {
+        let mut magic = [0; 3];
+        reader.read_exact(&mut magic)?;
+
+        if magic != crate::PMB_MAGIC {
+            return Err(PmbError::new(ErrorKind::MissingHeader));
+        }
+
+        let mut version_bytes = [0; std::mem::size_of::<u64>()];
+        reader.read_exact(&mut version_bytes)?;
+        let version = Version(u64::from_le_bytes(version_bytes));
+
+        if version != Version(3) {
+            return Err(PmbError::new(ErrorKind::VersionMismatch(version)));
+        }
+
+        let mut deflate_reader = flate2::read::DeflateDecoder::new(reader);
+        Ok(bincode::decode_from_std_read(
+            &mut deflate_reader,
+            standard(),
+        )?)
     }
 }
 
