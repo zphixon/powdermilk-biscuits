@@ -156,9 +156,13 @@ where
 
     pub fn replace_backend_with<F>(&mut self, mut with: F)
     where
-        F: FnMut(&[u8], &[u8]) -> S,
+        F: FnMut(&[u8], &[u8], usize) -> S,
     {
-        let backend = with(self.points_as_bytes(), self.mesh_as_bytes());
+        let backend = with(
+            self.points_as_bytes(),
+            self.mesh_as_bytes(),
+            self.mesh.len(),
+        );
         self.backend = Some(backend);
     }
 
@@ -203,7 +207,7 @@ where
         use pmb_tess::Hermite;
         self.mesh = self
             .points
-            .flat_ribs(self.points.len() / 10, self.brush_size())
+            .flat_ribs(self.points.len(), self.brush_size())
             .into_iter()
             .zip(self.points.iter())
             .map(|(mut rib, stroke)| {

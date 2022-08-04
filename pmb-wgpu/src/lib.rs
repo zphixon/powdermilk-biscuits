@@ -694,7 +694,7 @@ impl Graphics {
     }
 
     pub fn buffer_stroke(&mut self, stroke: &mut Stroke<StrokeBackend>) {
-        stroke.replace_backend_with(|points, mesh| StrokeBackend {
+        stroke.replace_backend_with(|points, mesh, _| StrokeBackend {
             points: self.device.create_buffer_init(&BufferInitDescriptor {
                 label: Some("points"),
                 contents: points,

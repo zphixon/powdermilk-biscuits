@@ -95,7 +95,7 @@ fn main() {
 
     let mut cursor_visible = true;
     let mut aa = true;
-    let mut stroke_style = glow::LINE_STRIP;
+    let mut stroke_style = glow::TRIANGLE_STRIP;
 
     let mut state: State =
         if let Some(filename) = std::env::args().nth(1).map(std::path::PathBuf::from) {
@@ -144,11 +144,11 @@ fn main() {
                     }
                 }
 
-                if state.input.just_pressed(P) {
+                if state.input.just_pressed(T) {
                     stroke_style = match stroke_style {
-                        glow::LINE_STRIP => glow::POINTS,
-                        glow::POINTS => glow::LINE_STRIP,
-                        _ => glow::LINE_STRIP,
+                        glow::LINE_STRIP => glow::TRIANGLE_STRIP,
+                        glow::TRIANGLE_STRIP => glow::LINE_STRIP,
+                        _ => glow::TRIANGLE_STRIP,
                     };
                 }
 
@@ -325,11 +325,11 @@ fn main() {
                 for stroke in state.strokes.iter_mut() {
                     unsafe {
                         if stroke.is_dirty() {
-                            stroke.replace_backend_with(|points_bytes, _mesh| {
+                            stroke.replace_backend_with(|points_bytes, mesh_bytes, mesh_len| {
                                 let f32_size = size_of::<f32>() as i32;
 
-                                let vao = gl.create_vertex_array().unwrap();
-                                gl.bind_vertex_array(Some(vao));
+                                let line_vao = gl.create_vertex_array().unwrap();
+                                gl.bind_vertex_array(Some(line_vao));
 
                                 let points = gl.create_buffer().unwrap();
                                 gl.bind_buffer(glow::ARRAY_BUFFER, Some(points));
@@ -358,9 +358,40 @@ fn main() {
                                 gl.enable_vertex_attrib_array(0);
                                 gl.enable_vertex_attrib_array(1);
 
+                                let mesh_vao = gl.create_vertex_array().unwrap();
+                                gl.bind_vertex_array(Some(mesh_vao));
+                                let mesh = gl.create_buffer().unwrap();
+                                gl.bind_buffer(glow::ARRAY_BUFFER, Some(mesh));
+                                gl.buffer_data_u8_slice(
+                                    glow::ARRAY_BUFFER,
+                                    mesh_bytes,
+                                    glow::STATIC_DRAW,
+                                );
+                                gl.vertex_attrib_pointer_f32(
+                                    0,
+                                    2,
+                                    glow::FLOAT,
+                                    false,
+                                    f32_size * 3,
+                                    0,
+                                );
+                                gl.vertex_attrib_pointer_f32(
+                                    1,
+                                    1,
+                                    glow::FLOAT,
+                                    false,
+                                    f32_size * 3,
+                                    f32_size * 2,
+                                );
+                                gl.enable_vertex_attrib_array(0);
+                                gl.enable_vertex_attrib_array(1);
+
                                 StrokeBackend {
-                                    vao,
+                                    line_vao,
                                     points,
+                                    mesh_vao,
+                                    mesh,
+                                    mesh_len: mesh_len as i32,
                                     dirty: false,
                                 }
                             });
@@ -374,17 +405,38 @@ fn main() {
                     }
 
                     unsafe {
-                        let StrokeBackend { vao, points, .. } = stroke.backend().unwrap();
-                        gl.bind_vertex_array(Some(*vao));
-                        gl.bind_buffer(glow::ARRAY_BUFFER, Some(*points));
-                        gl.uniform_3_f32(
-                            Some(&strokes_color),
-                            stroke.color()[0] as f32 / 255.0,
-                            stroke.color()[1] as f32 / 255.0,
-                            stroke.color()[2] as f32 / 255.0,
-                        );
-                        gl.uniform_1_f32(Some(&strokes_brush_size), stroke.brush_size());
-                        gl.draw_arrays(stroke_style, 0, stroke.points().len() as i32);
+                        if stroke_style == glow::LINE_STRIP {
+                            let StrokeBackend {
+                                line_vao, points, ..
+                            } = stroke.backend().unwrap();
+                            gl.bind_vertex_array(Some(*line_vao));
+                            gl.bind_buffer(glow::ARRAY_BUFFER, Some(*points));
+                            gl.uniform_3_f32(
+                                Some(&strokes_color),
+                                stroke.color()[0] as f32 / 255.0,
+                                stroke.color()[1] as f32 / 255.0,
+                                stroke.color()[2] as f32 / 255.0,
+                            );
+                            gl.uniform_1_f32(Some(&strokes_brush_size), stroke.brush_size());
+                            gl.draw_arrays(stroke_style, 0, stroke.points().len() as i32);
+                        } else {
+                            let StrokeBackend {
+                                mesh_vao,
+                                mesh,
+                                mesh_len,
+                                ..
+                            } = stroke.backend().unwrap();
+                            gl.bind_vertex_array(Some(*mesh_vao));
+                            gl.bind_buffer(glow::ARRAY_BUFFER, Some(*mesh));
+                            gl.uniform_3_f32(
+                                Some(&strokes_color),
+                                stroke.color()[0] as f32 / 255.0,
+                                stroke.color()[1] as f32 / 255.0,
+                                stroke.color()[2] as f32 / 255.0,
+                            );
+                            gl.uniform_1_f32(Some(&strokes_brush_size), stroke.brush_size());
+                            gl.draw_arrays(stroke_style, 0, *mesh_len);
+                        }
                     }
                 }
 

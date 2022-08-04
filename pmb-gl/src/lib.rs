@@ -40,8 +40,11 @@ impl powdermilk_biscuits::Backend for GlBackend {
 
 #[derive(Debug)]
 pub struct StrokeBackend {
-    pub vao: glow::VertexArray,
+    pub line_vao: glow::VertexArray,
     pub points: glow::Buffer,
+    pub mesh_vao: glow::VertexArray,
+    pub mesh: glow::Buffer,
+    pub mesh_len: i32,
     pub dirty: bool,
 }
 
