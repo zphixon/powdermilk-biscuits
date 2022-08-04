@@ -15,16 +15,15 @@ The build has visited the local mage and is no longer cursed. Just `git clone` a
 
 ## Todo:
 
-- Make graphics better
-  - Move all the GL stuff into `State`, maybe in a way that allows multiple backends
-- Geometry-based rather than pixel-based rendering, includes compositing
-  - Splines with `lyon_tesselation`
 - Any sort of GUI
   - Undo system
   - Layers?
   - Customization
 - Finger gestures
-- Chunk-based strokes
+- Stroke rendering revamp
+  - Infinite scroll, chunks
+  - Pressure-based line weight
+  - Caps and joins
 
 ## Notes
 
