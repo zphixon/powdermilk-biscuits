@@ -206,6 +206,14 @@ where
     pub fn generate_full_mesh(&mut self) {
         use pmb_tess::Hermite;
 
+        if self.points.is_empty() {
+            return;
+        }
+
+        while self.points.len() < 4 {
+            self.points.push(*self.points.last().unwrap());
+        }
+
         let mut mesh = self
             .points
             .flat_ribs((self.points.len() + 3) * 2, self.brush_size())
