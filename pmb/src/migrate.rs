@@ -294,14 +294,14 @@ mod v1 {
     use bincode::config::standard;
 
     #[derive(bincode::Decode)]
-    pub struct StrokePoint {
+    pub struct StrokePointV1 {
         pub x: f32,
         pub y: f32,
     }
 
     #[derive(bincode::Decode)]
     #[repr(C)]
-    pub struct StrokeElement {
+    pub struct StrokeElementV1 {
         pub x: f32,
         pub y: f32,
         pub pressure: f32,
@@ -309,7 +309,7 @@ mod v1 {
 
     #[derive(bincode::Decode)]
     pub struct StrokeV1 {
-        pub points: Vec<StrokeElement>,
+        pub points: Vec<StrokeElementV1>,
         pub color: [u8; 3],
         pub brush_size: f32,
         pub erased: bool,
@@ -320,7 +320,7 @@ mod v1 {
         pub strokes: Vec<StrokeV1>,
         pub brush_size: usize,
         pub zoom: f32,
-        pub origin: StrokePoint,
+        pub origin: StrokePointV1,
     }
 
     pub fn read(mut reader: impl Read) -> Result<StateV1, PmbError> {
