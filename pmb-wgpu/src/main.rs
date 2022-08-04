@@ -39,11 +39,6 @@ async fn run() {
     ev.run(move |event, _, flow| {
         *flow = ControlFlow::Wait;
 
-        use pmb_wgpu::EventExt;
-        if event.is_window() && event.is_input() {
-            window.request_redraw();
-        }
-
         match event {
             Event::WindowEvent {
                 event: WindowEvent::Focused(focused),
@@ -94,6 +89,7 @@ async fn run() {
                 ..
             } => {
                 graphics.resize(new_size);
+                window.request_redraw();
             }
 
             Event::WindowEvent {
@@ -111,6 +107,7 @@ async fn run() {
 
                 let dzoom = if zoom_in { ZOOM_SPEED } else { -ZOOM_SPEED };
                 state.change_zoom(dzoom);
+                window.request_redraw();
             }
 
             Event::WindowEvent {
@@ -153,7 +150,9 @@ async fn run() {
             } => {
                 let key = pmb_wgpu::winit_to_pmb_keycode(key);
                 let key_state = pmb_wgpu::winit_to_pmb_key_state(key_state);
-                state.handle_key(key, key_state);
+                if state.handle_key(key, key_state) {
+                    window.request_redraw();
+                }
             }
 
             Event::WindowEvent {
@@ -161,15 +160,18 @@ async fn run() {
                 ..
             } => {
                 let PhysicalSize { width, height } = window.inner_size();
-                state.handle_cursor_move(
+                if state.handle_cursor_move(
                     width,
                     height,
                     pmb_wgpu::physical_pos_to_pixel_pos(position),
-                );
+                ) {
+                    window.request_redraw();
+                }
 
                 if !cursor_visible {
                     cursor_visible = true;
                     window.set_cursor_visible(true);
+                    window.request_redraw();
                 }
             }
 
@@ -182,6 +184,8 @@ async fn run() {
 
                 let PhysicalSize { width, height } = window.inner_size();
                 state.handle_touch(pmb_wgpu::winit_to_pmb_touch(touch), width, height);
+
+                window.request_redraw();
             }
 
             Event::MainEventsCleared => {

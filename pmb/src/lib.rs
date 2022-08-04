@@ -261,11 +261,12 @@ where
         self.origin = Default::default();
     }
 
-    pub fn handle_key(&mut self, key: input::Keycode, state: input::ElementState) {
+    pub fn handle_key(&mut self, key: input::Keycode, state: input::ElementState) -> bool {
         log::debug!("handle key {key:?} {state:?}");
 
         use input::Keycode::*;
         self.input.handle_key(key, state);
+        let mut request_redraw = false;
 
         macro_rules! just_pressed {
             ($key:ident) => {
@@ -301,14 +302,17 @@ where
 
         if just_pressed!(RBracket) {
             self.increase_brush();
+            request_redraw = true;
         }
 
         if just_pressed!(LBracket) {
             self.decrease_brush();
+            request_redraw = true;
         }
 
         if just_pressed!(C) {
             self.clear_strokes();
+            request_redraw = true;
         }
 
         if just_pressed!(D) {
@@ -330,6 +334,7 @@ where
 
         if just_pressed!(ctrl + Z) {
             self.undo_stroke();
+            request_redraw = true;
         }
 
         if just_pressed!(ctrl + S) {
@@ -340,10 +345,12 @@ where
 
         if just_pressed!(Z) {
             self.reset_view();
+            request_redraw = true;
         }
 
         if just_pressed!(E) {
             self.stylus.state.inverted = !self.stylus.state.inverted;
+            request_redraw = true;
         }
 
         if just_pressed!(ctrl + O) {
@@ -353,6 +360,7 @@ where
         }
 
         self.input.upstrokes();
+        request_redraw
     }
 
     pub fn handle_touch(&mut self, touch: Touch, width: u32, height: u32) {
@@ -387,8 +395,9 @@ where
         }
     }
 
-    pub fn handle_cursor_move(&mut self, width: u32, height: u32, position: PixelPos) {
+    pub fn handle_cursor_move(&mut self, width: u32, height: u32, position: PixelPos) -> bool {
         log::trace!("handle cursor move {position:?}");
+        let mut request_redraw = false;
 
         let prev = self.input.cursor_pos();
         self.input.handle_mouse_move(position);
@@ -396,7 +405,10 @@ where
         if self.input.button_down(input::MouseButton::Left) {
             let next = self.input.cursor_pos();
             self.move_origin(width, height, prev, next);
+            request_redraw = true;
         }
+
+        request_redraw
     }
 
     pub fn handle_mouse_button(&mut self, button: input::MouseButton, state: input::ElementState) {

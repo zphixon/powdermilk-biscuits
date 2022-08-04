@@ -132,7 +132,9 @@ fn main() {
                 let key = pmb_gl::glutin_to_pmb_keycode(key);
                 let key_state = pmb_gl::glutin_to_pmb_key_state(key_state);
 
-                state.handle_key(key, key_state);
+                if state.handle_key(key, key_state) {
+                    context.window().request_redraw();
+                }
 
                 if state.input.just_pressed(A) {
                     aa = !aa;
@@ -181,8 +183,6 @@ fn main() {
                     std::fs::write("img/num.txt", format!("{next_num}")).unwrap();
                     println!("wrote image as {filename}");
                 }
-
-                context.window().request_redraw();
             }
 
             Event::WindowEvent {
@@ -250,18 +250,6 @@ fn main() {
             }
 
             Event::WindowEvent {
-                event: WindowEvent::ReceivedCharacter(c @ ('[' | ']')),
-                ..
-            } => {
-                match c {
-                    '[' => state.decrease_brush(),
-                    ']' => state.increase_brush(),
-                    _ => unreachable!(),
-                };
-                context.window().request_redraw();
-            }
-
-            Event::WindowEvent {
                 event:
                     WindowEvent::MouseInput {
                         state: key_state,
@@ -281,18 +269,19 @@ fn main() {
                 ..
             } => {
                 let PhysicalSize { width, height } = context.window().inner_size();
-                state.handle_cursor_move(
+                if state.handle_cursor_move(
                     width,
                     height,
                     pmb_gl::physical_pos_to_pixel_pos(position),
-                );
+                ) {
+                    context.window().request_redraw();
+                }
 
                 if !cursor_visible {
                     cursor_visible = true;
                     context.window().set_cursor_visible(cursor_visible);
+                    context.window().request_redraw();
                 }
-
-                context.window().request_redraw();
             }
 
             Event::MainEventsCleared => match (state.path.as_ref(), state.modified) {
