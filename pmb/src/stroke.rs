@@ -205,16 +205,21 @@ where
 
     pub fn generate_full_mesh(&mut self) {
         use pmb_tess::Hermite;
-        self.mesh = self
+
+        let mut mesh = self
             .points
-            .flat_ribs(self.points.len(), self.brush_size())
+            .flat_ribs((self.points.len() + 3) * 2, self.brush_size())
             .into_iter()
-            .zip(self.points.iter())
-            .map(|(mut rib, stroke)| {
-                rib.pressure = stroke.pressure;
-                rib
-            })
-            .collect();
+            .collect::<Vec<_>>();
+
+        mesh.chunks_mut(2)
+            .zip(self.points().iter())
+            .for_each(|(rib, point)| {
+                rib.iter_mut()
+                    .for_each(|rib_point| rib_point.pressure = point.pressure)
+            });
+
+        self.mesh = mesh;
     }
 
     pub fn finish(&mut self) {

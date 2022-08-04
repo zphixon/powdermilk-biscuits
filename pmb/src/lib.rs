@@ -317,6 +317,11 @@ where
                 for point in stroke.points().iter() {
                     println!("{},{},{}", point.x, point.y, point.pressure);
                 }
+                println!(
+                    "{} points, {} vertices",
+                    stroke.points().len(),
+                    stroke.mesh.len()
+                );
             }
             println!("brush={}", self.brush_size);
             println!("zoom={:.02}", self.zoom);
