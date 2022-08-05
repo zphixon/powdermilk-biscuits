@@ -39,6 +39,8 @@ async fn run() {
     ev.run(move |event, _, flow| {
         *flow = ControlFlow::Wait;
 
+        log::info!("{event:?}");
+
         match event {
             Event::WindowEvent {
                 event: WindowEvent::Focused(focused),
