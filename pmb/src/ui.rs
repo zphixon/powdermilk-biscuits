@@ -1,7 +1,5 @@
 use std::path::{Path, PathBuf};
 
-use crate::input::{ElementState, Keycode};
-
 pub fn error(text: &str) -> rfd::MessageDialogResult {
     rfd::MessageDialog::new()
         .set_title("Error")
@@ -76,27 +74,42 @@ pub enum UiState {
     SaveDialog,
 }
 
-#[derive(Default)]
+#[derive(Default, PartialEq, Debug)]
 pub enum Tool {
     #[default]
     Pen,
     Eraser,
 }
 
-#[derive(Default)]
+#[derive(Default, PartialEq, Clone, Copy)]
+pub enum Device {
+    #[default]
+    Mouse,
+    Touch,
+    Pen,
+}
+
 pub struct Config {
+    pub prev_device: Device,
     pub use_mouse_for_pen: bool,
     pub use_finger_for_pen: bool,
+    pub stylus_may_be_inverted: bool,
     pub active_tool: Tool,
 }
 
-impl UiState {
-    pub fn bound_next(&mut self, config: &Config, key: Keycode, state: ElementState) {
-        match (key, state) {
-            _ => todo!(),
+impl Default for Config {
+    fn default() -> Self {
+        Config {
+            prev_device: Device::Mouse,
+            use_mouse_for_pen: false,
+            use_finger_for_pen: true,
+            active_tool: Tool::Pen,
+            stylus_may_be_inverted: true,
         }
     }
+}
 
+impl UiState {
     pub fn next(&mut self, config: &Config, event: Event) {
         use Event::*;
         use UiState::*;
@@ -152,11 +165,7 @@ impl UiState {
                 }
             }
 
-            (any, MoveMouse | MovePen | MoveTouch) => any,
-            (this, event) => {
-                println!("invalid state: {:?}, {:?}", this, event);
-                this
-            }
+            (any, _) => any,
         };
     }
 }
