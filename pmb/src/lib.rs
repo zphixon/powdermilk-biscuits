@@ -322,9 +322,10 @@ where
                     println!("{},{},{}", point.x, point.y, point.pressure);
                 }
                 println!(
-                    "{} points, {} vertices",
+                    "{} points, {} vertices, {} size",
                     stroke.points().len(),
-                    stroke.mesh.len()
+                    stroke.mesh.len(),
+                    stroke.brush_size(),
                 );
             }
             println!("brush={}", self.brush_size);
