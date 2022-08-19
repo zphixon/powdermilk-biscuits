@@ -195,10 +195,12 @@ async fn run() {
 
                 if state.input.just_pressed(A) {
                     graphics.aa = !graphics.aa;
+                    window.request_redraw();
                 }
 
                 if state.input.just_pressed(T) {
                     graphics.tesselated = !graphics.tesselated;
+                    window.request_redraw();
                 }
 
                 match (state.path.as_ref(), state.modified) {
