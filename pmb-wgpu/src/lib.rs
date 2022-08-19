@@ -1,6 +1,6 @@
 use powdermilk_biscuits::{
     event::{PenInfo, Touch, TouchPhase},
-    graphics::{ColorExt, PixelPos, StrokePoint},
+    graphics::{Color, ColorExt, PixelPos, StrokePoint},
     input::{ElementState, Keycode, MouseButton},
     stroke::Stroke,
     State,
@@ -368,6 +368,8 @@ impl StrokeRenderer {
         encoder: &mut CommandEncoder,
         state: &WgslState,
         size: Size,
+        load: LoadOp<WgpuColor>,
+        should_draw: fn(f32, f32) -> bool,
     ) {
         let stroke_view = view_matrix(state.zoom, state.zoom, size, state.origin);
         queue.write_buffer(
@@ -383,10 +385,7 @@ impl StrokeRenderer {
             color_attachments: &[Some(RenderPassColorAttachment {
                 view: frame,
                 resolve_target: None,
-                ops: Operations {
-                    load: LoadOp::Clear(WgpuColor::BLACK),
-                    store: true,
-                },
+                ops: Operations { load, store: true },
             })],
             depth_stencil_attachment: None,
         });
@@ -399,18 +398,34 @@ impl StrokeRenderer {
                 continue;
             }
 
+            //if state.zoom * stroke.brush_size() < 1.0 {
+            //    pass.set_push_constants(
+            //        ShaderStages::VERTEX,
+            //        0,
+            //        bytemuck::cast_slice(&Color::NICE_RED.to_float()),
+            //    );
+            //} else {
+            //    pass.set_push_constants(
+            //        ShaderStages::VERTEX,
+            //        0,
+            //        bytemuck::cast_slice(&Color::NICE_GREEN.to_float()),
+            //    );
+            //}
+
             pass.set_push_constants(
                 ShaderStages::VERTEX,
                 0,
                 bytemuck::cast_slice(&stroke.color().to_float()),
             );
 
-            if matches!(self.topology, PrimitiveTopology::LineStrip) {
-                pass.set_vertex_buffer(0, stroke.backend().unwrap().points.slice(..));
-                pass.draw(0..stroke.points().len() as u32, 0..1);
-            } else {
-                pass.set_vertex_buffer(0, stroke.backend().unwrap().mesh.slice(..));
-                pass.draw(0..stroke.mesh.len() as u32, 0..1);
+            if should_draw(state.zoom, stroke.brush_size) {
+                if matches!(self.topology, PrimitiveTopology::LineStrip) {
+                    pass.set_vertex_buffer(0, stroke.backend().unwrap().points.slice(..));
+                    pass.draw(0..stroke.points().len() as u32, 0..1);
+                } else {
+                    pass.set_vertex_buffer(0, stroke.backend().unwrap().mesh.slice(..));
+                    pass.draw(0..stroke.mesh.len() as u32, 0..1);
+                }
             }
         }
     }
@@ -734,12 +749,23 @@ impl Graphics {
                     });
 
                 if self.tesselated {
+                    self.stroke_line_renderer.render(
+                        &self.queue,
+                        $frame,
+                        &mut encoder,
+                        state,
+                        size,
+                        LoadOp::Clear(WgpuColor::BLACK),
+                        |zoom, brush_size| zoom * brush_size < 1.0,
+                    );
                     self.stroke_tess_renderer.render(
                         &self.queue,
                         $frame,
                         &mut encoder,
                         state,
                         size,
+                        LoadOp::Load,
+                        |zoom, brush_size| zoom * brush_size > 1.0,
                     );
                 } else {
                     self.stroke_line_renderer.render(
@@ -748,6 +774,8 @@ impl Graphics {
                         &mut encoder,
                         state,
                         size,
+                        LoadOp::Clear(WgpuColor::BLACK),
+                        |_, _| true,
                     );
                 }
 
