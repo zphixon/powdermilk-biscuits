@@ -359,6 +359,16 @@ where
                 .display();
         }
 
+        if just_pressed!(ctrl + NumpadSubtract) {
+            self.change_zoom(-4.25);
+            request_redraw = true;
+        }
+
+        if just_pressed!(ctrl + NumpadAdd) {
+            self.change_zoom(4.25);
+            request_redraw = true;
+        }
+
         self.input.upstrokes();
         request_redraw
     }
