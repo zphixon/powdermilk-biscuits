@@ -5,6 +5,8 @@ pub type Color = [u8; 3];
 pub trait ColorExt {
     const WHITE: Color = [0xff, 0xff, 0xff];
     const BLACK: Color = [0x00, 0x00, 0x00];
+    const NICE_RED: Color = [255, 166, 166];
+    const NICE_GREEN: Color = [166, 255, 190];
     const PMB: Color = [0x50, 0x4d, 0x42];
 
     fn grey(level: f32) -> Color {
