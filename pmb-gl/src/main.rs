@@ -53,8 +53,11 @@ fn main() {
         gl.disable(glow::CULL_FACE);
         gl.clear_color(0.0, 0.0, 0.0, 1.0);
 
-        pen_cursor_program =
-            pmb_gl::compile_program(&gl, "src/shaders/cursor.vert", "src/shaders/cursor.frag");
+        pen_cursor_program = pmb_gl::compile_program(
+            &gl,
+            concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/cursor.vert"),
+            concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/cursor.frag"),
+        );
         gl.use_program(Some(pen_cursor_program));
 
         pen_cursor_erasing = gl
@@ -74,8 +77,8 @@ fn main() {
 
         strokes_program = pmb_gl::compile_program(
             &gl,
-            "src/shaders/stroke_line.vert",
-            "src/shaders/stroke_line.frag",
+            concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/stroke_line.vert"),
+            concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/stroke_line.frag"),
         );
         gl.use_program(Some(strokes_program));
 
