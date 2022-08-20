@@ -40,6 +40,7 @@ where
     pub brush_size: f32,
     pub erased: bool,
 
+    #[disk_skip] pub draw_tesselated: bool,
     #[disk_skip] pub mesh: Vec<StrokeElement>,
     #[disk_skip] pub backend: Option<S>,
     #[disk_skip] pub done: bool,
@@ -55,6 +56,7 @@ where
             color: Color::WHITE,
             brush_size: 0.01,
             erased: false,
+            draw_tesselated: true,
             mesh: Vec::new(),
             backend: None,
             done: false,

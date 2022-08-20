@@ -213,7 +213,7 @@ where
     S: StrokeBackend,
 {
     pub fn new() -> Self {
-        Self {
+        let mut this = Self {
             strokes: grid(),
             brush_size: DEFAULT_BRUSH,
             zoom: DEFAULT_ZOOM,
@@ -224,7 +224,13 @@ where
             path: None,
             input: input::InputHandler::default(),
             backend: Default::default(),
+        };
+
+        for stroke in this.strokes.iter_mut() {
+            stroke.draw_tesselated = stroke.brush_size * this.zoom > 1.0;
         }
+
+        this
     }
 
     pub fn modified() -> Self {
@@ -468,6 +474,11 @@ where
         }
 
         self.zoom = self.zoom.clamp(MIN_ZOOM, MAX_ZOOM);
+
+        for stroke in self.strokes.iter_mut() {
+            stroke.draw_tesselated = stroke.brush_size * self.zoom > 1.0;
+        }
+
         log::debug!("change zoom {}", self.zoom);
     }
 
