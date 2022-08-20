@@ -580,7 +580,6 @@ pub struct Graphics {
     config: SurfaceConfiguration,
     pub size: Size,
     pub aa: bool,
-    pub tesselated: bool,
     smaa_target: smaa::SmaaTarget,
     stroke_line_renderer: StrokeRenderer,
     stroke_tess_renderer: StrokeRenderer,
@@ -666,7 +665,6 @@ impl Graphics {
             config,
             size,
             aa: true,
-            tesselated: true,
             smaa_target,
         }
     }
@@ -728,42 +726,28 @@ impl Graphics {
                         label: Some("encoder"),
                     });
 
-                if self.tesselated {
-                    self.stroke_line_renderer.render(
-                        &self.queue,
-                        $frame,
-                        &mut encoder,
-                        state,
-                        size,
-                        LoadOp::Clear(WgpuColor::BLACK),
-                        |stroke| !stroke.draw_tesselated,
-                        |stroke| stroke.backend().unwrap().points.slice(..),
-                        |stroke| stroke.points.len() as u32,
-                    );
-                    self.stroke_tess_renderer.render(
-                        &self.queue,
-                        $frame,
-                        &mut encoder,
-                        state,
-                        size,
-                        LoadOp::Load,
-                        |stroke| stroke.draw_tesselated,
-                        |stroke| stroke.backend().unwrap().mesh.slice(..),
-                        |stroke| stroke.mesh.len() as u32,
-                    );
-                } else {
-                    self.stroke_line_renderer.render(
-                        &self.queue,
-                        $frame,
-                        &mut encoder,
-                        state,
-                        size,
-                        LoadOp::Clear(WgpuColor::BLACK),
-                        |_| true,
-                        |stroke| stroke.backend().unwrap().points.slice(..),
-                        |stroke| stroke.points.len() as u32,
-                    );
-                }
+                self.stroke_line_renderer.render(
+                    &self.queue,
+                    $frame,
+                    &mut encoder,
+                    state,
+                    size,
+                    LoadOp::Clear(WgpuColor::BLACK),
+                    |stroke| !stroke.draw_tesselated,
+                    |stroke| stroke.backend().unwrap().points.slice(..),
+                    |stroke| stroke.points.len() as u32,
+                );
+                self.stroke_tess_renderer.render(
+                    &self.queue,
+                    $frame,
+                    &mut encoder,
+                    state,
+                    size,
+                    LoadOp::Load,
+                    |stroke| stroke.draw_tesselated,
+                    |stroke| stroke.backend().unwrap().mesh.slice(..),
+                    |stroke| stroke.mesh.len() as u32,
+                );
 
                 if !cursor_visible {
                     self.cursor_renderer
