@@ -265,6 +265,7 @@ where
     pub fn reset_view(&mut self) {
         self.zoom = DEFAULT_ZOOM;
         self.origin = Default::default();
+        self.update_stroke_primitive();
     }
 
     pub fn handle_key(&mut self, key: input::Keycode, state: input::ElementState) -> bool {
@@ -469,17 +470,19 @@ where
         log::trace!("move origin {}", self.origin);
     }
 
+    fn update_stroke_primitive(&mut self) {
+        for stroke in self.strokes.iter_mut() {
+            stroke.draw_tesselated = stroke.brush_size * self.zoom > 1.0;
+        }
+    }
+
     pub fn change_zoom(&mut self, dz: f32) {
         if (self.zoom + dz).is_finite() {
             self.zoom += dz;
         }
 
         self.zoom = self.zoom.clamp(MIN_ZOOM, MAX_ZOOM);
-
-        for stroke in self.strokes.iter_mut() {
-            stroke.draw_tesselated = stroke.brush_size * self.zoom > 1.0;
-        }
-
+        self.update_stroke_primitive();
         log::debug!("change zoom {}", self.zoom);
     }
 
