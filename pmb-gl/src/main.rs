@@ -147,6 +147,7 @@ fn main() {
                         unsafe { gl.disable(glow::MULTISAMPLE) };
                     }
 
+                    context.window().request_redraw();
                 }
 
                 if state.input.shift() && state.input.just_pressed(S) {
