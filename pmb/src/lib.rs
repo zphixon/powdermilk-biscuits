@@ -364,6 +364,7 @@ where
             self.read_file(Option::<&str>::None)
                 .problem(format!("Could not open file"))
                 .display();
+            request_redraw = true;
         }
 
         if just_pressed!(ctrl + NumpadSubtract) {
