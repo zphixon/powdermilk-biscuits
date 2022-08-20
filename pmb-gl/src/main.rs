@@ -98,7 +98,6 @@ fn main() {
 
     let mut cursor_visible = true;
     let mut aa = true;
-    let mut stroke_style = glow::TRIANGLE_STRIP;
 
     let mut state: State =
         if let Some(filename) = std::env::args().nth(1).map(std::path::PathBuf::from) {
@@ -147,14 +146,7 @@ fn main() {
                     } else {
                         unsafe { gl.disable(glow::MULTISAMPLE) };
                     }
-                }
 
-                if state.input.just_pressed(T) {
-                    stroke_style = match stroke_style {
-                        glow::LINE_STRIP => glow::TRIANGLE_STRIP,
-                        glow::TRIANGLE_STRIP => glow::LINE_STRIP,
-                        _ => glow::TRIANGLE_STRIP,
-                    };
                 }
 
                 if state.input.shift() && state.input.just_pressed(S) {
@@ -396,28 +388,14 @@ fn main() {
                         continue;
                     }
 
-                    unsafe {
-                        if stroke_style == glow::LINE_STRIP {
-                            let StrokeBackend {
-                                line_vao, points, ..
-                            } = stroke.backend().unwrap();
-                            gl.bind_vertex_array(Some(*line_vao));
-                            gl.bind_buffer(glow::ARRAY_BUFFER, Some(*points));
-                            gl.uniform_3_f32(
-                                Some(&strokes_color),
-                                stroke.color()[0] as f32 / 255.0,
-                                stroke.color()[1] as f32 / 255.0,
-                                stroke.color()[2] as f32 / 255.0,
-                            );
-                            gl.uniform_1_f32(Some(&strokes_brush_size), stroke.brush_size());
-                            gl.draw_arrays(stroke_style, 0, stroke.points().len() as i32);
-                        } else {
-                            let StrokeBackend {
-                                mesh_vao,
-                                mesh,
-                                mesh_len,
-                                ..
-                            } = stroke.backend().unwrap();
+                    if stroke.draw_tesselated {
+                        let StrokeBackend {
+                            mesh_vao,
+                            mesh,
+                            mesh_len,
+                            ..
+                        } = stroke.backend().unwrap();
+                        unsafe {
                             gl.bind_vertex_array(Some(*mesh_vao));
                             gl.bind_buffer(glow::ARRAY_BUFFER, Some(*mesh));
                             gl.uniform_3_f32(
@@ -427,7 +405,23 @@ fn main() {
                                 stroke.color()[2] as f32 / 255.0,
                             );
                             gl.uniform_1_f32(Some(&strokes_brush_size), stroke.brush_size());
-                            gl.draw_arrays(stroke_style, 0, *mesh_len);
+                            gl.draw_arrays(glow::TRIANGLE_STRIP, 0, *mesh_len);
+                        }
+                    } else {
+                        let StrokeBackend {
+                            line_vao, points, ..
+                        } = stroke.backend().unwrap();
+                        unsafe {
+                            gl.bind_vertex_array(Some(*line_vao));
+                            gl.bind_buffer(glow::ARRAY_BUFFER, Some(*points));
+                            gl.uniform_3_f32(
+                                Some(&strokes_color),
+                                stroke.color()[0] as f32 / 255.0,
+                                stroke.color()[1] as f32 / 255.0,
+                                stroke.color()[2] as f32 / 255.0,
+                            );
+                            gl.uniform_1_f32(Some(&strokes_brush_size), stroke.brush_size());
+                            gl.draw_arrays(glow::LINE_STRIP, 0, stroke.points().len() as i32);
                         }
                     }
                 }
