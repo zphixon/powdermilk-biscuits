@@ -1,6 +1,6 @@
 use powdermilk_biscuits::{
     event::{PenInfo, Touch, TouchPhase},
-    graphics::{Color, ColorExt, PixelPos, StrokePoint},
+    graphics::{ColorExt, PixelPos, StrokePoint},
     input::{ElementState, Keycode, MouseButton},
     stroke::Stroke,
     State,
@@ -10,7 +10,7 @@ use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
     Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, BindingType, BlendState, Buffer, BufferAddress, BufferBindingType,
-    BufferUsages, Color as WgpuColor, ColorTargetState, ColorWrites, CommandEncoder,
+    BufferSlice, BufferUsages, Color as WgpuColor, ColorTargetState, ColorWrites, CommandEncoder,
     CommandEncoderDescriptor, Device, DeviceDescriptor, Face, Features, FragmentState, FrontFace,
     Instance, Limits, LoadOp, MultisampleState, Operations, PipelineLayoutDescriptor, PolygonMode,
     PowerPreference, PresentMode, PrimitiveState, PrimitiveTopology, PushConstantRange, Queue,
@@ -30,6 +30,7 @@ use winit::{
 };
 
 pub type WgslState = State<WgpuBackend, StrokeBackend>;
+pub type WgslStroke = Stroke<StrokeBackend>;
 
 const NUM_SEGMENTS: usize = 50;
 
@@ -252,7 +253,6 @@ impl<T> EventExt for winit::event::Event<'_, T> {
 
 struct StrokeRenderer {
     pipeline: RenderPipeline,
-    topology: PrimitiveTopology,
     view_bind_group: BindGroup,
     view_uniform_buffer: Buffer,
 }
@@ -355,7 +355,6 @@ impl StrokeRenderer {
 
         StrokeRenderer {
             pipeline,
-            topology,
             view_bind_group,
             view_uniform_buffer,
         }
@@ -369,7 +368,9 @@ impl StrokeRenderer {
         state: &WgslState,
         size: Size,
         load: LoadOp<WgpuColor>,
-        should_draw: fn(f32, f32) -> bool,
+        should_draw: fn(&WgslStroke) -> bool,
+        data: fn(&WgslStroke) -> BufferSlice,
+        len: fn(&WgslStroke) -> u32,
     ) {
         let stroke_view = view_matrix(state.zoom, state.zoom, size, state.origin);
         queue.write_buffer(
@@ -394,23 +395,9 @@ impl StrokeRenderer {
         pass.set_bind_group(0, &self.view_bind_group, &[]);
 
         for stroke in state.strokes.iter() {
-            if stroke.erased() || stroke.points().is_empty() {
+            if !should_draw(stroke) || stroke.erased() || stroke.points().is_empty() {
                 continue;
             }
-
-            //if state.zoom * stroke.brush_size() < 1.0 {
-            //    pass.set_push_constants(
-            //        ShaderStages::VERTEX,
-            //        0,
-            //        bytemuck::cast_slice(&Color::NICE_RED.to_float()),
-            //    );
-            //} else {
-            //    pass.set_push_constants(
-            //        ShaderStages::VERTEX,
-            //        0,
-            //        bytemuck::cast_slice(&Color::NICE_GREEN.to_float()),
-            //    );
-            //}
 
             pass.set_push_constants(
                 ShaderStages::VERTEX,
@@ -418,15 +405,8 @@ impl StrokeRenderer {
                 bytemuck::cast_slice(&stroke.color().to_float()),
             );
 
-            if should_draw(state.zoom, stroke.brush_size) {
-                if matches!(self.topology, PrimitiveTopology::LineStrip) {
-                    pass.set_vertex_buffer(0, stroke.backend().unwrap().points.slice(..));
-                    pass.draw(0..stroke.points().len() as u32, 0..1);
-                } else {
-                    pass.set_vertex_buffer(0, stroke.backend().unwrap().mesh.slice(..));
-                    pass.draw(0..stroke.mesh.len() as u32, 0..1);
-                }
-            }
+            pass.set_vertex_buffer(0, data(stroke));
+            pass.draw(0..len(stroke), 0..1);
         }
     }
 }
@@ -756,7 +736,9 @@ impl Graphics {
                         state,
                         size,
                         LoadOp::Clear(WgpuColor::BLACK),
-                        |zoom, brush_size| zoom * brush_size < 1.0,
+                        |stroke| !stroke.draw_tesselated,
+                        |stroke| stroke.backend().unwrap().points.slice(..),
+                        |stroke| stroke.points.len() as u32,
                     );
                     self.stroke_tess_renderer.render(
                         &self.queue,
@@ -765,7 +747,9 @@ impl Graphics {
                         state,
                         size,
                         LoadOp::Load,
-                        |zoom, brush_size| zoom * brush_size > 1.0,
+                        |stroke| stroke.draw_tesselated,
+                        |stroke| stroke.backend().unwrap().mesh.slice(..),
+                        |stroke| stroke.mesh.len() as u32,
                     );
                 } else {
                     self.stroke_line_renderer.render(
@@ -775,7 +759,9 @@ impl Graphics {
                         state,
                         size,
                         LoadOp::Clear(WgpuColor::BLACK),
-                        |_, _| true,
+                        |_| true,
+                        |stroke| stroke.backend().unwrap().points.slice(..),
+                        |stroke| stroke.points.len() as u32,
                     );
                 }
 
