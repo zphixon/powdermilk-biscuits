@@ -24,6 +24,7 @@ The build has visited the local mage and is no longer cursed. Just `git clone` a
   - Infinite scroll, chunks
   - Pressure-based line weight
   - Caps and joins
+  - Correct handling of color space (wgpu impl)
 
 ## Notes
 

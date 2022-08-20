@@ -622,7 +622,13 @@ impl Graphics {
             .unwrap();
 
         log::debug!("setting up pipeline stuff");
-        let surface_format = surface.get_supported_formats(&adapter)[0];
+        let formats = surface.get_supported_formats(&adapter);
+
+        let surface_format = if formats.contains(&TextureFormat::Rgba8Unorm) {
+            TextureFormat::Rgba8Unorm
+        } else {
+            surface.get_supported_formats(&adapter)[0]
+        };
 
         let config = SurfaceConfiguration {
             usage: TextureUsages::RENDER_ATTACHMENT,
