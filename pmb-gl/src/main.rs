@@ -6,7 +6,7 @@ use glutin::{
     window::WindowBuilder,
     ContextBuilder,
 };
-use pmb_gl::{GlState as State, StrokeBackend};
+use pmb_gl::{GlState as State, GlStrokeBackend};
 use powdermilk_biscuits::{TITLE_MODIFIED, TITLE_UNMODIFIED};
 use std::mem::size_of;
 
@@ -371,7 +371,7 @@ fn main() {
                                 gl.enable_vertex_attrib_array(0);
                                 gl.enable_vertex_attrib_array(1);
 
-                                StrokeBackend {
+                                GlStrokeBackend {
                                     line_vao,
                                     points,
                                     mesh_vao,
@@ -390,7 +390,7 @@ fn main() {
                     }
 
                     if stroke.draw_tesselated {
-                        let StrokeBackend {
+                        let GlStrokeBackend {
                             mesh_vao,
                             mesh,
                             mesh_len,
@@ -409,7 +409,7 @@ fn main() {
                             gl.draw_arrays(glow::TRIANGLE_STRIP, 0, *mesh_len);
                         }
                     } else {
-                        let StrokeBackend {
+                        let GlStrokeBackend {
                             line_vao, points, ..
                         } = stroke.backend().unwrap();
                         unsafe {

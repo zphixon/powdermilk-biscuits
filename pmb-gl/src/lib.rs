@@ -13,7 +13,7 @@ use powdermilk_biscuits::{
     input::{ElementState, Keycode, MouseButton},
 };
 
-pub type GlState = powdermilk_biscuits::State<GlBackend, StrokeBackend>;
+pub type GlState = powdermilk_biscuits::State<GlBackend, GlStrokeBackend>;
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct GlBackend {}
@@ -39,7 +39,7 @@ impl powdermilk_biscuits::Backend for GlBackend {
 }
 
 #[derive(Debug)]
-pub struct StrokeBackend {
+pub struct GlStrokeBackend {
     pub line_vao: glow::VertexArray,
     pub points: glow::Buffer,
     pub mesh_vao: glow::VertexArray,
@@ -48,7 +48,7 @@ pub struct StrokeBackend {
     pub dirty: bool,
 }
 
-impl powdermilk_biscuits::StrokeBackend for StrokeBackend {
+impl powdermilk_biscuits::StrokeBackend for GlStrokeBackend {
     fn make_dirty(&mut self) {
         self.dirty = true;
     }

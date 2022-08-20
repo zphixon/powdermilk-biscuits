@@ -1,4 +1,4 @@
-use pmb_wgpu::WgslState as State;
+use pmb_wgpu::WgpuState as State;
 use powdermilk_biscuits::ui;
 use wgpu::SurfaceError;
 use winit::{

@@ -29,8 +29,8 @@ use winit::{
     window::Window,
 };
 
-pub type WgslState = State<WgpuBackend, StrokeBackend>;
-pub type WgslStroke = Stroke<StrokeBackend>;
+pub type WgpuState = State<WgpuBackend, WgpuStrokeBackend>;
+pub type WgpuStroke = Stroke<WgpuStrokeBackend>;
 
 const NUM_SEGMENTS: usize = 50;
 
@@ -73,13 +73,13 @@ pub fn view_matrix(
 }
 
 #[derive(Debug)]
-pub struct StrokeBackend {
+pub struct WgpuStrokeBackend {
     pub points: Buffer,
     pub mesh: Buffer,
     pub dirty: bool,
 }
 
-impl powdermilk_biscuits::StrokeBackend for StrokeBackend {
+impl powdermilk_biscuits::StrokeBackend for WgpuStrokeBackend {
     fn make_dirty(&mut self) {
         self.dirty = true;
     }
@@ -365,12 +365,12 @@ impl StrokeRenderer {
         queue: &Queue,
         frame: &TextureView,
         encoder: &mut CommandEncoder,
-        state: &WgslState,
+        state: &WgpuState,
         size: Size,
         load: LoadOp<WgpuColor>,
-        should_draw: fn(&WgslStroke) -> bool,
-        data: fn(&WgslStroke) -> BufferSlice,
-        len: fn(&WgslStroke) -> u32,
+        should_draw: fn(&WgpuStroke) -> bool,
+        data: fn(&WgpuStroke) -> BufferSlice,
+        len: fn(&WgpuStroke) -> u32,
     ) {
         let stroke_view = view_matrix(state.zoom, state.zoom, size, state.origin);
         queue.write_buffer(
@@ -528,7 +528,7 @@ impl CursorRenderer {
         queue: &Queue,
         frame: &TextureView,
         encoder: &mut CommandEncoder,
-        state: &WgslState,
+        state: &WgpuState,
         size: Size,
     ) {
         let cursor_view = view_matrix(
@@ -692,8 +692,8 @@ impl Graphics {
         }
     }
 
-    pub fn buffer_stroke(&mut self, stroke: &mut Stroke<StrokeBackend>) {
-        stroke.replace_backend_with(|points, mesh, _| StrokeBackend {
+    pub fn buffer_stroke(&mut self, stroke: &mut Stroke<WgpuStrokeBackend>) {
+        stroke.replace_backend_with(|points, mesh, _| WgpuStrokeBackend {
             points: self.device.create_buffer_init(&BufferInitDescriptor {
                 label: Some("points"),
                 contents: points,
@@ -708,7 +708,7 @@ impl Graphics {
         });
     }
 
-    pub fn buffer_all_strokes(&mut self, state: &mut WgslState) {
+    pub fn buffer_all_strokes(&mut self, state: &mut WgpuState) {
         for stroke in state.strokes.iter_mut() {
             if stroke.is_dirty() {
                 self.buffer_stroke(stroke);
@@ -718,7 +718,7 @@ impl Graphics {
 
     pub fn render(
         &mut self,
-        state: &mut WgslState,
+        state: &mut WgpuState,
         size: PhysicalSize<u32>,
         cursor_visible: bool,
     ) -> Result<(), SurfaceError> {
