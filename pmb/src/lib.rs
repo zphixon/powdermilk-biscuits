@@ -233,6 +233,12 @@ where
         this
     }
 
+    pub fn benchmark() -> Self {
+        let mut this = Self::new();
+        this.strokes = benchmark();
+        this
+    }
+
     pub fn modified() -> Self {
         let mut this = State::new();
         this.modified = true;
@@ -834,6 +840,36 @@ where
         log::info!("saved file as {}", self.path.as_ref().unwrap().display());
         Ok(())
     }
+}
+
+fn benchmark<S: StrokeBackend>() -> Vec<Stroke<S>> {
+    use rand::Rng;
+    let mut rng = rand::thread_rng();
+    let mut strokes = (-50..=50)
+        .map(|x| {
+            (-50..=50)
+                .map(|y| {
+                    Stroke::with_points(
+                        (1..=100)
+                            .map(|_| StrokeElement {
+                                x: rng.gen::<f32>() + x as f32,
+                                y: rng.gen::<f32>() + y as f32,
+                                pressure: rng.gen(),
+                            })
+                            .collect(),
+                        rng.gen(),
+                    )
+                })
+                .collect::<Vec<_>>()
+        })
+        .flatten()
+        .collect::<Vec<_>>();
+
+    for stroke in strokes.iter_mut() {
+        stroke.generate_full_mesh();
+    }
+
+    strokes
 }
 
 fn grid<S>() -> Vec<Stroke<S>>

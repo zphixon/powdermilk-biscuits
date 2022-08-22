@@ -99,12 +99,15 @@ fn main() {
     let mut aa = true;
     let mut size = context.window().inner_size();
 
-    let mut state: State =
-        if let Some(filename) = std::env::args().nth(1).map(std::path::PathBuf::from) {
-            State::with_filename(filename)
+    let mut state: State = if let Some(filename) = std::env::args().nth(1) {
+        if filename == "--benchmark" {
+            State::benchmark()
         } else {
-            State::default()
-        };
+            State::with_filename(std::path::PathBuf::from(filename))
+        }
+    } else {
+        State::default()
+    };
 
     // gl origin in stroke space
     ev.run(move |event, _, control_flow| {

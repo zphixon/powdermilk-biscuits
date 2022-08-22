@@ -24,12 +24,15 @@ async fn run() {
         .build(&ev)
         .unwrap();
 
-    let mut state: State =
-        if let Some(filename) = std::env::args().nth(1).map(std::path::PathBuf::from) {
-            State::with_filename(filename)
+    let mut state: State = if let Some(filename) = std::env::args().nth(1) {
+        if filename == "--benchmark" {
+            State::benchmark()
         } else {
-            State::default()
-        };
+            State::with_filename(std::path::PathBuf::from(filename))
+        }
+    } else {
+        State::default()
+    };
 
     let mut graphics = pmb_wgpu::Graphics::new(&window).await;
     graphics.buffer_all_strokes(&mut state);

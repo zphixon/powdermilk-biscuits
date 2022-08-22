@@ -14,3 +14,4 @@ incremental = true
 
 [profile.release]
 incremental = true
+debug = true
