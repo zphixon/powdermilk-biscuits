@@ -187,7 +187,7 @@ where
         let mut right = f32::NEG_INFINITY;
         let mut left = f32::INFINITY;
 
-        for point in self.points.iter() {
+        for point in self.mesh.iter() {
             if point.x < left {
                 left = point.x;
             }
@@ -275,22 +275,6 @@ where
             self.bottom_right = stylus.pos;
         }
 
-        if x > self.bottom_right.x {
-            self.bottom_right.x = x;
-        }
-
-        if x < self.top_left.x {
-            self.top_left.x = x;
-        }
-
-        if y > self.top_left.y {
-            self.top_left.y = y;
-        }
-
-        if y < self.bottom_right.y {
-            self.bottom_right.y = y;
-        }
-
         if let Some(backend) = self.backend_mut() {
             backend.make_dirty();
         }
@@ -299,18 +283,40 @@ where
     fn generate_partial_mesh(&mut self) {
         use pmb_tess::Hermite;
         let subset = &self.points[self.points.len() - 4..];
+
+        let ribs = subset
+            .flat_ribs(4, self.brush_size())
+            .into_iter()
+            .zip(subset.iter())
+            .map(|(mut rib, stroke)| {
+                rib.pressure = stroke.pressure;
+                rib
+            })
+            .collect::<Vec<_>>();
+
+        for point in ribs.iter() {
+            let x = point.x;
+            let y = point.y;
+            if x > self.bottom_right.x {
+                self.bottom_right.x = x;
+            }
+
+            if x < self.top_left.x {
+                self.top_left.x = x;
+            }
+
+            if y > self.top_left.y {
+                self.top_left.y = y;
+            }
+
+            if y < self.bottom_right.y {
+                self.bottom_right.y = y;
+            }
+        }
+
         self.mesh.pop();
         self.mesh.pop();
-        self.mesh.extend(
-            subset
-                .flat_ribs(4, self.brush_size())
-                .into_iter()
-                .zip(subset.iter())
-                .map(|(mut rib, stroke)| {
-                    rib.pressure = stroke.pressure;
-                    rib
-                }),
-        );
+        self.mesh.extend(ribs);
     }
 
     pub fn generate_full_mesh(&mut self) {
@@ -338,6 +344,7 @@ where
             });
 
         self.mesh = mesh;
+        self.update_bounding_box();
     }
 
     pub fn finish(&mut self) {
