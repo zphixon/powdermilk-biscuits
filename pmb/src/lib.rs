@@ -855,9 +855,9 @@ where
 fn benchmark<S: StrokeBackend>() -> Vec<Stroke<S>> {
     use rand::Rng;
     let mut rng = rand::thread_rng();
-    let mut strokes = (-50..=50)
+    let mut strokes = (-100..=100)
         .map(|x| {
-            (-50..=50)
+            (-100..=100)
                 .map(|y| {
                     Stroke::with_points(
                         (1..=100)
