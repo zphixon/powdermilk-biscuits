@@ -2,7 +2,7 @@ use pmb_wgpu::WgpuState as State;
 use powdermilk_biscuits::ui;
 use wgpu::SurfaceError;
 use winit::{
-    dpi::{LogicalPosition, PhysicalSize},
+    dpi::LogicalPosition,
     event::{ElementState, Event, KeyboardInput, MouseScrollDelta, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
@@ -34,6 +34,7 @@ async fn run() {
     let mut graphics = pmb_wgpu::Graphics::new(&window).await;
     graphics.buffer_all_strokes(&mut state);
 
+    let mut size = window.inner_size();
     let mut cursor_visible = true;
 
     ev.run(move |event, _, flow| {
@@ -90,6 +91,7 @@ async fn run() {
                     },
                 ..
             } => {
+                size = new_size;
                 graphics.resize(new_size);
                 window.request_redraw();
             }
@@ -108,8 +110,7 @@ async fn run() {
                 const ZOOM_SPEED: f32 = 4.25;
 
                 let dzoom = if zoom_in { ZOOM_SPEED } else { -ZOOM_SPEED };
-                let PhysicalSize { width, height } = window.inner_size();
-                state.change_zoom(dzoom, width, height);
+                state.change_zoom(dzoom, size.width, size.height);
                 window.request_redraw();
             }
 
@@ -127,16 +128,14 @@ async fn run() {
                 state.handle_mouse_button(button, key_state);
             }
 
-            Event::RedrawRequested(_) => {
-                match graphics.render(&mut state, window.inner_size(), cursor_visible) {
-                    Err(SurfaceError::Lost) => graphics.resize(graphics.size),
-                    Err(SurfaceError::OutOfMemory) => {
-                        ui::error("Out of memory!");
-                        *flow = ControlFlow::Exit;
-                    }
-                    _ => {}
+            Event::RedrawRequested(_) => match graphics.render(&mut state, size, cursor_visible) {
+                Err(SurfaceError::Lost) => graphics.resize(graphics.size),
+                Err(SurfaceError::OutOfMemory) => {
+                    ui::error("Out of memory!");
+                    *flow = ControlFlow::Exit;
                 }
-            }
+                _ => {}
+            },
 
             Event::WindowEvent {
                 event:
@@ -153,8 +152,7 @@ async fn run() {
             } => {
                 let key = pmb_wgpu::winit_to_pmb_keycode(key);
                 let key_state = pmb_wgpu::winit_to_pmb_key_state(key_state);
-                let PhysicalSize { width, height } = window.inner_size();
-                if state.handle_key(key, key_state, width, height) {
+                if state.handle_key(key, key_state, size.width, size.height) {
                     window.request_redraw();
                 }
             }
@@ -163,10 +161,9 @@ async fn run() {
                 event: WindowEvent::CursorMoved { position, .. },
                 ..
             } => {
-                let PhysicalSize { width, height } = window.inner_size();
                 if state.handle_cursor_move(
-                    width,
-                    height,
+                    size.width,
+                    size.height,
                     pmb_wgpu::physical_pos_to_pixel_pos(position),
                 ) {
                     window.request_redraw();
@@ -186,8 +183,7 @@ async fn run() {
                 cursor_visible = false;
                 window.set_cursor_visible(false);
 
-                let PhysicalSize { width, height } = window.inner_size();
-                state.handle_touch(pmb_wgpu::winit_to_pmb_touch(touch), width, height);
+                state.handle_touch(pmb_wgpu::winit_to_pmb_touch(touch), size.width, size.height);
 
                 window.request_redraw();
             }

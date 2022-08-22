@@ -1,6 +1,5 @@
 use glow::{Context, HasContext};
 use glutin::{
-    dpi::PhysicalSize,
     event::{Event, KeyboardInput, MouseScrollDelta, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
@@ -98,6 +97,7 @@ fn main() {
 
     let mut cursor_visible = true;
     let mut aa = true;
+    let mut size = context.window().inner_size();
 
     let mut state: State =
         if let Some(filename) = std::env::args().nth(1).map(std::path::PathBuf::from) {
@@ -134,8 +134,7 @@ fn main() {
                 let key = pmb_gl::glutin_to_pmb_keycode(key);
                 let key_state = pmb_gl::glutin_to_pmb_key_state(key_state);
 
-                let PhysicalSize { width, height } = context.window().inner_size();
-                if state.handle_key(key, key_state, width, height) {
+                if state.handle_key(key, key_state, size.width, size.height) {
                     context.window().request_redraw();
                 }
 
@@ -157,21 +156,20 @@ fn main() {
                     let filename = format!("img/strokes{num}.png");
 
                     let image = unsafe {
-                        let PhysicalSize { width, height } = context.window().inner_size();
                         let mut data = std::iter::repeat(0)
-                            .take(width as usize * height as usize * 4)
+                            .take(size.width as usize * size.height as usize * 4)
                             .collect::<Vec<_>>();
                         gl.read_pixels(
                             0,
                             0,
-                            width as i32,
-                            height as i32,
+                            size.width as i32,
+                            size.height as i32,
                             glow::RGBA,
                             glow::UNSIGNED_BYTE,
                             glow::PixelPackData::Slice(data.as_mut_slice()),
                         );
                         image::DynamicImage::ImageRgba8(
-                            image::RgbaImage::from_raw(width, height, data).unwrap(),
+                            image::RgbaImage::from_raw(size.width, size.height, data).unwrap(),
                         )
                     };
 
@@ -221,8 +219,7 @@ fn main() {
                 cursor_visible = false;
                 context.window().set_cursor_visible(false);
 
-                let PhysicalSize { width, height } = context.window().inner_size();
-                state.handle_touch(pmb_gl::glutin_to_pmb_touch(touch), width, height);
+                state.handle_touch(pmb_gl::glutin_to_pmb_touch(touch), size.width, size.height);
 
                 context.window().request_redraw();
             }
@@ -241,8 +238,7 @@ fn main() {
                 const ZOOM_SPEED: f32 = 4.25;
 
                 let dzoom = if zoom_in { ZOOM_SPEED } else { -ZOOM_SPEED };
-                let PhysicalSize { width, height } = context.window().inner_size();
-                state.change_zoom(dzoom, width, height);
+                state.change_zoom(dzoom, size.width, size.height);
 
                 context.window().request_redraw();
             }
@@ -266,10 +262,9 @@ fn main() {
                 event: WindowEvent::CursorMoved { position, .. },
                 ..
             } => {
-                let PhysicalSize { width, height } = context.window().inner_size();
                 if state.handle_cursor_move(
-                    width,
-                    height,
+                    size.width,
+                    size.height,
                     pmb_gl::physical_pos_to_pixel_pos(position),
                 ) {
                     context.window().request_redraw();
@@ -295,12 +290,7 @@ fn main() {
             Event::RedrawRequested(_) => {
                 unsafe {
                     gl.use_program(Some(strokes_program));
-                    let view = pmb_gl::view_matrix(
-                        state.zoom,
-                        state.zoom,
-                        context.window().inner_size(),
-                        state.origin,
-                    );
+                    let view = pmb_gl::view_matrix(state.zoom, state.zoom, size, state.origin);
                     gl.uniform_matrix_4_f32_slice(
                         Some(&strokes_view),
                         false,
@@ -462,12 +452,7 @@ fn main() {
                             if state.stylus.down() { 1.0 } else { 0.0 },
                         );
 
-                        let view = pmb_gl::view_matrix(
-                            state.zoom,
-                            1.0,
-                            context.window().inner_size(),
-                            state.stylus.point,
-                        );
+                        let view = pmb_gl::view_matrix(state.zoom, 1.0, size, state.stylus.point);
 
                         gl.uniform_matrix_4_f32_slice(
                             Some(&pen_cursor_view),
@@ -483,12 +468,13 @@ fn main() {
             }
 
             Event::WindowEvent {
-                event: WindowEvent::Resized(size),
+                event: WindowEvent::Resized(new_size),
                 ..
             } => {
-                context.resize(size);
+                size = new_size;
+                context.resize(new_size);
                 unsafe {
-                    gl.viewport(0, 0, size.width as i32, size.height as i32);
+                    gl.viewport(0, 0, new_size.width as i32, new_size.height as i32);
                 };
             }
 
