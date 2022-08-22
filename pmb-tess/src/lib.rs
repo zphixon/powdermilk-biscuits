@@ -81,6 +81,18 @@ pub trait Point: Clone + Copy {
     fn dot(&self, other: &impl Point) -> f32 {
         self.x() * other.x() + self.y() * other.y()
     }
+
+    fn scale(&self, f: f32) -> Self {
+        Self::new(self.x() * f, self.y() * f)
+    }
+
+    fn diff(&self, other: &impl Point) -> Self {
+        Self::new(self.x() - other.x(), self.y() - other.y())
+    }
+
+    fn offset(&self, other: &impl Point) -> Self {
+        Self::new(self.x() + other.x(), self.y() + other.y())
+    }
 }
 
 /// Helper function that gives `steps` uniform steps between [0,1].
@@ -317,6 +329,16 @@ pub trait Hermite<P: Point>: Index<usize, Output = P> {
         self.dot(t, q1, q2, q3, q4)
     }
 
+    /// Evaluate the second derivative at non-uniform `t`.
+    fn derivative2(&self, t: f32) -> P {
+        let u = t.fract();
+        let q1 = -6. * u + 4.;
+        let q2 = 18. * u - 10.;
+        let q3 = -18. * u + 8.;
+        let q4 = 6. * u - 2.;
+        self.dot(t, q1, q2, q3, q4)
+    }
+
     fn rib(&self, t: f32, scale: f32) -> (P, P) {
         let (point, derivative) = (self.interpolate(t), self.derivative(t));
         let direction = derivative.unit();
@@ -349,6 +371,17 @@ pub trait Hermite<P: Point>: Index<usize, Output = P> {
         let b = self.derivative(t2).unit();
         a.dot(&b) / (a.magnitude() * b.magnitude())
     }
+
+    fn curvature(&self, t: f32) -> f32 {
+        let d1 = self.derivative(t);
+        let d2 = self.derivative2(t);
+        let num = d1.x() * d2.y() - d2.x() * d1.y();
+        let denom = (d1.x() * d1.x() + d1.y() * d1.y()).powf(3. / 2.);
+        if denom.abs() < f32::EPSILON {
+            return f32::NAN;
+        }
+        num / denom
+    }
 }
 
 impl<P: Point> Hermite<P> for [P] {
@@ -365,4 +398,11 @@ where
     fn len(&self) -> usize {
         <[P]>::len(&*self)
     }
+}
+
+pub trait Polar<P>
+where
+    P: Point,
+{
+    fn a();
 }

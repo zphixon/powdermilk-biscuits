@@ -86,15 +86,29 @@ impl Display for Pos {
 }
 
 fn main() {
-    let segments = 30;
+    let segments = 180;
 
+    println!("------------------ points ------------------");
     bigpoints
         .flatten(segments)
         .iter()
         .for_each(|p| println!("({p})"));
 
-    println!("ribs (w/o bbq sauce 😭)");
+    println!("------------------- ribs -------------------");
     for rib in bigpoints.flat_ribs(segments, 20.) {
         println!("({rib})");
     }
+
+    println!("---------------- curvature -----------------");
+    steps_non_normalized(bigpoints.len(), segments)
+        .map(|t| {
+            (
+                bigpoints.rib(t, 0.05),
+                bigpoints.interpolate(t),
+                bigpoints.curvature(t),
+            )
+        })
+        .for_each(|((r, _), p, kap)| {
+            println!("({})", r.diff(&p).scale(kap).offset(&p));
+        });
 }
