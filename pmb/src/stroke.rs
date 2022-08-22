@@ -284,39 +284,35 @@ where
         use pmb_tess::Hermite;
         let subset = &self.points[self.points.len() - 4..];
 
-        let ribs = subset
-            .flat_ribs(4, self.brush_size())
-            .into_iter()
-            .zip(subset.iter())
-            .map(|(mut rib, stroke)| {
-                rib.pressure = stroke.pressure;
-                rib
-            })
-            .collect::<Vec<_>>();
-
-        for point in ribs.iter() {
-            let x = point.x;
-            let y = point.y;
-            if x > self.bottom_right.x {
-                self.bottom_right.x = x;
-            }
-
-            if x < self.top_left.x {
-                self.top_left.x = x;
-            }
-
-            if y > self.top_left.y {
-                self.top_left.y = y;
-            }
-
-            if y < self.bottom_right.y {
-                self.bottom_right.y = y;
-            }
-        }
-
         self.mesh.pop();
         self.mesh.pop();
-        self.mesh.extend(ribs);
+        self.mesh.extend(
+            subset
+                .flat_ribs(4, self.brush_size())
+                .into_iter()
+                .zip(subset.iter())
+                .map(|(mut rib, stroke)| {
+                    rib.pressure = stroke.pressure;
+
+                    if rib.x > self.bottom_right.x {
+                        self.bottom_right.x = rib.x;
+                    }
+
+                    if rib.x < self.top_left.x {
+                        self.top_left.x = rib.x;
+                    }
+
+                    if rib.y > self.top_left.y {
+                        self.top_left.y = rib.y;
+                    }
+
+                    if rib.y < self.bottom_right.y {
+                        self.bottom_right.y = rib.y;
+                    }
+
+                    rib
+                }),
+        );
     }
 
     pub fn generate_full_mesh(&mut self) {
