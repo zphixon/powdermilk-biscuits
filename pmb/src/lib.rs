@@ -77,6 +77,16 @@ pub trait Backend: std::fmt::Debug + Default + Clone + Copy {
 
     fn ndc_to_stroke(&self, width: u32, height: u32, zoom: f32, ndc: Self::Ndc) -> StrokePoint;
     fn stroke_to_ndc(&self, width: u32, height: u32, zoom: f32, point: StrokePoint) -> Self::Ndc;
+
+    fn pixel_to_stroke(&self, width: u32, height: u32, zoom: f32, pos: PixelPos) -> StrokePoint {
+        let ndc = self.pixel_to_ndc(width, height, pos);
+        self.ndc_to_stroke(width, height, zoom, ndc)
+    }
+
+    fn stroke_to_pixel(&self, width: u32, height: u32, zoom: f32, pos: StrokePoint) -> PixelPos {
+        let ndc = self.stroke_to_ndc(width, height, zoom, pos);
+        self.ndc_to_pixel(width, height, ndc)
+    }
 }
 
 pub trait StrokeBackend: std::fmt::Debug {
@@ -464,17 +474,17 @@ where
     }
 
     fn move_origin(&mut self, width: u32, height: u32, prev: PixelPos, next: PixelPos) {
-        let prev_ndc = self.backend.pixel_to_ndc(width, height, prev);
-        let prev_stroke = self
-            .backend
-            .ndc_to_stroke(width, height, self.zoom, prev_ndc);
-        let prev_xformed = graphics::xform_point_to_pos(self.origin, prev_stroke);
+        use graphics::xform_point_to_pos as xform;
 
-        let next_ndc = self.backend.pixel_to_ndc(width, height, next);
-        let next_stroke = self
-            .backend
-            .ndc_to_stroke(width, height, self.zoom, next_ndc);
-        let next_xformed = graphics::xform_point_to_pos(self.origin, next_stroke);
+        let prev_xformed = xform(
+            self.origin,
+            self.backend.pixel_to_stroke(width, height, self.zoom, prev),
+        );
+
+        let next_xformed = xform(
+            self.origin,
+            self.backend.pixel_to_stroke(width, height, self.zoom, next),
+        );
 
         let dx = next_xformed.x - prev_xformed.x;
         let dy = next_xformed.y - prev_xformed.y;
@@ -612,7 +622,7 @@ where
         log::trace!("handle update {phase:?}");
 
         if self.stylus.inverted() {
-            let stylus_ndc = self.backend.stroke_to_ndc(
+            let stylus_pix = self.backend.stroke_to_pixel(
                 width,
                 height,
                 self.zoom,
@@ -621,7 +631,7 @@ where
                     y: self.stylus.pos.y,
                 },
             );
-            let stylus_pix = self.backend.ndc_to_pixel(width, height, stylus_ndc);
+
             let stylus_pix_x = stylus_pix.x as f32;
             let stylus_pix_y = stylus_pix.y as f32;
 
@@ -632,7 +642,7 @@ where
                     }
 
                     'inner: for point in stroke.points().iter() {
-                        let point_ndc = self.backend.stroke_to_ndc(
+                        let point_pix = self.backend.stroke_to_pixel(
                             width,
                             height,
                             self.zoom,
@@ -641,7 +651,7 @@ where
                                 y: point.y,
                             },
                         );
-                        let point_pix = self.backend.ndc_to_pixel(width, height, point_ndc);
+
                         let point_pix_x = point_pix.x as f32;
                         let point_pix_y = point_pix.y as f32;
 
@@ -665,18 +675,15 @@ where
                 TouchPhase::Start => {
                     self.modified = true;
 
-                    let ndc_brush_size = self.backend.pixel_to_ndc(
+                    let stroke_brush_size = self.backend.pixel_to_stroke(
                         width,
                         height,
+                        self.zoom,
                         PixelPos {
                             x: ((width / 2) + self.brush_size as u32) as f32,
                             y: (height / 2) as f32,
                         },
                     );
-
-                    let stroke_brush_size =
-                        self.backend
-                            .ndc_to_stroke(width, height, self.zoom, ndc_brush_size);
 
                     self.strokes
                         .push(Stroke::new(rand::random(), stroke_brush_size.x / 2.));
