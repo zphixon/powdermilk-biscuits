@@ -103,14 +103,14 @@ pub enum StylusPosition {
 #[derive(Debug, Clone, Copy)]
 pub struct StylusState {
     pub pos: StylusPosition,
-    pub inverted: bool,
+    pub eraser: bool,
 }
 
 impl Default for StylusState {
     fn default() -> Self {
         StylusState {
             pos: StylusPosition::Up,
-            inverted: false,
+            eraser: false,
         }
     }
 }
@@ -128,8 +128,8 @@ impl Stylus {
         matches!(self.state.pos, StylusPosition::Down)
     }
 
-    pub fn inverted(&self) -> bool {
-        self.state.inverted
+    pub fn eraser(&self) -> bool {
+        self.state.eraser
     }
 }
 
@@ -384,7 +384,7 @@ where
         }
 
         if just_pressed!(E) {
-            self.stylus.state.inverted = !self.stylus.state.inverted;
+            self.stylus.state.eraser = !self.stylus.state.eraser;
             request_redraw = true;
         }
 
@@ -551,9 +551,9 @@ where
         let pos = graphics::xform_point_to_pos(self.origin, point);
         let pressure = force.unwrap_or(1.0);
 
-        let inverted = pen_info
-            .map(|info| info.inverted)
-            .unwrap_or(self.stylus.state.inverted);
+        let eraser = pen_info
+            .map(|info| info.inverted || info.eraser)
+            .unwrap_or(self.stylus.state.eraser);
 
         let status =
             format!("{pressure:.02} pix={location} -> ndc={ndc_pos} -> str={pos}                ");
@@ -571,7 +571,7 @@ where
 
                 StylusState {
                     pos: StylusPosition::Down,
-                    inverted,
+                    eraser,
                 }
             }
 
@@ -580,7 +580,7 @@ where
                     print!("\r{status}");
                 }
 
-                self.stylus.state.inverted = inverted;
+                self.stylus.state.eraser = eraser;
                 self.stylus.state
             }
 
@@ -595,7 +595,7 @@ where
 
                 StylusState {
                     pos: StylusPosition::Up,
-                    inverted,
+                    eraser,
                 }
             }
         };
@@ -624,7 +624,7 @@ where
     fn handle_update(&mut self, width: u32, height: u32, phase: TouchPhase) {
         log::trace!("handle update {phase:?}");
 
-        if self.stylus.inverted() {
+        if self.stylus.eraser() {
             let stylus_pix = self.backend.stroke_to_pixel(
                 width,
                 height,
