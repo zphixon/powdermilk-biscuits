@@ -120,8 +120,16 @@ impl UiState {
                 Tool::Pen => PenDraw,
                 Tool::Eraser => PenErase,
             },
+            (PenDraw, MovePen) => {
+                // state.last_stroke.add_point()
+                PenDraw
+            }
             (PenDraw | PenErase, PenUp) => Ready,
             (Ready, StartPan) => Pan,
+            (Pan, MoveMouse | MovePen | MoveTouch) => {
+                // state.change_origin()
+                Pan
+            }
             (Pan, EndPan) => Ready,
             (Pan, StartZoom) => Zoom,
             (Zoom, EndZoom) => Pan,
