@@ -74,6 +74,12 @@ pub fn xform_point_to_pos(origin: StrokePoint, stroke: StrokePoint) -> StrokePos
     StrokePos { x, y }
 }
 
+pub fn xform_pos_to_point(origin: StrokePoint, stroke: StrokePos) -> StrokePoint {
+    let x = stroke.x + origin.x;
+    let y = stroke.y + origin.y;
+    StrokePoint { x, y }
+}
+
 impl Display for PixelPos {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:.02},{:.02}", self.x, self.y)

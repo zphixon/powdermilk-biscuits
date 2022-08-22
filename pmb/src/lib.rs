@@ -262,9 +262,10 @@ where
         self.origin = other.origin;
         self.stylus = other.stylus;
 
-        self.strokes
-            .iter_mut()
-            .for_each(|stroke| stroke.generate_full_mesh());
+        self.strokes.iter_mut().for_each(|stroke| {
+            stroke.generate_full_mesh();
+            stroke.update_bounding_box();
+        });
     }
 
     pub fn with_filename(path: impl AsRef<std::path::Path>) -> Self {
@@ -351,12 +352,14 @@ where
                     println!("{},{},{}", point.x, point.y, point.pressure);
                 }
                 println!(
-                    "{} points, {} vertices, {} size, {} visible, {:?} color",
+                    "{} points, {} vertices, {} size, {} visible, {:?} color, {} top left, {} bottom right",
                     stroke.points().len(),
                     stroke.mesh.len(),
                     stroke.brush_size(),
                     stroke.visible,
-                    stroke.color()
+                    stroke.color(),
+                    stroke.top_left,
+                    stroke.bottom_right,
                 );
             }
             println!("brush={}", self.brush_size);
@@ -951,10 +954,6 @@ where
             .collect(),
         Color::grey(0.3),
     ));
-
-    strokes
-        .iter_mut()
-        .for_each(|stroke| stroke.generate_full_mesh());
 
     strokes
 }

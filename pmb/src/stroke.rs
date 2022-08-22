@@ -1,5 +1,5 @@
 use crate::{
-    graphics::{Color, ColorExt, PixelPos, StrokePoint},
+    graphics::{Color, ColorExt, PixelPos, StrokePoint, StrokePos},
     StrokeBackend,
 };
 
@@ -41,6 +41,8 @@ where
     pub erased: bool,
 
     #[disk_skip] pub visible: bool,
+    #[disk_skip] pub bottom_right: StrokePos,
+    #[disk_skip] pub top_left: StrokePos,
     #[disk_skip] pub draw_tesselated: bool,
     #[disk_skip] pub mesh: Vec<StrokeElement>,
     #[disk_skip] pub backend: Option<S>,
@@ -58,6 +60,8 @@ where
             brush_size: 0.01,
             erased: false,
             visible: true,
+            bottom_right: StrokePos::default(),
+            top_left: StrokePos::default(),
             draw_tesselated: true,
             mesh: Vec::new(),
             backend: None,
@@ -83,12 +87,15 @@ where
     S: StrokeBackend,
 {
     pub fn with_points(points: Vec<StrokeElement>, color: Color) -> Self {
-        Self {
+        let mut this = Self {
             points,
             color,
             backend: None,
             ..Default::default()
-        }
+        };
+        this.update_bounding_box();
+        this.generate_full_mesh();
+        this
     }
 
     pub fn points_as_bytes(&self) -> &[u8] {
@@ -174,6 +181,38 @@ where
         self.backend().is_none() || self.backend().unwrap().is_dirty()
     }
 
+    pub fn update_bounding_box(&mut self) {
+        let mut top = f32::NEG_INFINITY;
+        let mut bottom = f32::INFINITY;
+        let mut right = f32::NEG_INFINITY;
+        let mut left = f32::INFINITY;
+
+        for point in self.points.iter() {
+            if point.x < left {
+                left = point.x;
+            }
+
+            if point.x > right {
+                right = point.x;
+            }
+
+            if point.y > top {
+                top = point.y;
+            }
+
+            if point.y < bottom {
+                bottom = point.y;
+            }
+        }
+
+        self.top_left = StrokePos { x: left, y: top };
+
+        self.bottom_right = StrokePos {
+            x: right,
+            y: bottom,
+        };
+    }
+
     pub fn update_visible<B: crate::Backend>(
         &mut self,
         backend: B,
@@ -182,56 +221,74 @@ where
         width: u32,
         height: u32,
     ) {
-        let screen_top_left = crate::graphics::xform_point_to_pos(
+        use crate::graphics::xform_point_to_pos as xform;
+
+        let screen_top_left = xform(
             origin,
-            backend.ndc_to_stroke(
+            backend.pixel_to_stroke(width, height, zoom, PixelPos::default()),
+        );
+
+        let screen_bottom_right = xform(
+            origin,
+            backend.pixel_to_stroke(
                 width,
                 height,
                 zoom,
-                backend.pixel_to_ndc(width, height, PixelPos::default()),
+                PixelPos {
+                    x: width as f32,
+                    y: height as f32,
+                },
             ),
         );
 
-        let screen_bottom_right = crate::graphics::xform_point_to_pos(
-            origin,
-            backend.ndc_to_stroke(
-                width,
-                height,
-                zoom,
-                backend.pixel_to_ndc(
-                    width,
-                    height,
-                    PixelPos {
-                        x: width as f32,
-                        y: height as f32,
-                    },
-                ),
-            ),
-        );
+        let left = self.top_left.x;
+        let right = self.bottom_right.x;
+        let top = self.top_left.y;
+        let bottom = self.bottom_right.y;
+        let screen_left = screen_top_left.x;
+        let screen_right = screen_bottom_right.x;
+        let screen_top = screen_top_left.y;
+        let screen_bottom = screen_bottom_right.y;
 
-        for point in self.points.iter() {
-            if screen_top_left.x <= point.x
-                && point.x <= screen_bottom_right.x
-                && screen_bottom_right.y <= point.y
-                && point.y <= screen_top_left.y
-            {
-                self.visible = true;
-                return;
-            }
-        }
-
-        self.visible = false;
+        self.visible = left <= screen_right
+            && right >= screen_left
+            && bottom <= screen_top
+            && top >= screen_bottom;
     }
 
     pub fn add_point(&mut self, stylus: &crate::Stylus) {
+        let x = stylus.pos.x;
+        let y = stylus.pos.y;
+
         self.points_mut().push(StrokeElement {
-            x: stylus.pos.x,
-            y: stylus.pos.y,
+            x,
+            y,
             pressure: stylus.pressure,
         });
 
         if self.points.len() >= 4 {
             self.generate_partial_mesh();
+        }
+
+        if self.points.len() == 1 {
+            self.top_left = stylus.pos;
+            self.bottom_right = stylus.pos;
+        }
+
+        if x > self.bottom_right.x {
+            self.bottom_right.x = x;
+        }
+
+        if x < self.top_left.x {
+            self.top_left.x = x;
+        }
+
+        if y > self.top_left.y {
+            self.top_left.y = y;
+        }
+
+        if y < self.bottom_right.y {
+            self.bottom_right.y = y;
         }
 
         if let Some(backend) = self.backend_mut() {
