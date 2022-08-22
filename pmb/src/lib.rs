@@ -635,12 +635,30 @@ where
                 },
             );
 
-            let stylus_pix_x = stylus_pix.x as f32;
-            let stylus_pix_y = stylus_pix.y as f32;
+            let brush_size_stroke = self
+                .backend
+                .pixel_to_stroke(
+                    width,
+                    height,
+                    self.zoom,
+                    PixelPos {
+                        x: self.brush_size as f32,
+                        y: 0.,
+                    },
+                )
+                .x;
 
             if phase == TouchPhase::Move && self.stylus.down() {
                 for stroke in self.strokes.iter_mut() {
                     if stroke.erased() {
+                        continue;
+                    }
+
+                    if !(stroke.top_left.x + brush_size_stroke <= self.stylus.pos.x
+                        && self.stylus.pos.x <= stroke.bottom_right.x - brush_size_stroke
+                        && stroke.bottom_right.y + brush_size_stroke <= self.stylus.pos.y
+                        && self.stylus.pos.y <= stroke.top_left.y - brush_size_stroke)
+                    {
                         continue;
                     }
 
@@ -655,11 +673,8 @@ where
                             },
                         );
 
-                        let point_pix_x = point_pix.x as f32;
-                        let point_pix_y = point_pix.y as f32;
-
-                        let dist = ((stylus_pix_x - point_pix_x).powi(2)
-                            + (stylus_pix_y - point_pix_y).powi(2))
+                        let dist = ((stylus_pix.x - point_pix.x).powi(2)
+                            + (stylus_pix.y - point_pix.y).powi(2))
                         .sqrt()
                             * 2.0;
 
