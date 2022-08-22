@@ -268,7 +268,13 @@ where
         self.update_stroke_primitive();
     }
 
-    pub fn handle_key(&mut self, key: input::Keycode, state: input::ElementState) -> bool {
+    pub fn handle_key(
+        &mut self,
+        key: input::Keycode,
+        state: input::ElementState,
+        width: u32,
+        height: u32,
+    ) -> bool {
         log::debug!("handle key {key:?} {state:?}");
 
         use input::Keycode::*;
@@ -329,10 +335,12 @@ where
                     println!("{},{},{}", point.x, point.y, point.pressure);
                 }
                 println!(
-                    "{} points, {} vertices, {} size",
+                    "{} points, {} vertices, {} size, {} visible, {:?} color",
                     stroke.points().len(),
                     stroke.mesh.len(),
                     stroke.brush_size(),
+                    stroke.visible,
+                    stroke.color()
                 );
             }
             println!("brush={}", self.brush_size);
@@ -369,12 +377,12 @@ where
         }
 
         if just_pressed!(ctrl + NumpadSubtract) {
-            self.change_zoom(-4.25);
+            self.change_zoom(-4.25, width, height);
             request_redraw = true;
         }
 
         if just_pressed!(ctrl + NumpadAdd) {
-            self.change_zoom(4.25);
+            self.change_zoom(4.25, width, height);
             request_redraw = true;
         }
 
@@ -409,7 +417,7 @@ where
             (true, false) => {
                 self.move_origin(width, height, prev_stylus, next_stylus);
             }
-            (true, true) => self.change_zoom(dy),
+            (true, true) => self.change_zoom(dy, width, height),
             _ => {}
         }
     }
@@ -467,6 +475,8 @@ where
         self.origin.x += dx;
         self.origin.y += dy;
 
+        self.update_stroke_visible(width, height);
+
         log::trace!("move origin {}", self.origin);
     }
 
@@ -476,13 +486,21 @@ where
         }
     }
 
-    pub fn change_zoom(&mut self, dz: f32) {
+    fn update_stroke_visible(&mut self, width: u32, height: u32) {
+        for stroke in self.strokes.iter_mut() {
+            stroke.update_visible(self.backend, self.origin, self.zoom, width, height);
+        }
+    }
+
+    pub fn change_zoom(&mut self, dz: f32, width: u32, height: u32) {
         if (self.zoom + dz).is_finite() {
             self.zoom += dz;
         }
 
         self.zoom = self.zoom.clamp(MIN_ZOOM, MAX_ZOOM);
         self.update_stroke_primitive();
+        self.update_stroke_visible(width, height);
+
         log::debug!("change zoom {}", self.zoom);
     }
 

@@ -108,7 +108,8 @@ async fn run() {
                 const ZOOM_SPEED: f32 = 4.25;
 
                 let dzoom = if zoom_in { ZOOM_SPEED } else { -ZOOM_SPEED };
-                state.change_zoom(dzoom);
+                let PhysicalSize { width, height } = window.inner_size();
+                state.change_zoom(dzoom, width, height);
                 window.request_redraw();
             }
 
@@ -152,7 +153,8 @@ async fn run() {
             } => {
                 let key = pmb_wgpu::winit_to_pmb_keycode(key);
                 let key_state = pmb_wgpu::winit_to_pmb_key_state(key_state);
-                if state.handle_key(key, key_state) {
+                let PhysicalSize { width, height } = window.inner_size();
+                if state.handle_key(key, key_state, width, height) {
                     window.request_redraw();
                 }
             }

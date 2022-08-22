@@ -395,7 +395,11 @@ impl StrokeRenderer {
         pass.set_bind_group(0, &self.view_bind_group, &[]);
 
         for stroke in state.strokes.iter() {
-            if !should_draw(stroke) || stroke.erased() || stroke.points().is_empty() {
+            if !stroke.visible
+                || !should_draw(stroke)
+                || stroke.erased()
+                || stroke.points().is_empty()
+            {
                 continue;
             }
 

@@ -1,5 +1,5 @@
 use crate::{
-    graphics::{Color, ColorExt},
+    graphics::{Color, ColorExt, PixelPos, StrokePoint},
     StrokeBackend,
 };
 
@@ -40,6 +40,7 @@ where
     pub brush_size: f32,
     pub erased: bool,
 
+    #[disk_skip] pub visible: bool,
     #[disk_skip] pub draw_tesselated: bool,
     #[disk_skip] pub mesh: Vec<StrokeElement>,
     #[disk_skip] pub backend: Option<S>,
@@ -56,6 +57,7 @@ where
             color: Color::WHITE,
             brush_size: 0.01,
             erased: false,
+            visible: true,
             draw_tesselated: true,
             mesh: Vec::new(),
             backend: None,
@@ -128,7 +130,7 @@ where
         &self.points
     }
 
-    pub fn points_mut(&mut self) -> &mut Vec<StrokeElement> {
+    fn points_mut(&mut self) -> &mut Vec<StrokeElement> {
         &mut self.points
     }
 
@@ -170,6 +172,55 @@ where
 
     pub fn is_dirty(&self) -> bool {
         self.backend().is_none() || self.backend().unwrap().is_dirty()
+    }
+
+    pub fn update_visible<B: crate::Backend>(
+        &mut self,
+        backend: B,
+        origin: StrokePoint,
+        zoom: f32,
+        width: u32,
+        height: u32,
+    ) {
+        let screen_top_left = crate::graphics::xform_point_to_pos(
+            origin,
+            backend.ndc_to_stroke(
+                width,
+                height,
+                zoom,
+                backend.pixel_to_ndc(width, height, PixelPos::default()),
+            ),
+        );
+
+        let screen_bottom_right = crate::graphics::xform_point_to_pos(
+            origin,
+            backend.ndc_to_stroke(
+                width,
+                height,
+                zoom,
+                backend.pixel_to_ndc(
+                    width,
+                    height,
+                    PixelPos {
+                        x: width as f32,
+                        y: height as f32,
+                    },
+                ),
+            ),
+        );
+
+        for point in self.points.iter() {
+            if screen_top_left.x <= point.x
+                && point.x <= screen_bottom_right.x
+                && screen_bottom_right.y <= point.y
+                && point.y <= screen_top_left.y
+            {
+                self.visible = true;
+                return;
+            }
+        }
+
+        self.visible = false;
     }
 
     pub fn add_point(&mut self, stylus: &crate::Stylus) {

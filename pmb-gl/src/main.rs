@@ -134,7 +134,8 @@ fn main() {
                 let key = pmb_gl::glutin_to_pmb_keycode(key);
                 let key_state = pmb_gl::glutin_to_pmb_key_state(key_state);
 
-                if state.handle_key(key, key_state) {
+                let PhysicalSize { width, height } = context.window().inner_size();
+                if state.handle_key(key, key_state, width, height) {
                     context.window().request_redraw();
                 }
 
@@ -240,7 +241,8 @@ fn main() {
                 const ZOOM_SPEED: f32 = 4.25;
 
                 let dzoom = if zoom_in { ZOOM_SPEED } else { -ZOOM_SPEED };
-                state.change_zoom(dzoom);
+                let PhysicalSize { width, height } = context.window().inner_size();
+                state.change_zoom(dzoom, width, height);
 
                 context.window().request_redraw();
             }
@@ -385,7 +387,7 @@ fn main() {
                 }
 
                 for stroke in state.strokes.iter() {
-                    if stroke.points().is_empty() || stroke.erased() {
+                    if !stroke.visible || stroke.points().is_empty() || stroke.erased() {
                         continue;
                     }
 
