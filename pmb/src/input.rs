@@ -58,8 +58,8 @@ impl KeyState {
     }
 }
 
-#[derive(Default)]
-pub struct KeyboardHandler {
+#[derive(Default, Debug)]
+pub struct InputHandler {
     keys: HashMap<Keycode, KeyState>,
     buttons: HashMap<MouseButton, KeyState>,
     cursor_pos: PixelPos,
@@ -81,7 +81,7 @@ fn cycle_state(key_state: KeyState, element_state: ElementState) -> KeyState {
     }
 }
 
-impl KeyboardHandler {
+impl InputHandler {
     pub(super) fn handle_mouse_move(&mut self, cursor_pos: PixelPos) {
         self.cursor_pos = cursor_pos;
     }

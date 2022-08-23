@@ -194,7 +194,7 @@ where
     #[disk_skip] pub gesture_state: GestureState,
     #[disk_skip] pub modified: bool,
     #[disk_skip] pub path: Option<PathBuf>,
-    #[disk_skip] pub input: input::KeyboardHandler,
+    #[disk_skip] pub input: input::InputHandler,
     #[disk_skip] pub backend: B,
 }
 
@@ -232,7 +232,7 @@ where
             gesture_state: GestureState::NoInput,
             modified: false,
             path: None,
-            input: input::KeyboardHandler::default(),
+            input: input::InputHandler::default(),
             backend: Default::default(),
         };
 
