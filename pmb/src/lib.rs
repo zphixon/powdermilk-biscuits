@@ -703,14 +703,21 @@ where
                         },
                     );
 
-                    self.strokes
-                        .push(Stroke::new(rand::random(), stroke_brush_size.x / 2.));
+                    let mut stroke = Stroke::new(rand::random(), stroke_brush_size.x / 2.);
+                    stroke.add_point(&self.stylus);
+                    self.strokes.push(stroke);
                 }
 
                 TouchPhase::Move => {
                     if let Some(stroke) = self.strokes.last_mut() {
                         if self.stylus.down() {
-                            stroke.add_point(&self.stylus);
+                            let last = stroke.points.last_mut().unwrap();
+                            let dist = ((self.stylus.pos.x - last.x).powi(2)
+                                + (self.stylus.pos.y - last.y).powi(2))
+                            .sqrt();
+                            if dist >= 0.02 {
+                                stroke.add_point(&self.stylus);
+                            }
                         }
                     }
                 }
