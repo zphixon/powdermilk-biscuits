@@ -1,8 +1,8 @@
 use crate::{
-    event::Touch,
+    event::{Touch, TouchPhase},
     graphics::PixelPos,
     input::{ElementState, InputHandler, Keycode, MouseButton},
-    Backend, Stroke, StrokeBackend, StrokePoint, Stylus,
+    Backend, Stroke, StrokeBackend, StrokePoint, Stylus, StylusPosition, StylusState,
 };
 use std::path::{Path, PathBuf};
 
@@ -213,15 +213,50 @@ impl<B: Backend> Ui<B> {
 
     fn update_stylus_from_mouse<S: StrokeBackend>(
         &mut self,
+        config: &Config,
         sketch: &Sketch<S>,
-        location: PixelPos,
+        phase: TouchPhase,
     ) {
+        let location = self.input.cursor_pos();
+        let point = self
+            .backend
+            .pixel_to_stroke(self.width, self.height, sketch.zoom, location);
+        let pos = crate::graphics::xform_point_to_pos(sketch.origin, point);
+        let eraser = config.active_tool == Tool::Eraser;
+        let pressure = if self.input.button_down(config.primary_button) {
+            1.0
+        } else {
+            0.0
+        };
+        let state = match phase {
+            TouchPhase::Start => StylusState {
+                pos: StylusPosition::Down,
+                eraser,
+            },
+
+            TouchPhase::Move => {
+                self.stylus.state.eraser = eraser;
+                self.stylus.state
+            }
+
+            TouchPhase::End | TouchPhase::Cancel => StylusState {
+                pos: StylusPosition::Up,
+                eraser,
+            },
+        };
+
+        self.stylus.point = point;
+        self.stylus.pos = pos;
+        self.stylus.pressure = pressure;
+        self.stylus.state = state;
     }
 
-    fn update_stylus_from_touch<S: StrokeBackend>(&mut self, sketch: &Sketch<S>, touch: Touch) {
-        use crate::event::TouchPhase;
-        use crate::{StylusPosition, StylusState};
-
+    fn update_stylus_from_touch<S: StrokeBackend>(
+        &mut self,
+        config: &Config,
+        sketch: &Sketch<S>,
+        touch: Touch,
+    ) {
         let Touch {
             force,
             phase,
@@ -238,7 +273,7 @@ impl<B: Backend> Ui<B> {
 
         let eraser = pen_info
             .map(|info| info.inverted || info.eraser)
-            .unwrap_or(self.stylus.state.eraser);
+            .unwrap_or(config.active_tool == Tool::Eraser);
 
         let state = match phase {
             TouchPhase::Start => StylusState {
@@ -275,13 +310,13 @@ impl<B: Backend> Ui<B> {
         self.state = match (self.state, event) {
             // pen input
             (S::Ready, E::MovePen(touch)) => {
-                self.update_stylus_from_touch(sketch, touch);
+                self.update_stylus_from_touch(config, sketch, touch);
                 S::Ready
             }
 
             (S::Ready, E::PenDown(touch)) => match config.active_tool {
                 Tool::Pen => {
-                    self.update_stylus_from_touch(sketch, touch);
+                    self.update_stylus_from_touch(config, sketch, touch);
                     self.start_stroke(sketch);
                     S::PenDraw
                 }
@@ -289,22 +324,17 @@ impl<B: Backend> Ui<B> {
             },
 
             (S::PenDraw, E::MovePen(touch)) => {
-                self.update_stylus_from_touch(sketch, touch);
+                self.update_stylus_from_touch(config, sketch, touch);
                 self.continue_stroke(sketch);
                 S::PenDraw
             }
 
             (S::PenDraw | S::PenErase, E::PenUp(touch)) => {
-                self.update_stylus_from_touch(sketch, touch);
+                self.update_stylus_from_touch(config, sketch, touch);
                 S::Ready
             }
             (S::Ready, E::StartPan) => S::Pan,
-            (
-                S::Pan,
-                E::MoveMouse(location)
-                | E::MovePen(Touch { location, .. })
-                | E::MoveTouch(Touch { location, .. }),
-            ) => {
+            (S::Pan, E::MovePen(Touch { location, .. }) | E::MoveTouch(Touch { location, .. })) => {
                 // state.change_origin()
                 S::Pan
             }
@@ -317,10 +347,21 @@ impl<B: Backend> Ui<B> {
             (S::PreZoom, E::StartPan) => S::Zoom,
 
             // mouse input
+            (S::Ready, E::MoveMouse(location)) => {
+                self.input.handle_mouse_move(location);
+
+                if config.use_mouse_for_pen {
+                    self.update_stylus_from_mouse(config, sketch, TouchPhase::End);
+                }
+
+                S::Ready
+            }
+
             (S::Ready, E::MouseDown(button)) => {
                 self.input
                     .handle_mouse_button(button, ElementState::Pressed);
                 if config.use_mouse_for_pen {
+                    self.update_stylus_from_mouse(config, sketch, TouchPhase::Start);
                     // update stylus
                     match config.active_tool {
                         Tool::Pen => S::MouseDraw,
@@ -330,12 +371,37 @@ impl<B: Backend> Ui<B> {
                     S::Pan
                 }
             }
-            (S::MouseDraw | S::MouseErase | S::Pan, E::MouseUp(_)) => S::Ready,
+
+            (S::MouseDraw, E::MoveMouse(location)) => {
+                self.input.handle_mouse_move(location);
+                self.update_stylus_from_mouse(config, sketch, TouchPhase::Move);
+                self.continue_stroke(sketch);
+                S::MouseDraw
+            }
+
+            (S::MouseDraw, E::MouseUp(button)) => {
+                self.input
+                    .handle_mouse_button(button, ElementState::Released);
+                self.update_stylus_from_mouse(config, sketch, TouchPhase::End);
+                S::Ready
+            }
+
+            (S::Pan, E::MoveMouse(location)) => {
+                self.input.handle_mouse_move(location);
+                // self.chagne_origin();
+                S::Pan
+            }
+
+            (S::Pan, E::MouseUp(button)) => {
+                self.input
+                    .handle_mouse_button(button, ElementState::Released);
+                S::Ready
+            }
 
             // touch input
             (S::Ready, E::Touch(touch)) => {
                 if config.use_finger_for_pen {
-                    self.update_stylus_from_touch(sketch, touch);
+                    self.update_stylus_from_touch(config, sketch, touch);
                     match config.active_tool {
                         Tool::Pen => S::TouchDraw,
                         Tool::Eraser => S::TouchErase,
