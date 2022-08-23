@@ -1,8 +1,8 @@
 use glutin::{
     dpi::PhysicalSize,
     event::{
-        ElementState, Event as Gevent, KeyboardInput, MouseButton, Touch, TouchPhase,
-        VirtualKeyCode, WindowEvent,
+        ElementState, Event as Gevent, KeyboardInput, Touch, TouchPhase, VirtualKeyCode,
+        WindowEvent,
     },
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
@@ -88,57 +88,61 @@ fn main() {
                         ..
                     },
                 ..
-            } => match (key, state) {
-                (VirtualKeyCode::LControl, ElementState::Pressed)
-                    if config.prev_device == Device::Pen =>
-                {
-                    ui.next(&config, &mut sketch, Pevent::StartZoom)
-                }
-
-                (VirtualKeyCode::LControl, ElementState::Released) => {
-                    ui.next(&config, &mut sketch, Pevent::EndZoom)
-                }
-
-                (VirtualKeyCode::M, ElementState::Pressed) => {
-                    config.use_mouse_for_pen = !config.use_mouse_for_pen;
-                    println!("using mouse for pen? {}", config.use_mouse_for_pen);
-                }
-
-                (VirtualKeyCode::F, ElementState::Pressed) => {
-                    config.use_finger_for_pen = !config.use_finger_for_pen;
-                    println!("using finger for pen? {}", config.use_finger_for_pen);
-                }
-
-                (VirtualKeyCode::E, ElementState::Pressed)
-                    if config.prev_device == Device::Mouse || !config.stylus_may_be_inverted =>
-                {
-                    if config.active_tool != Tool::Eraser {
-                        config.active_tool = Tool::Eraser;
-                    } else {
-                        config.active_tool = Tool::Pen;
+            } => {
+                let key = pmb_gl::glutin_to_pmb_keycode(key);
+                match (key, state) {
+                    (zoom, ElementState::Pressed)
+                        if config.prev_device == Device::Pen && zoom == config.pen_zoom_key =>
+                    {
+                        ui.next(&config, &mut sketch, Pevent::StartZoom)
                     }
-                }
 
-                _ => {}
-            },
+                    (zoom, ElementState::Released) if zoom == config.pen_zoom_key => {
+                        ui.next(&config, &mut sketch, Pevent::EndZoom)
+                    }
+
+                    (mouse, ElementState::Pressed) if mouse == config.use_mouse_for_pen_key => {
+                        config.use_mouse_for_pen = !config.use_mouse_for_pen;
+                        println!("using mouse for pen? {}", config.use_mouse_for_pen);
+                    }
+
+                    (finger, ElementState::Pressed) if finger == config.use_finger_for_pen_key => {
+                        config.use_finger_for_pen = !config.use_finger_for_pen;
+                        println!("using finger for pen? {}", config.use_finger_for_pen);
+                    }
+
+                    (swap, ElementState::Pressed)
+                        if (config.prev_device == Device::Mouse
+                            || !config.stylus_may_be_inverted)
+                            && swap == config.swap_eraser_key =>
+                    {
+                        if config.active_tool != Tool::Eraser {
+                            config.active_tool = Tool::Eraser;
+                        } else {
+                            config.active_tool = Tool::Pen;
+                        }
+                    }
+
+                    _ => {}
+                }
+            }
 
             Gevent::WindowEvent {
                 event: WindowEvent::MouseInput { state, button, .. },
                 ..
             } => {
-                use powdermilk_biscuits::input::MouseButton as PmouseButton;
                 let button = pmb_gl::glutin_to_pmb_mouse_button(button);
                 match (button, state) {
-                    (PmouseButton::Left, ElementState::Pressed) => {
+                    (primary, ElementState::Pressed) if primary == config.primary_button => {
                         ui.next(&config, &mut sketch, Pevent::MouseDown(button))
                     }
-                    (PmouseButton::Left, ElementState::Released) => {
+                    (primary, ElementState::Released) if primary == config.primary_button => {
                         ui.next(&config, &mut sketch, Pevent::MouseUp(button))
                     }
-                    (PmouseButton::Middle, ElementState::Pressed) => {
+                    (pan, ElementState::Pressed) if pan == config.pan_button => {
                         ui.next(&config, &mut sketch, Pevent::StartPan)
                     }
-                    (PmouseButton::Middle, ElementState::Released) => {
+                    (pan, ElementState::Released) if pan == config.pan_button => {
                         ui.next(&config, &mut sketch, Pevent::EndPan)
                     }
                     _ => {}

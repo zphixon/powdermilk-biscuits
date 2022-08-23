@@ -1,7 +1,7 @@
 use crate::{
     event::Touch,
     graphics::PixelPos,
-    input::{ElementState, InputHandler, MouseButton},
+    input::{ElementState, InputHandler, Keycode, MouseButton},
     Backend, Stroke, StrokeBackend, StrokePoint, Stylus,
 };
 use std::path::{Path, PathBuf};
@@ -101,6 +101,12 @@ pub struct Config {
     pub use_finger_for_pen: bool,
     pub stylus_may_be_inverted: bool,
     pub active_tool: Tool,
+    pub primary_button: MouseButton,
+    pub pan_button: MouseButton,
+    pub pen_zoom_key: Keycode,
+    pub use_mouse_for_pen_key: Keycode,
+    pub use_finger_for_pen_key: Keycode,
+    pub swap_eraser_key: Keycode,
 }
 
 impl Default for Config {
@@ -111,6 +117,12 @@ impl Default for Config {
             use_finger_for_pen: true,
             active_tool: Tool::Pen,
             stylus_may_be_inverted: true,
+            primary_button: MouseButton::Left,
+            pan_button: MouseButton::Middle,
+            pen_zoom_key: Keycode::LControl,
+            use_mouse_for_pen_key: Keycode::M,
+            use_finger_for_pen_key: Keycode::F,
+            swap_eraser_key: Keycode::E,
         }
     }
 }
