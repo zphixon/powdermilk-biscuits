@@ -563,7 +563,7 @@ impl CursorRenderer {
 
         let info_buffer = [
             if state.stylus.down() { 1.0f32 } else { 0. },
-            if state.stylus.inverted() { 1. } else { 0. },
+            if state.stylus.eraser() { 1. } else { 0. },
         ];
 
         pass.set_pipeline(&self.pipeline);

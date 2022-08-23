@@ -448,7 +448,7 @@ fn main() {
 
                         gl.uniform_1_f32(
                             Some(&pen_cursor_erasing),
-                            if state.stylus.inverted() { 1.0 } else { 0.0 },
+                            if state.stylus.eraser() { 1.0 } else { 0.0 },
                         );
                         gl.uniform_1_f32(
                             Some(&pen_cursor_pen_down),
