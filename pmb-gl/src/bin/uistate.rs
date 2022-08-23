@@ -1,4 +1,5 @@
 use glutin::{
+    dpi::PhysicalSize,
     event::{
         ElementState, Event as Gevent, KeyboardInput, MouseButton, Touch, TouchPhase,
         VirtualKeyCode, WindowEvent,
@@ -6,21 +7,22 @@ use glutin::{
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
-use powdermilk_biscuits::ui::{Config, Device, Event as Pevent, Tool, UiState};
+use pmb_gl::{GlBackend, GlStrokeBackend};
+use powdermilk_biscuits::ui::{Config, Device, Event as Pevent, Sketch, Tool, Ui};
 
 fn main() {
     let ev = EventLoop::new();
-    let _window = WindowBuilder::new().build(&ev);
+    let window = WindowBuilder::new().build(&ev).unwrap();
+    let PhysicalSize { width, height } = window.inner_size();
 
-    let mut ui_state = UiState::default();
+    let mut sketch = Sketch::<GlStrokeBackend>::default();
+    let mut ui = Ui::<GlBackend>::new(width, height);
     let mut config = Config::default();
 
     ev.run(move |event, _, flow| {
         *flow = ControlFlow::Wait;
 
-        if !matches!(ui_state, UiState::Ready) {
-            println!("{:?}", ui_state);
-        }
+        println!("{:?}", ui);
 
         match event {
             Gevent::WindowEvent {
@@ -45,13 +47,16 @@ fn main() {
 
             Gevent::WindowEvent {
                 event:
-                    WindowEvent::Touch(Touch {
-                        phase,
-                        pen_info: Some(pen_info),
-                        ..
-                    }),
+                    WindowEvent::Touch(
+                        touch @ Touch {
+                            phase,
+                            pen_info: Some(pen_info),
+                            ..
+                        },
+                    ),
                 ..
             } => {
+                let touch = pmb_gl::glutin_to_pmb_touch(touch);
                 if config.stylus_may_be_inverted {
                     if pen_info.inverted {
                         config.active_tool = Tool::Eraser;
@@ -61,10 +66,10 @@ fn main() {
                 }
 
                 match phase {
-                    TouchPhase::Started => ui_state.next(&config, Pevent::PenDown),
-                    TouchPhase::Moved => ui_state.next(&config, Pevent::MovePen),
+                    TouchPhase::Started => ui.next(&config, &mut sketch, Pevent::PenDown(touch)),
+                    TouchPhase::Moved => ui.next(&config, &mut sketch, Pevent::MovePen(touch)),
                     TouchPhase::Ended | TouchPhase::Cancelled => {
-                        ui_state.next(&config, Pevent::PenUp)
+                        ui.next(&config, &mut sketch, Pevent::PenUp(touch))
                     }
                 }
 
@@ -87,11 +92,11 @@ fn main() {
                 (VirtualKeyCode::LControl, ElementState::Pressed)
                     if config.prev_device == Device::Pen =>
                 {
-                    ui_state.next(&config, Pevent::StartZoom)
+                    ui.next(&config, &mut sketch, Pevent::StartZoom)
                 }
 
                 (VirtualKeyCode::LControl, ElementState::Released) => {
-                    ui_state.next(&config, Pevent::EndZoom)
+                    ui.next(&config, &mut sketch, Pevent::EndZoom)
                 }
 
                 (VirtualKeyCode::M, ElementState::Pressed) => {
@@ -121,18 +126,20 @@ fn main() {
                 event: WindowEvent::MouseInput { state, button, .. },
                 ..
             } => {
+                use powdermilk_biscuits::input::MouseButton as PmouseButton;
+                let button = pmb_gl::glutin_to_pmb_mouse_button(button);
                 match (button, state) {
-                    (MouseButton::Left, ElementState::Pressed) => {
-                        ui_state.next(&config, Pevent::MouseDown)
+                    (PmouseButton::Left, ElementState::Pressed) => {
+                        ui.next(&config, &mut sketch, Pevent::MouseDown(button))
                     }
-                    (MouseButton::Left, ElementState::Released) => {
-                        ui_state.next(&config, Pevent::MouseUp)
+                    (PmouseButton::Left, ElementState::Released) => {
+                        ui.next(&config, &mut sketch, Pevent::MouseUp(button))
                     }
-                    (MouseButton::Middle, ElementState::Pressed) => {
-                        ui_state.next(&config, Pevent::StartPan)
+                    (PmouseButton::Middle, ElementState::Pressed) => {
+                        ui.next(&config, &mut sketch, Pevent::StartPan)
                     }
-                    (MouseButton::Middle, ElementState::Released) => {
-                        ui_state.next(&config, Pevent::EndPan)
+                    (PmouseButton::Middle, ElementState::Released) => {
+                        ui.next(&config, &mut sketch, Pevent::EndPan)
                     }
                     _ => {}
                 }
@@ -141,32 +148,47 @@ fn main() {
             }
 
             Gevent::WindowEvent {
-                event: WindowEvent::CursorMoved { .. },
+                event: WindowEvent::CursorMoved { position, .. },
                 ..
             } => {
-                ui_state.next(&config, Pevent::MoveMouse);
+                ui.next(
+                    &config,
+                    &mut sketch,
+                    Pevent::MoveMouse(pmb_gl::physical_pos_to_pixel_pos(position)),
+                );
                 config.prev_device = Device::Mouse;
             }
 
             Gevent::WindowEvent {
                 event:
-                    WindowEvent::Touch(Touch {
-                        phase,
-                        pen_info: None,
-                        ..
-                    }),
+                    WindowEvent::Touch(
+                        touch @ Touch {
+                            phase,
+                            pen_info: None,
+                            ..
+                        },
+                    ),
                 ..
             } => {
-                ui_state.next(
+                let touch = pmb_gl::glutin_to_pmb_touch(touch);
+                ui.next(
                     &config,
+                    &mut sketch,
                     match phase {
-                        TouchPhase::Started => Pevent::Touch,
-                        TouchPhase::Moved => Pevent::MovePen,
-                        TouchPhase::Ended | TouchPhase::Cancelled => Pevent::Release,
+                        TouchPhase::Started => Pevent::Touch(touch),
+                        TouchPhase::Moved => Pevent::MovePen(touch),
+                        TouchPhase::Ended | TouchPhase::Cancelled => Pevent::Release(touch),
                     },
                 );
 
                 config.prev_device = Device::Touch;
+            }
+
+            Gevent::WindowEvent {
+                event: WindowEvent::Resized(new_size),
+                ..
+            } => {
+                ui.resize(new_size.width, new_size.height);
             }
 
             _ => {}

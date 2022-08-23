@@ -7,7 +7,7 @@ pub struct PenInfo {
     pub eraser: bool,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone, Copy)]
 pub enum TouchPhase {
     Start,
     Move,
@@ -15,7 +15,7 @@ pub enum TouchPhase {
     Cancel,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Touch {
     pub force: Option<f64>,
     pub phase: TouchPhase,
