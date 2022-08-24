@@ -80,6 +80,8 @@ fn main() {
                     cursor_visible = false;
                     window.set_cursor_visible(false);
                 }
+
+                window.request_redraw();
             }
 
             Gevent::WindowEvent {
@@ -100,11 +102,13 @@ fn main() {
                     (zoom, ElementState::Pressed)
                         if config.prev_device == Device::Pen && zoom == config.pen_zoom_key =>
                     {
-                        ui.next(&config, &mut sketch, Pevent::StartZoom)
+                        ui.next(&config, &mut sketch, Pevent::StartZoom);
+                        window.request_redraw();
                     }
 
                     (zoom, ElementState::Released) if zoom == config.pen_zoom_key => {
-                        ui.next(&config, &mut sketch, Pevent::EndZoom)
+                        ui.next(&config, &mut sketch, Pevent::EndZoom);
+                        window.request_redraw();
                     }
 
                     (mouse, ElementState::Pressed) if mouse == config.use_mouse_for_pen_key => {
@@ -127,6 +131,7 @@ fn main() {
                         } else {
                             config.active_tool = Tool::Pen;
                         }
+                        window.request_redraw();
                     }
 
                     _ => {}
@@ -140,16 +145,18 @@ fn main() {
                 let button = pmb_gl::glutin_to_pmb_mouse_button(button);
                 match (button, state) {
                     (primary, ElementState::Pressed) if primary == config.primary_button => {
-                        ui.next(&config, &mut sketch, Pevent::MouseDown(button))
+                        ui.next(&config, &mut sketch, Pevent::MouseDown(button));
+                        window.request_redraw();
                     }
                     (primary, ElementState::Released) if primary == config.primary_button => {
-                        ui.next(&config, &mut sketch, Pevent::MouseUp(button))
+                        ui.next(&config, &mut sketch, Pevent::MouseUp(button));
+                        window.request_redraw();
                     }
                     (pan, ElementState::Pressed) if pan == config.pan_button => {
-                        ui.next(&config, &mut sketch, Pevent::StartPan)
+                        ui.next(&config, &mut sketch, Pevent::StartPan);
                     }
                     (pan, ElementState::Released) if pan == config.pan_button => {
-                        ui.next(&config, &mut sketch, Pevent::EndPan)
+                        ui.next(&config, &mut sketch, Pevent::EndPan);
                     }
                     _ => {}
                 }
@@ -173,6 +180,7 @@ fn main() {
                         cursor_visible = false;
                         window.set_cursor_visible(false);
                     }
+                    window.request_redraw();
                 } else if !cursor_visible {
                     cursor_visible = true;
                     window.set_cursor_visible(true);
@@ -207,6 +215,8 @@ fn main() {
                     cursor_visible = false;
                     window.set_cursor_visible(false);
                 }
+
+                window.request_redraw();
             }
 
             Gevent::WindowEvent {
@@ -214,6 +224,7 @@ fn main() {
                 ..
             } => {
                 ui.resize(new_size.width, new_size.height);
+                window.request_redraw();
             }
 
             _ => {}
