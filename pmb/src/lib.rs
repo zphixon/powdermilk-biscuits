@@ -87,6 +87,33 @@ pub trait Backend: std::fmt::Debug + Default + Clone + Copy {
         let ndc = self.stroke_to_ndc(width, height, zoom, pos);
         self.ndc_to_pixel(width, height, ndc)
     }
+
+    fn pixel_to_pos(
+        &self,
+        width: u32,
+        height: u32,
+        zoom: f32,
+        origin: StrokePoint,
+        pos: PixelPos,
+    ) -> StrokePos {
+        graphics::xform_point_to_pos(origin, self.pixel_to_stroke(width, height, zoom, pos))
+    }
+
+    fn pos_to_pixel(
+        &self,
+        width: u32,
+        height: u32,
+        zoom: f32,
+        origin: StrokePoint,
+        pos: StrokePos,
+    ) -> PixelPos {
+        self.stroke_to_pixel(
+            width,
+            height,
+            zoom,
+            graphics::xform_pos_to_point(origin, pos),
+        )
+    }
 }
 
 pub trait StrokeBackend: std::fmt::Debug {
@@ -417,17 +444,15 @@ where
         let next_y = self.input.cursor_pos().y;
         let dy = next_y - prev_y;
 
-        let prev_ndc = self
+        let prev_stylus = self
             .backend
-            .stroke_to_ndc(width, height, self.zoom, self.stylus.point);
-        let prev_stylus = self.backend.ndc_to_pixel(width, height, prev_ndc);
+            .stroke_to_pixel(width, height, self.zoom, self.stylus.point);
 
         self.update_stylus(width, height, touch);
 
-        let next_ndc = self
+        let next_stylus = self
             .backend
-            .stroke_to_ndc(width, height, self.zoom, self.stylus.point);
-        let next_stylus = self.backend.ndc_to_pixel(width, height, next_ndc);
+            .stroke_to_pixel(width, height, self.zoom, self.stylus.point);
 
         match (
             self.input.button_down(input::MouseButton::Middle),
@@ -477,17 +502,12 @@ where
     }
 
     fn move_origin(&mut self, width: u32, height: u32, prev: PixelPos, next: PixelPos) {
-        use graphics::xform_point_to_pos as xform;
-
-        let prev_xformed = xform(
-            self.origin,
-            self.backend.pixel_to_stroke(width, height, self.zoom, prev),
-        );
-
-        let next_xformed = xform(
-            self.origin,
-            self.backend.pixel_to_stroke(width, height, self.zoom, next),
-        );
+        let prev_xformed = self
+            .backend
+            .pixel_to_pos(width, height, self.zoom, self.origin, prev);
+        let next_xformed = self
+            .backend
+            .pixel_to_pos(width, height, self.zoom, self.origin, next);
 
         let dx = next_xformed.x - prev_xformed.x;
         let dy = next_xformed.y - prev_xformed.y;
