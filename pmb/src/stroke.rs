@@ -1,5 +1,5 @@
 use crate::{
-    graphics::{Color, ColorExt, PixelPos, StrokePoint, StrokePos},
+    graphics::{Color, ColorExt, StrokePos},
     StrokeBackend,
 };
 
@@ -213,33 +213,9 @@ where
         };
     }
 
-    pub fn update_visible<B: crate::Backend>(
-        &mut self,
-        backend: B,
-        origin: StrokePoint,
-        zoom: f32,
-        width: u32,
-        height: u32,
-    ) {
-        use crate::graphics::xform_point_to_pos as xform;
-
-        let screen_top_left = xform(
-            origin,
-            backend.pixel_to_stroke(width, height, zoom, PixelPos::default()),
-        );
-
-        let screen_bottom_right = xform(
-            origin,
-            backend.pixel_to_stroke(
-                width,
-                height,
-                zoom,
-                PixelPos {
-                    x: width as f32,
-                    y: height as f32,
-                },
-            ),
-        );
+    pub fn update_visible(&mut self, top_left: StrokePos, bottom_right: StrokePos) {
+        let screen_top_left = top_left;
+        let screen_bottom_right = bottom_right;
 
         let left = self.top_left.x;
         let right = self.bottom_right.x;

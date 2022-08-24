@@ -526,8 +526,23 @@ where
     }
 
     fn update_stroke_visible(&mut self, width: u32, height: u32) {
+        let top_left =
+            self.backend
+                .pixel_to_pos(width, height, self.zoom, self.origin, PixelPos::default());
+
+        let bottom_right = self.backend.pixel_to_pos(
+            width,
+            height,
+            self.zoom,
+            self.origin,
+            PixelPos {
+                x: width as f32,
+                y: height as f32,
+            },
+        );
+
         for stroke in self.strokes.iter_mut() {
-            stroke.update_visible(self.backend, self.origin, self.zoom, width, height);
+            stroke.update_visible(top_left, bottom_right);
         }
     }
 
