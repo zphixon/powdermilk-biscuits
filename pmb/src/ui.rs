@@ -1,6 +1,6 @@
 use crate::{
     event::{Touch, TouchPhase},
-    graphics::PixelPos,
+    graphics::{PixelPos, StrokePos},
     input::{ElementState, InputHandler, Keycode, MouseButton},
     Backend, Stroke, StrokeBackend, StrokePoint, Stylus, StylusPosition, StylusState,
 };
@@ -47,14 +47,17 @@ pub fn open_dialog() -> Option<PathBuf> {
 #[derive(Debug, Clone, Copy)]
 pub enum Event {
     Touch(Touch),
+    TouchMove(Touch),
     Release(Touch),
+
     PenDown(Touch),
+    PenMove(Touch),
     PenUp(Touch),
-    MovePen(Touch),
-    MoveMouse(PixelPos),
-    MoveTouch(Touch),
+
     MouseDown(MouseButton),
+    MouseMove(PixelPos),
     MouseUp(MouseButton),
+
     StartPan,
     EndPan,
     StartZoom,
@@ -145,6 +148,12 @@ impl<S: StrokeBackend> Sketch<S> {
             strokes: Vec::new(),
             zoom: crate::DEFAULT_ZOOM,
             origin: StrokePoint::default(),
+        }
+    }
+
+    pub fn update_visible_strokes(&mut self, top_left: StrokePos, bottom_right: StrokePos) {
+        for stroke in self.strokes.iter_mut() {
+            stroke.update_visible(top_left, bottom_right);
         }
     }
 }
@@ -298,6 +307,42 @@ impl<B: Backend> Ui<B> {
         self.stylus.state = state;
     }
 
+    fn update_visible_strokes<S: StrokeBackend>(&self, sketch: &mut Sketch<S>) {
+        let top_left = self.backend.pixel_to_pos(
+            self.width,
+            self.height,
+            sketch.zoom,
+            sketch.origin,
+            PixelPos::default(),
+        );
+
+        let bottom_right = self.backend.pixel_to_pos(
+            self.width,
+            self.height,
+            sketch.zoom,
+            sketch.origin,
+            PixelPos {
+                x: self.width as f32,
+                y: self.height as f32,
+            },
+        );
+
+        sketch.update_visible_strokes(top_left, bottom_right);
+    }
+
+    fn move_origin<S: StrokeBackend>(
+        &mut self,
+        sketch: &mut Sketch<S>,
+        prev: StrokePos,
+        next: StrokePos,
+    ) {
+        let dx = next.x - prev.x;
+        let dy = next.y - prev.y;
+        sketch.origin.x += dx;
+        sketch.origin.y += dy;
+        self.update_visible_strokes(sketch);
+    }
+
     pub fn next<S: StrokeBackend>(
         &mut self,
         config: &Config,
@@ -309,7 +354,7 @@ impl<B: Backend> Ui<B> {
 
         self.state = match (self.state, event) {
             // pen input
-            (S::Ready, E::MovePen(touch)) => {
+            (S::Ready, E::PenMove(touch)) => {
                 self.update_stylus_from_touch(config, sketch, touch);
                 S::Ready
             }
@@ -323,7 +368,7 @@ impl<B: Backend> Ui<B> {
                 Tool::Eraser => S::PenErase,
             },
 
-            (S::PenDraw, E::MovePen(touch)) => {
+            (S::PenDraw, E::PenMove(touch)) => {
                 self.update_stylus_from_touch(config, sketch, touch);
                 self.continue_stroke(sketch);
                 S::PenDraw
@@ -334,8 +379,10 @@ impl<B: Backend> Ui<B> {
                 S::Ready
             }
             (S::Ready, E::StartPan) => S::Pan,
-            (S::Pan, E::MovePen(Touch { location, .. }) | E::MoveTouch(Touch { location, .. })) => {
-                // state.change_origin()
+            (S::Pan, E::PenMove(touch)) => {
+                let prev = self.stylus.pos;
+                self.update_stylus_from_touch(config, sketch, touch);
+                self.move_origin(sketch, prev, self.stylus.pos);
                 S::Pan
             }
             (S::Pan, E::EndPan) => S::Ready,
@@ -347,7 +394,7 @@ impl<B: Backend> Ui<B> {
             (S::PreZoom, E::StartPan) => S::Zoom,
 
             // mouse input
-            (S::Ready, E::MoveMouse(location)) => {
+            (S::Ready, E::MouseMove(location)) => {
                 self.input.handle_mouse_move(location);
 
                 if config.use_mouse_for_pen {
@@ -372,7 +419,7 @@ impl<B: Backend> Ui<B> {
                 }
             }
 
-            (S::MouseDraw, E::MoveMouse(location)) => {
+            (S::MouseDraw, E::MouseMove(location)) => {
                 self.input.handle_mouse_move(location);
                 self.update_stylus_from_mouse(config, sketch, TouchPhase::Move);
                 self.continue_stroke(sketch);
@@ -386,9 +433,27 @@ impl<B: Backend> Ui<B> {
                 S::Ready
             }
 
-            (S::Pan, E::MoveMouse(location)) => {
+            (S::Pan, E::MouseMove(location)) => {
+                let prev = self.backend.pixel_to_pos(
+                    self.width,
+                    self.height,
+                    sketch.zoom,
+                    sketch.origin,
+                    self.input.cursor_pos(),
+                );
+
                 self.input.handle_mouse_move(location);
-                // self.chagne_origin();
+
+                let next = self.backend.pixel_to_pos(
+                    self.width,
+                    self.height,
+                    sketch.zoom,
+                    sketch.origin,
+                    self.input.cursor_pos(),
+                );
+
+                self.move_origin(sketch, prev, next);
+
                 S::Pan
             }
 
@@ -398,7 +463,7 @@ impl<B: Backend> Ui<B> {
                 S::Ready
             }
 
-            // touch input
+            // TODO: touch input
             (S::Ready, E::Touch(touch)) => {
                 if config.use_finger_for_pen {
                     self.update_stylus_from_touch(config, sketch, touch);

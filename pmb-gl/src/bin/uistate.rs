@@ -18,6 +18,7 @@ fn main() {
     let mut sketch = Sketch::<GlStrokeBackend>::default();
     let mut ui = Ui::<GlBackend>::new(width, height);
     let mut config = Config::default();
+    let mut cursor_visible = true;
 
     ev.run(move |event, _, flow| {
         *flow = ControlFlow::Wait;
@@ -67,13 +68,18 @@ fn main() {
 
                 match phase {
                     TouchPhase::Started => ui.next(&config, &mut sketch, Pevent::PenDown(touch)),
-                    TouchPhase::Moved => ui.next(&config, &mut sketch, Pevent::MovePen(touch)),
+                    TouchPhase::Moved => ui.next(&config, &mut sketch, Pevent::PenMove(touch)),
                     TouchPhase::Ended | TouchPhase::Cancelled => {
                         ui.next(&config, &mut sketch, Pevent::PenUp(touch))
                     }
                 }
 
                 config.prev_device = Device::Pen;
+
+                if cursor_visible {
+                    cursor_visible = false;
+                    window.set_cursor_visible(false);
+                }
             }
 
             Gevent::WindowEvent {
@@ -158,9 +164,19 @@ fn main() {
                 ui.next(
                     &config,
                     &mut sketch,
-                    Pevent::MoveMouse(pmb_gl::physical_pos_to_pixel_pos(position)),
+                    Pevent::MouseMove(pmb_gl::physical_pos_to_pixel_pos(position)),
                 );
                 config.prev_device = Device::Mouse;
+
+                if config.use_mouse_for_pen {
+                    if cursor_visible {
+                        cursor_visible = false;
+                        window.set_cursor_visible(false);
+                    }
+                } else if !cursor_visible {
+                    cursor_visible = true;
+                    window.set_cursor_visible(true);
+                }
             }
 
             Gevent::WindowEvent {
@@ -180,12 +196,17 @@ fn main() {
                     &mut sketch,
                     match phase {
                         TouchPhase::Started => Pevent::Touch(touch),
-                        TouchPhase::Moved => Pevent::MovePen(touch),
+                        TouchPhase::Moved => Pevent::PenMove(touch),
                         TouchPhase::Ended | TouchPhase::Cancelled => Pevent::Release(touch),
                     },
                 );
 
                 config.prev_device = Device::Touch;
+
+                if cursor_visible && config.use_finger_for_pen {
+                    cursor_visible = false;
+                    window.set_cursor_visible(false);
+                }
             }
 
             Gevent::WindowEvent {
