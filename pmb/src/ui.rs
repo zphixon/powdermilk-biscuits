@@ -62,6 +62,10 @@ pub enum Event {
     EndPan,
     StartZoom,
     EndZoom,
+
+    // TODO better number types
+    BrushSize(i32),
+    ActiveZoom(i32), // from e.g. mouse wheel
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -110,6 +114,8 @@ pub struct Config {
     pub use_mouse_for_pen_key: Keycode,
     pub use_finger_for_pen_key: Keycode,
     pub swap_eraser_key: Keycode,
+    pub brush_increase: Keycode,
+    pub brush_decrease: Keycode,
 }
 
 impl Default for Config {
@@ -126,6 +132,8 @@ impl Default for Config {
             use_mouse_for_pen_key: Keycode::M,
             use_finger_for_pen_key: Keycode::F,
             swap_eraser_key: Keycode::E,
+            brush_increase: Keycode::RBracket,
+            brush_decrease: Keycode::LBracket,
         }
     }
 }
@@ -353,56 +361,37 @@ impl<B: Backend> Ui<B> {
         use UiState as S;
 
         self.state = match (self.state, event) {
-            // pen input
-            (S::Ready, E::PenMove(touch)) => {
-                self.update_stylus_from_touch(config, sketch, touch);
+            (S::Ready, E::BrushSize(change)) => {
+                let next_brush = self.brush_size as i32 + change;
+
+                self.brush_size = if next_brush < crate::MIN_BRUSH as i32 {
+                    crate::MIN_BRUSH
+                } else if next_brush > crate::MAX_BRUSH as i32 {
+                    crate::MAX_BRUSH
+                } else {
+                    next_brush as usize
+                };
+
                 S::Ready
             }
 
-            (S::Ready, E::PenDown(touch)) => match config.active_tool {
-                Tool::Pen => {
-                    self.update_stylus_from_touch(config, sketch, touch);
-                    self.start_stroke(sketch);
-                    S::PenDraw
-                }
-                Tool::Eraser => S::PenErase,
-            },
+            (S::Ready, E::ActiveZoom(change)) => {
+                let next_zoom = sketch.zoom + change as f32;
+                sketch.zoom = if next_zoom < crate::MIN_ZOOM {
+                    crate::MIN_ZOOM
+                } else if next_zoom > crate::MAX_ZOOM {
+                    crate::MAX_ZOOM
+                } else {
+                    next_zoom
+                };
 
-            (S::PenDraw, E::PenMove(touch)) => {
-                self.update_stylus_from_touch(config, sketch, touch);
-                self.continue_stroke(sketch);
-                S::PenDraw
-            }
-
-            (S::PenDraw | S::PenErase, E::PenUp(touch)) => {
-                self.update_stylus_from_touch(config, sketch, touch);
                 S::Ready
             }
+
+            // pan handling
             (S::Ready, E::StartPan) => S::Pan,
-            (S::Pan, E::PenMove(touch)) => {
-                let prev = self.stylus.pos;
-                self.update_stylus_from_touch(config, sketch, touch);
-                self.move_origin(sketch, prev, self.stylus.pos);
-                S::Pan
-            }
-            (S::Pan, E::EndPan) => S::Ready,
-            (S::Pan, E::StartZoom) => S::Zoom,
             (S::Zoom, E::EndZoom) => S::Pan,
-            (S::Zoom, E::EndPan) => S::PreZoom,
-            (S::Ready, E::StartZoom) => S::PreZoom,
-            (S::PreZoom, E::EndZoom) => S::Ready,
-            (S::PreZoom, E::StartPan) => S::Zoom,
-
-            // mouse input
-            (S::Ready, E::MouseMove(location)) => {
-                self.input.handle_mouse_move(location);
-
-                if config.use_mouse_for_pen {
-                    self.update_stylus_from_mouse(config, sketch, TouchPhase::End);
-                }
-
-                S::Ready
-            }
+            (S::Pan, E::EndPan) => S::Ready,
 
             (S::Ready, E::MouseDown(button)) => {
                 self.input
@@ -419,18 +408,18 @@ impl<B: Backend> Ui<B> {
                 }
             }
 
-            (S::MouseDraw, E::MouseMove(location)) => {
-                self.input.handle_mouse_move(location);
-                self.update_stylus_from_mouse(config, sketch, TouchPhase::Move);
-                self.continue_stroke(sketch);
-                S::MouseDraw
-            }
-
-            (S::MouseDraw, E::MouseUp(button)) => {
+            (S::Pan, E::MouseUp(button)) => {
                 self.input
                     .handle_mouse_button(button, ElementState::Released);
-                self.update_stylus_from_mouse(config, sketch, TouchPhase::End);
                 S::Ready
+            }
+
+            (S::Pan, E::PenMove(touch)) => {
+                let prev = self.stylus.pos;
+                self.update_stylus_from_touch(config, sketch, touch);
+                let next = self.stylus.pos;
+                self.move_origin(sketch, prev, next);
+                S::Pan
             }
 
             (S::Pan, E::MouseMove(location)) => {
@@ -453,17 +442,101 @@ impl<B: Backend> Ui<B> {
                 );
 
                 self.move_origin(sketch, prev, next);
-
                 S::Pan
             }
 
-            (S::Pan, E::MouseUp(button)) => {
-                self.input
-                    .handle_mouse_button(button, ElementState::Released);
+            (S::Pan, E::TouchMove(touch)) => {
+                let prev = self.backend.pixel_to_pos(
+                    self.width,
+                    self.height,
+                    sketch.zoom,
+                    sketch.origin,
+                    touch.location,
+                );
+
+                self.input.handle_mouse_move(touch.location);
+
+                let next = self.backend.pixel_to_pos(
+                    self.width,
+                    self.height,
+                    sketch.zoom,
+                    sketch.origin,
+                    self.input.cursor_pos(),
+                );
+
+                self.move_origin(sketch, prev, next);
+                S::Pan
+            }
+
+            // zoom handling
+            (S::Zoom, E::EndPan) => S::PreZoom,
+            (S::Pan, E::StartZoom) => S::Zoom,
+            (S::PreZoom, E::StartPan) => S::Zoom,
+            (S::Ready, E::StartZoom) => S::PreZoom,
+            (S::PreZoom, E::EndZoom) => S::Ready,
+
+            (S::Zoom, E::PenMove(touch)) => {
+                let prev = self.stylus.pos;
+                self.update_stylus_from_touch(config, sketch, touch);
+                let next = self.stylus.pos;
+                sketch.zoom += prev.y - next.y;
+                S::Zoom
+            }
+
+            // pen draw/erase
+            (S::Ready, E::PenMove(touch)) => {
+                self.update_stylus_from_touch(config, sketch, touch);
                 S::Ready
             }
 
-            // TODO: touch input
+            (S::Ready, E::PenDown(touch)) => {
+                self.update_stylus_from_touch(config, sketch, touch);
+                match config.active_tool {
+                    Tool::Pen => {
+                        self.start_stroke(sketch);
+                        S::PenDraw
+                    }
+                    Tool::Eraser => S::PenErase,
+                }
+            }
+
+            (S::PenDraw, E::PenMove(touch)) => {
+                self.update_stylus_from_touch(config, sketch, touch);
+                self.continue_stroke(sketch);
+                S::PenDraw
+            }
+
+            (S::PenDraw | S::PenErase, E::PenUp(touch)) => {
+                self.update_stylus_from_touch(config, sketch, touch);
+                S::Ready
+            }
+
+            // mouse input
+            (S::Ready, E::MouseMove(location)) => {
+                self.input.handle_mouse_move(location);
+
+                if config.use_mouse_for_pen {
+                    self.update_stylus_from_mouse(config, sketch, TouchPhase::End);
+                }
+
+                S::Ready
+            }
+
+            (S::MouseDraw, E::MouseMove(location)) => {
+                self.input.handle_mouse_move(location);
+                self.update_stylus_from_mouse(config, sketch, TouchPhase::Move);
+                self.continue_stroke(sketch);
+                S::MouseDraw
+            }
+
+            (S::MouseDraw, E::MouseUp(button)) => {
+                self.input
+                    .handle_mouse_button(button, ElementState::Released);
+                self.update_stylus_from_mouse(config, sketch, TouchPhase::End);
+                S::Ready
+            }
+
+            // TODO: touch input, pan & zoom
             (S::Ready, E::Touch(touch)) => {
                 if config.use_finger_for_pen {
                     self.update_stylus_from_touch(config, sketch, touch);

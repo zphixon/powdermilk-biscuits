@@ -1,8 +1,8 @@
 use glutin::{
     dpi::PhysicalSize,
     event::{
-        ElementState, Event as Gevent, KeyboardInput, Touch, TouchPhase, VirtualKeyCode,
-        WindowEvent,
+        ElementState, Event as Gevent, KeyboardInput, MouseScrollDelta, Touch, TouchPhase,
+        VirtualKeyCode, WindowEvent,
     },
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
@@ -134,8 +134,44 @@ fn main() {
                         window.request_redraw();
                     }
 
+                    (brush, ElementState::Pressed) if brush == config.brush_increase => {
+                        ui.next(
+                            &config,
+                            &mut sketch,
+                            Pevent::BrushSize(powdermilk_biscuits::BRUSH_DELTA as i32),
+                        );
+
+                        window.request_redraw();
+                    }
+
+                    (brush, ElementState::Pressed) if brush == config.brush_decrease => {
+                        ui.next(
+                            &config,
+                            &mut sketch,
+                            Pevent::BrushSize(-(powdermilk_biscuits::BRUSH_DELTA as i32)),
+                        );
+
+                        window.request_redraw();
+                    }
+
                     _ => {}
                 }
+            }
+
+            Gevent::WindowEvent {
+                event: WindowEvent::MouseWheel { delta, .. },
+                ..
+            } => {
+                match delta {
+                    MouseScrollDelta::LineDelta(_, delta) => {
+                        ui.next(&config, &mut sketch, Pevent::ActiveZoom(delta as i32));
+                    }
+                    MouseScrollDelta::PixelDelta(delta) => {
+                        ui.next(&config, &mut sketch, Pevent::ActiveZoom(delta.y as i32));
+                    }
+                }
+
+                window.request_redraw();
             }
 
             Gevent::WindowEvent {
