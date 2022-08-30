@@ -140,7 +140,6 @@ fn main() {
     let mut gc = unsafe { GraphicsContext::new(window) }.unwrap();
 
     let mut size = gc.window().inner_size();
-    let mut buf = vec![0u32; size.width as usize * size.height as usize];
     let mut device = piet_common::Device::new().unwrap();
 
     let mut style = StrokeStyle::new();
@@ -357,10 +356,16 @@ fn main() {
                     ctx.finish().unwrap();
                 }
 
-                target
-                    .copy_raw_pixels(ImageFormat::RgbaPremul, bytemuck::cast_slice_mut(&mut buf))
-                    .unwrap();
-                gc.set_buffer(&buf, width as u16, height as u16);
+                gc.set_buffer(
+                    bytemuck::cast_slice(
+                        target
+                            .to_image_buf(ImageFormat::RgbaPremul)
+                            .unwrap()
+                            .raw_pixels(),
+                    ),
+                    width as u16,
+                    height as u16,
+                );
             }
 
             Event::WindowEvent {
