@@ -11,6 +11,18 @@ pub struct StrokeElement {
     pub pressure: f32,
 }
 
+impl From<StrokeElement> for StrokePos {
+    fn from(elt: StrokeElement) -> StrokePos {
+        StrokePos { x: elt.x, y: elt.y }
+    }
+}
+
+impl From<&StrokeElement> for StrokePos {
+    fn from(elt: &StrokeElement) -> StrokePos {
+        StrokePos { x: elt.x, y: elt.y }
+    }
+}
+
 impl pmb_tess::Point for StrokeElement {
     fn new(x: f32, y: f32) -> Self {
         StrokeElement {
