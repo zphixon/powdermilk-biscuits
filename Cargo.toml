@@ -5,6 +5,7 @@ members = [
     'pmb-tess',
     'pmb-gl',
     'pmb-wgpu',
+    'pmb-piet',
     'derive-disk',
     'derive-evc',
 ]

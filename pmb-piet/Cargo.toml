@@ -1,0 +1,17 @@
+[package]
+name = 'pmb-piet'
+version = '0.1.0'
+edition = '2021'
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+env_logger = '0.9.0'
+log = '*'
+piet-common = '0.5.0'
+powdermilk-biscuits = { path = '../pmb' }
+winit = { git = 'https://github.com/zphixon/winit', branch = 'pen-info2' }
+bytemuck = '1.12.1'
+
+# TODO make this not a git dep
+softbuffer = { git = 'https://github.com/john01dav/softbuffer' }
