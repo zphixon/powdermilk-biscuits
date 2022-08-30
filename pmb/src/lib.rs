@@ -308,7 +308,11 @@ where
 
     pub fn reset_view(&mut self, width: u32, height: u32) {
         self.zoom = DEFAULT_ZOOM;
-        self.origin = Default::default();
+        self.set_origin(width, height, Default::default());
+    }
+
+    pub fn set_origin(&mut self, width: u32, height: u32, origin: StrokePoint) {
+        self.origin = origin;
         self.update_stroke_primitive();
         self.update_stroke_visible(width, height);
     }
