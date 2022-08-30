@@ -367,10 +367,13 @@ fn main() {
                 event: WindowEvent::Resized(new_size),
                 ..
             } => {
-                size = new_size;
-                buf = vec![0u32; size.width as usize * size.height as usize];
-                state.change_zoom(0.0, size.width, size.height);
-                gc.window().request_redraw();
+                if new_size.height < 10 || new_size.width < 10 {
+                    gc.window().set_inner_size(size);
+                } else {
+                    size = new_size;
+                    state.change_zoom(0.0, size.width, size.height);
+                    gc.window().request_redraw();
+                }
             }
 
             _ => {}
