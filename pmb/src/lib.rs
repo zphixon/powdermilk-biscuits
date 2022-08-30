@@ -306,10 +306,11 @@ where
         this
     }
 
-    pub fn reset_view(&mut self) {
+    pub fn reset_view(&mut self, width: u32, height: u32) {
         self.zoom = DEFAULT_ZOOM;
         self.origin = Default::default();
         self.update_stroke_primitive();
+        self.update_stroke_visible(width, height);
     }
 
     pub fn handle_key(
@@ -406,7 +407,7 @@ where
         }
 
         if just_pressed!(Z) {
-            self.reset_view();
+            self.reset_view(width, height);
             request_redraw = true;
         }
 
