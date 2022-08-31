@@ -111,7 +111,6 @@ where
     }
 
     pub fn points_as_bytes(&self) -> &[u8] {
-        assert!(self.draw_tesselated);
         unsafe {
             let points_flat = std::slice::from_raw_parts(
                 self.points().as_ptr() as *const f32,
@@ -126,7 +125,6 @@ where
     }
 
     pub fn mesh_as_bytes(&self) -> &[u8] {
-        assert!(self.draw_tesselated);
         unsafe {
             let mesh_flat =
                 std::slice::from_raw_parts(self.mesh.as_ptr() as *const f32, self.mesh.len() * 3);
@@ -257,7 +255,7 @@ where
             pressure: stylus.pressure,
         });
 
-        if self.points.len() >= 4 && self.draw_tesselated {
+        if self.points.len() >= 4 {
             self.generate_partial_mesh();
         }
 
@@ -272,8 +270,6 @@ where
     }
 
     fn generate_partial_mesh(&mut self) {
-        assert!(self.draw_tesselated);
-
         use pmb_tess::Hermite;
         let subset = &self.points[self.points.len() - 4..];
 
