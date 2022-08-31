@@ -287,43 +287,46 @@ fn main() {
                             continue;
                         }
 
-                        let mut path = BezPath::new();
+                        for pair in stroke.points.windows(2) {
+                            if let [a, b] = pair {
+                                let start = backend.pos_to_pixel(
+                                    width,
+                                    height,
+                                    state.zoom,
+                                    state.origin,
+                                    a.into(),
+                                );
+                                let end = backend.pos_to_pixel(
+                                    width,
+                                    height,
+                                    state.zoom,
+                                    state.origin,
+                                    b.into(),
+                                );
 
-                        if let Some(first) = stroke.points.first() {
-                            let first = backend.pos_to_pixel(
-                                width,
-                                height,
-                                state.zoom,
-                                state.origin,
-                                first.into(),
-                            );
+                                let mut path = BezPath::new();
+                                path.move_to(Point {
+                                    x: start.x as f64,
+                                    y: start.y as f64,
+                                });
+                                path.line_to(Point {
+                                    x: end.x as f64,
+                                    y: end.y as f64,
+                                });
 
-                            path.move_to(Point {
-                                x: first.x as f64,
-                                y: first.y as f64,
-                            });
+                                ctx.stroke_styled(
+                                    path,
+                                    &Color::rgba8(
+                                        stroke.color[0],
+                                        stroke.color[1],
+                                        stroke.color[2],
+                                        0xff,
+                                    ),
+                                    (stroke.brush_size * state.zoom * a.pressure) as f64,
+                                    &style,
+                                );
+                            }
                         }
-
-                        for point in stroke.points.iter() {
-                            let point = backend.pos_to_pixel(
-                                width,
-                                height,
-                                state.zoom,
-                                state.origin,
-                                point.into(),
-                            );
-                            path.line_to(Point {
-                                x: point.x as f64,
-                                y: point.y as f64,
-                            });
-                        }
-
-                        ctx.stroke_styled(
-                            path,
-                            &Color::rgba8(stroke.color[0], stroke.color[1], stroke.color[2], 0xff),
-                            (stroke.brush_size * state.zoom) as f64,
-                            &style,
-                        );
                     }
 
                     ctx.finish().unwrap();
