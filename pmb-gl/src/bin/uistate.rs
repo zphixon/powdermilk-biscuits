@@ -48,44 +48,6 @@ fn main() {
 
             Gevent::WindowEvent {
                 event:
-                    WindowEvent::Touch(
-                        touch @ Touch {
-                            phase,
-                            pen_info: Some(pen_info),
-                            ..
-                        },
-                    ),
-                ..
-            } => {
-                let touch = pmb_gl::glutin_to_pmb_touch(touch);
-                if config.stylus_may_be_inverted {
-                    if pen_info.inverted {
-                        config.active_tool = Tool::Eraser;
-                    } else {
-                        config.active_tool = Tool::Pen;
-                    }
-                }
-
-                match phase {
-                    TouchPhase::Started => ui.next(&config, &mut sketch, Pevent::PenDown(touch)),
-                    TouchPhase::Moved => ui.next(&config, &mut sketch, Pevent::PenMove(touch)),
-                    TouchPhase::Ended | TouchPhase::Cancelled => {
-                        ui.next(&config, &mut sketch, Pevent::PenUp(touch))
-                    }
-                }
-
-                config.prev_device = Device::Pen;
-
-                if cursor_visible {
-                    cursor_visible = false;
-                    window.set_cursor_visible(false);
-                }
-
-                window.request_redraw();
-            }
-
-            Gevent::WindowEvent {
-                event:
                     WindowEvent::KeyboardInput {
                         input:
                             KeyboardInput {
@@ -221,6 +183,44 @@ fn main() {
                     cursor_visible = true;
                     window.set_cursor_visible(true);
                 }
+            }
+
+            Gevent::WindowEvent {
+                event:
+                    WindowEvent::Touch(
+                        touch @ Touch {
+                            phase,
+                            pen_info: Some(pen_info),
+                            ..
+                        },
+                    ),
+                ..
+            } => {
+                let touch = pmb_gl::glutin_to_pmb_touch(touch);
+                if config.stylus_may_be_inverted {
+                    if pen_info.inverted {
+                        config.active_tool = Tool::Eraser;
+                    } else {
+                        config.active_tool = Tool::Pen;
+                    }
+                }
+
+                match phase {
+                    TouchPhase::Started => ui.next(&config, &mut sketch, Pevent::PenDown(touch)),
+                    TouchPhase::Moved => ui.next(&config, &mut sketch, Pevent::PenMove(touch)),
+                    TouchPhase::Ended | TouchPhase::Cancelled => {
+                        ui.next(&config, &mut sketch, Pevent::PenUp(touch))
+                    }
+                }
+
+                config.prev_device = Device::Pen;
+
+                if cursor_visible {
+                    cursor_visible = false;
+                    window.set_cursor_visible(false);
+                }
+
+                window.request_redraw();
             }
 
             Gevent::WindowEvent {
