@@ -743,7 +743,7 @@ where
                         },
                     );
 
-                    let mut stroke = Stroke::new(rand::random(), stroke_brush_size.x / 2.);
+                    let mut stroke = Stroke::new(rand::random(), stroke_brush_size.x / 2., true);
                     stroke.add_point(&self.stylus);
                     self.strokes.push(stroke);
                 }

@@ -201,32 +201,33 @@ impl<B: Backend> Ui<B> {
     }
 
     fn start_stroke<S: StrokeBackend>(&mut self, sketch: &mut Sketch<S>) {
-        if false {
-            let stroke_brush_size = self
-                .backend
-                .pixel_to_stroke(
-                    self.width,
-                    self.height,
-                    sketch.zoom,
-                    PixelPos {
-                        x: ((self.width / 2) + self.brush_size as u32) as f32,
-                        y: (self.height / 2) as f32,
-                    },
-                )
-                .x
-                / 2.0;
+        let stroke_brush_size = self
+            .backend
+            .pixel_to_stroke(
+                self.width,
+                self.height,
+                sketch.zoom,
+                PixelPos {
+                    x: ((self.width / 2) + self.brush_size as u32) as f32,
+                    y: (self.height / 2) as f32,
+                },
+            )
+            .x
+            / 2.0;
 
-            sketch
-                .strokes
-                .push(Stroke::new(rand::random(), stroke_brush_size));
-        }
+        sketch
+            .strokes
+            .push(Stroke::new(rand::random(), stroke_brush_size, false));
     }
 
     fn continue_stroke<S: StrokeBackend>(&mut self, sketch: &mut Sketch<S>) {
-        if false {
-            let stroke = sketch.strokes.last_mut().unwrap();
-            stroke.add_point(&self.stylus);
-        }
+        let stroke = sketch.strokes.last_mut().unwrap();
+        stroke.add_point(&self.stylus);
+    }
+
+    fn end_stroke<S: StrokeBackend>(&mut self, sketch: &mut Sketch<S>) {
+        let stroke = sketch.strokes.last_mut().unwrap();
+        stroke.finish();
     }
 
     fn update_stylus_from_mouse<S: StrokeBackend>(
@@ -495,7 +496,13 @@ impl<B: Backend> Ui<B> {
                 S::PenDraw
             }
 
-            (S::PenDraw | S::PenErase, E::PenUp(touch)) => {
+            (S::PenDraw, E::PenUp(touch)) => {
+                self.update_stylus_from_touch(config, sketch, touch);
+                self.end_stroke(sketch);
+                S::Ready
+            }
+
+            (S::PenErase, E::PenUp(touch)) => {
                 self.update_stylus_from_touch(config, sketch, touch);
                 S::Ready
             }
