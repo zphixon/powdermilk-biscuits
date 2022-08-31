@@ -64,13 +64,19 @@ mod backend {
     }
 
     #[derive(Debug)]
-    pub struct PietStrokeBackend;
+    pub struct PietStrokeBackend {
+        pub image: piet_common::ImageBuf,
+        pub dirty: bool,
+    }
+
     impl StrokeBackend for PietStrokeBackend {
         fn is_dirty(&self) -> bool {
-            false
+            self.dirty
         }
 
-        fn make_dirty(&mut self) {}
+        fn make_dirty(&mut self) {
+            self.dirty = true;
+        }
     }
 
     pub fn winit_to_pmb_key_state(state: WinitElementState) -> ElementState {
@@ -141,6 +147,7 @@ fn main() {
 
     let mut size = gc.window().inner_size();
     let mut device = piet_common::Device::new().unwrap();
+    let mut screen_buffer = vec![0u8; size.width as usize * size.height as usize];
 
     let mut style = StrokeStyle::new();
     style.set_line_cap(piet_common::LineCap::Round);
@@ -275,21 +282,19 @@ fn main() {
 
             Event::RedrawRequested(_) => {
                 let PhysicalSize { width, height } = size;
-                let mut target = device
-                    .bitmap_target(width as usize, height as usize, 1.0)
-                    .unwrap();
 
-                {
-                    let mut ctx = target.render_context();
+                for stroke in state.strokes.iter_mut().filter(|stroke| stroke.is_dirty()) {
+                    let mut target = device
+                        .bitmap_target(width as usize, height as usize, 1.0)
+                        .unwrap();
 
-                    for stroke in state.strokes.iter() {
-                        if !stroke.visible {
-                            continue;
-                        }
-
+                    {
+                        let mut ctx = target.render_context();
                         let mut path = BezPath::new();
 
-                        if let Some(first) = stroke.points.first() {
+                        let first: Option<&powdermilk_biscuits::stroke::StrokeElement> =
+                            stroke.points.first();
+                        if let Some(first) = first {
                             let first = backend.pos_to_pixel(
                                 width,
                                 height,
@@ -304,45 +309,18 @@ fn main() {
                             });
                         }
 
-                        for pair in stroke.points.windows(2) {
-                            if let [a, b] = pair {
-                                let a = backend.pos_to_pixel(
-                                    width,
-                                    height,
-                                    state.zoom,
-                                    state.origin,
-                                    a.into(),
-                                );
-                                let b = backend.pos_to_pixel(
-                                    width,
-                                    height,
-                                    state.zoom,
-                                    state.origin,
-                                    b.into(),
-                                );
-                                path.quad_to(
-                                    Point {
-                                        x: a.x as f64,
-                                        y: a.y as f64,
-                                    },
-                                    Point {
-                                        x: b.x as f64,
-                                        y: b.y as f64,
-                                    },
-                                );
-                            } else if let [a] = pair {
-                                let a = backend.pos_to_pixel(
-                                    width,
-                                    height,
-                                    state.zoom,
-                                    state.origin,
-                                    a.into(),
-                                );
-                                path.line_to(Point {
-                                    x: a.x as f64,
-                                    y: a.y as f64,
-                                });
-                            }
+                        for point in stroke.points.iter() {
+                            let point = backend.pos_to_pixel(
+                                width,
+                                height,
+                                state.zoom,
+                                state.origin,
+                                point.into(),
+                            );
+                            path.line_to(Point {
+                                x: point.x as f64,
+                                y: point.y as f64,
+                            });
                         }
 
                         ctx.stroke_styled(
@@ -351,18 +329,46 @@ fn main() {
                             (stroke.brush_size * state.zoom) as f64,
                             &style,
                         );
+
+                        ctx.finish().unwrap();
                     }
 
-                    ctx.finish().unwrap();
+                    stroke.replace_backend_with(|_points, _mesh, _mesh_len| {
+                        backend::PietStrokeBackend {
+                            dirty: false,
+                            image: target.to_image_buf(ImageFormat::RgbaPremul).unwrap(),
+                        }
+                    });
+                }
+
+                'strokes: for stroke in state.strokes.iter() {
+                    assert!(!stroke.is_dirty());
+                    let top_left = backend.pos_to_pixel(
+                        width,
+                        height,
+                        state.zoom,
+                        state.origin,
+                        stroke.top_left,
+                    );
+                    let top = top_left.y as usize;
+                    let left = top_left.x as usize;
+
+                    let image = &stroke.backend().unwrap().image;
+                    for row in image.raw_pixels().chunks(image.width()) {
+                        let start = top * image.width() + left;
+                        let end = start + row.len();
+
+                        if start <= end && end - start < row.len() && end < screen_buffer.len() {
+                            screen_buffer[start..end].copy_from_slice(row)
+                        } else {
+                            println!("sad");
+                            continue 'strokes;
+                        }
+                    }
                 }
 
                 gc.set_buffer(
-                    bytemuck::cast_slice(
-                        target
-                            .to_image_buf(ImageFormat::RgbaPremul)
-                            .unwrap()
-                            .raw_pixels(),
-                    ),
+                    bytemuck::cast_slice(&screen_buffer),
                     width as u16,
                     height as u16,
                 );
@@ -376,6 +382,7 @@ fn main() {
                     gc.window().set_inner_size(size);
                 } else {
                     size = new_size;
+                    screen_buffer = vec![0; size.width as usize * size.height as usize];
                     state.change_zoom(0.0, size.width, size.height);
                     gc.window().request_redraw();
                 }
