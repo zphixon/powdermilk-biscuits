@@ -235,38 +235,14 @@ impl<B: Backend> Ui<B> {
         sketch: &Sketch<S>,
         phase: TouchPhase,
     ) {
-        let location = self.input.cursor_pos();
-        let point = self
-            .backend
-            .pixel_to_stroke(self.width, self.height, sketch.zoom, location);
-        let pos = crate::graphics::xform_point_to_pos(sketch.origin, point);
         let eraser = config.active_tool == Tool::Eraser;
         let pressure = if self.input.button_down(config.primary_button) {
             1.0
         } else {
             0.0
         };
-        let state = match phase {
-            TouchPhase::Start => StylusState {
-                pos: StylusPosition::Down,
-                eraser,
-            },
 
-            TouchPhase::Move => {
-                self.stylus.state.eraser = eraser;
-                self.stylus.state
-            }
-
-            TouchPhase::End | TouchPhase::Cancel => StylusState {
-                pos: StylusPosition::Up,
-                eraser,
-            },
-        };
-
-        self.stylus.point = point;
-        self.stylus.pos = pos;
-        self.stylus.pressure = pressure;
-        self.stylus.state = state;
+        self.update_stylus(sketch, phase, self.input.cursor_pos(), eraser, pressure);
     }
 
     fn update_stylus_from_touch<S: StrokeBackend>(
@@ -283,15 +259,27 @@ impl<B: Backend> Ui<B> {
             ..
         } = touch;
 
-        let point = self
-            .backend
-            .pixel_to_stroke(self.width, self.height, sketch.zoom, location);
-        let pos = crate::graphics::xform_point_to_pos(sketch.origin, point);
         let pressure = force.unwrap_or(1.0);
 
         let eraser = pen_info
             .map(|info| info.inverted || info.eraser)
             .unwrap_or(config.active_tool == Tool::Eraser);
+
+        self.update_stylus(sketch, phase, location, eraser, pressure);
+    }
+
+    fn update_stylus<S: StrokeBackend>(
+        &mut self,
+        sketch: &Sketch<S>,
+        phase: TouchPhase,
+        location: PixelPos,
+        eraser: bool,
+        pressure: f64,
+    ) {
+        let point = self
+            .backend
+            .pixel_to_stroke(self.width, self.height, sketch.zoom, location);
+        let pos = crate::graphics::xform_point_to_pos(sketch.origin, point);
 
         let state = match phase {
             TouchPhase::Start => StylusState {
