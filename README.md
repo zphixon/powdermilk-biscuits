@@ -55,8 +55,13 @@ Optimizations:
 - For both backends, we're checking every stroke every frame whether it's been buffered or not
 - We probably don't need to store the spline CPU-side, we could just use a ring buffer and keep track of what mesh data hasn't been buffered to the GPU yet
 - Save rendered framebuffers and sample them when possible so we don't need to loop through all the strokes every frame
-- Rasterize strokes to images and use whatever graphics backend to draw them on quads (piet)
-  - Or put the pixel buffer on the stroke backend
+- Rasterize strokes to a texture atlas
+  - Atlas texture/sampler bind group
+    - Uniform buffer containing texture coordinate offsets
+    - Instanced drawing of quads
+  - Wet texture/sampler bind group
+- Most optimizations require choosing a backend
+  - I want piet, maybe wgpu
 
 Keybinds:
 - c: clear strokes
