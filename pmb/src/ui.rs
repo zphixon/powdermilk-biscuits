@@ -194,9 +194,10 @@ impl<B: Backend> Ui<B> {
         }
     }
 
-    pub fn resize(&mut self, width: u32, height: u32) {
+    pub fn resize<S: StrokeBackend>(&mut self, width: u32, height: u32, sketch: &mut Sketch<S>) {
         self.width = width;
         self.height = height;
+        self.update_visible_strokes(sketch);
     }
 
     fn start_stroke<S: StrokeBackend>(&mut self, sketch: &mut Sketch<S>) {

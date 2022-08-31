@@ -259,7 +259,7 @@ fn main() {
                 event: WindowEvent::Resized(new_size),
                 ..
             } => {
-                ui.resize(new_size.width, new_size.height);
+                ui.resize(new_size.width, new_size.height, &mut sketch);
                 window.request_redraw();
             }
 
