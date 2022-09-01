@@ -63,12 +63,14 @@ pub enum Event {
     StartZoom,
     EndZoom,
 
+    ToolChange,
+
     // TODO better number types
     BrushSize(i32),
     ActiveZoom(i32), // from e.g. mouse wheel
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub enum UiState {
     #[default]
     Ready,
@@ -87,14 +89,21 @@ pub enum UiState {
     SaveDialog,
 }
 
-#[derive(Default, PartialEq, Debug)]
+impl UiState {
+    pub fn redraw(&self) -> bool {
+        use UiState::*;
+        !matches!(self, Ready | OpenDialog | SaveDialog)
+    }
+}
+
+#[derive(Default, PartialEq, Debug, Clone, Copy)]
 pub enum Tool {
     #[default]
     Pen,
     Eraser,
 }
 
-#[derive(Default, PartialEq, Clone, Copy)]
+#[derive(Debug, Default, PartialEq, Clone, Copy)]
 pub enum Device {
     #[default]
     Mouse,
@@ -102,6 +111,7 @@ pub enum Device {
     Pen,
 }
 
+#[derive(Debug)]
 pub struct Config {
     pub prev_device: Device,
     pub use_mouse_for_pen: bool,
@@ -152,16 +162,26 @@ impl<S: StrokeBackend> Default for Sketch<S> {
 
 impl<S: StrokeBackend> Sketch<S> {
     pub fn new() -> Self {
-        Self {
+        let mut this = Self {
             strokes: Vec::new(),
             zoom: crate::DEFAULT_ZOOM,
             origin: StrokePoint::default(),
-        }
+        };
+
+        this.update_stroke_primitive();
+
+        this
     }
 
     pub fn update_visible_strokes(&mut self, top_left: StrokePos, bottom_right: StrokePos) {
         for stroke in self.strokes.iter_mut() {
             stroke.update_visible(top_left, bottom_right);
+        }
+    }
+
+    fn update_stroke_primitive(&mut self) {
+        for stroke in self.strokes.iter_mut() {
+            stroke.draw_tesselated = stroke.brush_size * self.zoom > 1.0;
         }
     }
 }
@@ -198,6 +218,7 @@ impl<B: Backend> Ui<B> {
         self.width = width;
         self.height = height;
         self.update_visible_strokes(sketch);
+        sketch.update_stroke_primitive();
     }
 
     fn start_stroke<S: StrokeBackend>(&mut self, sketch: &mut Sketch<S>) {
@@ -217,7 +238,7 @@ impl<B: Backend> Ui<B> {
 
         sketch
             .strokes
-            .push(Stroke::new(rand::random(), stroke_brush_size, false));
+            .push(Stroke::new(rand::random(), stroke_brush_size, true));
     }
 
     fn continue_stroke<S: StrokeBackend>(&mut self, sketch: &mut Sketch<S>) {
@@ -351,6 +372,18 @@ impl<B: Backend> Ui<B> {
         use UiState as S;
 
         self.state = match (self.state, event) {
+            (S::Ready, E::ToolChange) => {
+                match config.active_tool {
+                    Tool::Pen => {
+                        self.stylus.state.eraser = false;
+                    }
+                    Tool::Eraser => {
+                        self.stylus.state.eraser = true;
+                    }
+                }
+                S::Ready
+            }
+
             (S::Ready, E::BrushSize(change)) => {
                 let next_brush = self.brush_size as i32 + change;
 
@@ -375,6 +408,12 @@ impl<B: Backend> Ui<B> {
                     next_zoom
                 };
 
+                if config.use_mouse_for_pen {
+                    self.update_stylus_from_mouse(config, sketch, TouchPhase::Move);
+                }
+
+                sketch.update_stroke_primitive();
+
                 S::Ready
             }
 
@@ -388,7 +427,6 @@ impl<B: Backend> Ui<B> {
                     .handle_mouse_button(button, ElementState::Pressed);
                 if config.use_mouse_for_pen {
                     self.update_stylus_from_mouse(config, sketch, TouchPhase::Start);
-                    // update stylus
                     match config.active_tool {
                         Tool::Pen => {
                             self.start_stroke(sketch);
@@ -408,9 +446,9 @@ impl<B: Backend> Ui<B> {
             }
 
             (S::Pan, E::PenMove(touch)) => {
-                let prev = self.stylus.pos;
+                let prev = crate::graphics::xform_point_to_pos(sketch.origin, self.stylus.point);
                 self.update_stylus_from_touch(config, sketch, touch);
-                let next = self.stylus.pos;
+                let next = crate::graphics::xform_point_to_pos(sketch.origin, self.stylus.point);
                 self.move_origin(sketch, prev, next);
                 S::Pan
             }
@@ -435,6 +473,11 @@ impl<B: Backend> Ui<B> {
                 );
 
                 self.move_origin(sketch, prev, next);
+
+                if config.use_mouse_for_pen {
+                    self.update_stylus_from_mouse(config, sketch, TouchPhase::Move);
+                }
+
                 S::Pan
             }
 
@@ -473,6 +516,7 @@ impl<B: Backend> Ui<B> {
                 self.update_stylus_from_touch(config, sketch, touch);
                 let next = self.stylus.pos;
                 sketch.zoom += prev.y - next.y;
+                sketch.update_stroke_primitive();
                 S::Zoom
             }
 
@@ -505,6 +549,11 @@ impl<B: Backend> Ui<B> {
                 S::Ready
             }
 
+            (S::PenErase, E::PenMove(touch)) => {
+                self.update_stylus_from_touch(config, sketch, touch);
+                S::PenErase
+            }
+
             (S::PenErase, E::PenUp(touch)) => {
                 self.update_stylus_from_touch(config, sketch, touch);
                 S::Ready
@@ -529,6 +578,19 @@ impl<B: Backend> Ui<B> {
             }
 
             (S::MouseDraw, E::MouseUp(button)) => {
+                self.input
+                    .handle_mouse_button(button, ElementState::Released);
+                self.update_stylus_from_mouse(config, sketch, TouchPhase::End);
+                S::Ready
+            }
+
+            (S::MouseErase, E::MouseMove(location)) => {
+                self.input.handle_mouse_move(location);
+                self.update_stylus_from_mouse(config, sketch, TouchPhase::Move);
+                S::MouseErase
+            }
+
+            (S::MouseErase, E::MouseUp(button)) => {
                 self.input
                     .handle_mouse_button(button, ElementState::Released);
                 self.update_stylus_from_mouse(config, sketch, TouchPhase::End);
