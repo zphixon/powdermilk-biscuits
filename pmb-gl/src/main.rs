@@ -2,15 +2,19 @@ use glow::{Context, HasContext};
 use glutin::{
     dpi::PhysicalSize,
     event::{
-        ElementState, Event as Gevent, KeyboardInput, MouseScrollDelta, Touch, TouchPhase,
-        VirtualKeyCode, WindowEvent,
+        ElementState as GlutinElementState, Event as GlutinEvent, KeyboardInput, MouseScrollDelta,
+        Touch, TouchPhase, VirtualKeyCode, WindowEvent,
     },
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
     ContextBuilder,
 };
 use pmb_gl::{GlBackend, GlStrokeBackend};
-use powdermilk_biscuits::{ui::Event as Pevent, ui::Ui, Config, Device, Sketch, Tool};
+use powdermilk_biscuits::{
+    input::ElementState,
+    ui::{Event, Ui},
+    Config, Device, Sketch, Tool,
+};
 
 fn main() {
     let ev = EventLoop::new();
@@ -114,27 +118,27 @@ fn main() {
         let window = context.window();
 
         match event {
-            Gevent::WindowEvent {
+            GlutinEvent::WindowEvent {
                 event:
                     WindowEvent::KeyboardInput {
                         input:
                             KeyboardInput {
                                 virtual_keycode: Some(VirtualKeyCode::Escape),
-                                state: ElementState::Pressed,
+                                state: GlutinElementState::Pressed,
                                 ..
                             },
                         ..
                     },
                 ..
             }
-            | Gevent::WindowEvent {
+            | GlutinEvent::WindowEvent {
                 event: WindowEvent::CloseRequested,
                 ..
             } => {
                 *flow = ControlFlow::Exit;
             }
 
-            Gevent::WindowEvent {
+            GlutinEvent::WindowEvent {
                 event:
                     WindowEvent::KeyboardInput {
                         input:
@@ -148,15 +152,18 @@ fn main() {
                 ..
             } => {
                 let key = pmb_gl::glutin_to_pmb_keycode(key);
+                let state = pmb_gl::glutin_to_pmb_key_state(state);
+                ui.handle_key(&mut sketch, key, state, size.width, size.height);
+
                 match (key, state) {
                     (zoom, ElementState::Pressed)
                         if config.prev_device == Device::Pen && zoom == config.pen_zoom_key =>
                     {
-                        ui.next(&config, &mut sketch, Pevent::StartZoom);
+                        ui.next(&config, &mut sketch, Event::StartZoom);
                     }
 
                     (zoom, ElementState::Released) if zoom == config.pen_zoom_key => {
-                        ui.next(&config, &mut sketch, Pevent::EndZoom);
+                        ui.next(&config, &mut sketch, Event::EndZoom);
                     }
 
                     (mouse, ElementState::Pressed) if mouse == config.use_mouse_for_pen_key => {
@@ -179,14 +186,14 @@ fn main() {
                         } else {
                             config.active_tool = Tool::Pen;
                         }
-                        ui.next(&config, &mut sketch, Pevent::ToolChange);
+                        ui.next(&config, &mut sketch, Event::ToolChange);
                     }
 
                     (brush, ElementState::Pressed) if brush == config.brush_increase => {
                         ui.next(
                             &config,
                             &mut sketch,
-                            Pevent::IncreaseBrush(powdermilk_biscuits::BRUSH_DELTA),
+                            Event::IncreaseBrush(powdermilk_biscuits::BRUSH_DELTA),
                         );
                     }
 
@@ -194,7 +201,7 @@ fn main() {
                         ui.next(
                             &config,
                             &mut sketch,
-                            Pevent::DecreaseBrush(powdermilk_biscuits::BRUSH_DELTA),
+                            Event::DecreaseBrush(powdermilk_biscuits::BRUSH_DELTA),
                         );
                     }
 
@@ -204,39 +211,41 @@ fn main() {
                 window.request_redraw();
             }
 
-            Gevent::WindowEvent {
+            GlutinEvent::WindowEvent {
                 event: WindowEvent::MouseWheel { delta, .. },
                 ..
             } => {
                 match delta {
                     MouseScrollDelta::LineDelta(_, delta) => {
-                        ui.next(&config, &mut sketch, Pevent::ActiveZoom(delta as i32));
+                        ui.next(&config, &mut sketch, Event::ActiveZoom(delta as i32));
                     }
                     MouseScrollDelta::PixelDelta(delta) => {
-                        ui.next(&config, &mut sketch, Pevent::ActiveZoom(delta.y as i32));
+                        ui.next(&config, &mut sketch, Event::ActiveZoom(delta.y as i32));
                     }
                 }
 
                 window.request_redraw();
             }
 
-            Gevent::WindowEvent {
+            GlutinEvent::WindowEvent {
                 event: WindowEvent::MouseInput { state, button, .. },
                 ..
             } => {
                 let button = pmb_gl::glutin_to_pmb_mouse_button(button);
+                let state = pmb_gl::glutin_to_pmb_key_state(state);
+
                 match (button, state) {
                     (primary, ElementState::Pressed) if primary == config.primary_button => {
-                        ui.next(&config, &mut sketch, Pevent::MouseDown(button));
+                        ui.next(&config, &mut sketch, Event::MouseDown(button));
                     }
                     (primary, ElementState::Released) if primary == config.primary_button => {
-                        ui.next(&config, &mut sketch, Pevent::MouseUp(button));
+                        ui.next(&config, &mut sketch, Event::MouseUp(button));
                     }
                     (pan, ElementState::Pressed) if pan == config.pan_button => {
-                        ui.next(&config, &mut sketch, Pevent::StartPan);
+                        ui.next(&config, &mut sketch, Event::StartPan);
                     }
                     (pan, ElementState::Released) if pan == config.pan_button => {
-                        ui.next(&config, &mut sketch, Pevent::EndPan);
+                        ui.next(&config, &mut sketch, Event::EndPan);
                     }
                     _ => {}
                 }
@@ -245,14 +254,14 @@ fn main() {
                 window.request_redraw();
             }
 
-            Gevent::WindowEvent {
+            GlutinEvent::WindowEvent {
                 event: WindowEvent::CursorMoved { position, .. },
                 ..
             } => {
                 ui.next(
                     &config,
                     &mut sketch,
-                    Pevent::MouseMove(pmb_gl::physical_pos_to_pixel_pos(position)),
+                    Event::MouseMove(pmb_gl::physical_pos_to_pixel_pos(position)),
                 );
                 config.prev_device = Device::Mouse;
 
@@ -272,7 +281,7 @@ fn main() {
                 }
             }
 
-            Gevent::WindowEvent {
+            GlutinEvent::WindowEvent {
                 event:
                     WindowEvent::Touch(
                         touch @ Touch {
@@ -293,10 +302,10 @@ fn main() {
                 }
 
                 match phase {
-                    TouchPhase::Started => ui.next(&config, &mut sketch, Pevent::PenDown(touch)),
-                    TouchPhase::Moved => ui.next(&config, &mut sketch, Pevent::PenMove(touch)),
+                    TouchPhase::Started => ui.next(&config, &mut sketch, Event::PenDown(touch)),
+                    TouchPhase::Moved => ui.next(&config, &mut sketch, Event::PenMove(touch)),
                     TouchPhase::Ended | TouchPhase::Cancelled => {
-                        ui.next(&config, &mut sketch, Pevent::PenUp(touch))
+                        ui.next(&config, &mut sketch, Event::PenUp(touch))
                     }
                 }
 
@@ -310,7 +319,7 @@ fn main() {
                 window.request_redraw();
             }
 
-            Gevent::WindowEvent {
+            GlutinEvent::WindowEvent {
                 event:
                     WindowEvent::Touch(
                         touch @ Touch {
@@ -326,9 +335,9 @@ fn main() {
                     &config,
                     &mut sketch,
                     match phase {
-                        TouchPhase::Started => Pevent::Touch(touch),
-                        TouchPhase::Moved => Pevent::PenMove(touch),
-                        TouchPhase::Ended | TouchPhase::Cancelled => Pevent::Release(touch),
+                        TouchPhase::Started => Event::Touch(touch),
+                        TouchPhase::Moved => Event::PenMove(touch),
+                        TouchPhase::Ended | TouchPhase::Cancelled => Event::Release(touch),
                     },
                 );
 
@@ -342,7 +351,7 @@ fn main() {
                 window.request_redraw();
             }
 
-            Gevent::WindowEvent {
+            GlutinEvent::WindowEvent {
                 event: WindowEvent::Resized(new_size),
                 ..
             } => {
@@ -355,7 +364,7 @@ fn main() {
                 window.request_redraw();
             }
 
-            Gevent::RedrawRequested(_) => {
+            GlutinEvent::RedrawRequested(_) => {
                 use std::mem::size_of;
 
                 unsafe {

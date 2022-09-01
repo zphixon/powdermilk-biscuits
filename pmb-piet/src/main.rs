@@ -3,6 +3,7 @@ use piet_common::{
     Color, ImageFormat, RenderContext, StrokeStyle,
 };
 use powdermilk_biscuits::{
+    input::ElementState,
     ui::{Event, Ui},
     Backend, Config, Device, Sketch, Tool,
 };
@@ -10,8 +11,8 @@ use softbuffer::GraphicsContext;
 use winit::{
     dpi::{LogicalPosition, PhysicalSize},
     event::{
-        ElementState, Event as WinitEvent, KeyboardInput, MouseScrollDelta, Touch, TouchPhase,
-        VirtualKeyCode, WindowEvent,
+        Event as WinitEvent, KeyboardInput, MouseScrollDelta, Touch, TouchPhase, VirtualKeyCode,
+        WindowEvent,
     },
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
@@ -21,12 +22,13 @@ mod backend {
     use powdermilk_biscuits::{
         event::{PenInfo, Touch, TouchPhase},
         graphics::{PixelPos, StrokePoint},
-        input::{Keycode, MouseButton},
+        input::{ElementState, Keycode, MouseButton},
         Backend, StrokeBackend,
     };
     use winit::event::{
-        MouseButton as WinitMouseButton, PenInfo as WinitPenInfo, Touch as WinitTouch,
-        TouchPhase as WinitTouchPhase, VirtualKeyCode as WinitKeycode,
+        ElementState as WinitElementState, MouseButton as WinitMouseButton,
+        PenInfo as WinitPenInfo, Touch as WinitTouch, TouchPhase as WinitTouchPhase,
+        VirtualKeyCode as WinitKeycode,
     };
 
     #[derive(Debug, Default, Clone, Copy)]
@@ -93,6 +95,13 @@ mod backend {
         PixelPos {
             x: pos.x as f32,
             y: pos.y as f32,
+        }
+    }
+
+    pub fn winit_to_pmb_key_state(state: WinitElementState) -> ElementState {
+        match state {
+            WinitElementState::Pressed => ElementState::Pressed,
+            WinitElementState::Released => ElementState::Released,
         }
     }
 
@@ -216,6 +225,9 @@ fn main() {
                 ..
             } => {
                 let key = backend::winit_to_pmb_keycode(key);
+                let state = backend::winit_to_pmb_key_state(state);
+                ui.handle_key(&mut sketch, key, state, size.width, size.height);
+
                 match (key, state) {
                     (zoom, ElementState::Pressed)
                         if config.prev_device == Device::Pen && zoom == config.pen_zoom_key =>
@@ -293,6 +305,8 @@ fn main() {
                 ..
             } => {
                 let button = backend::winit_to_pmb_mouse_button(button);
+                let state = backend::winit_to_pmb_key_state(state);
+
                 match (button, state) {
                     (primary, ElementState::Pressed) if primary == config.primary_button => {
                         ui.next(&config, &mut sketch, Event::MouseDown(button));

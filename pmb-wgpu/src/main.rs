@@ -1,4 +1,5 @@
 use powdermilk_biscuits::{
+    input::ElementState,
     ui::{self, Event, Ui},
     Config, Device, Sketch, Tool,
 };
@@ -6,8 +7,8 @@ use wgpu::SurfaceError;
 use winit::{
     dpi::LogicalPosition,
     event::{
-        ElementState, Event as WinitEvent, KeyboardInput, MouseScrollDelta, Touch, TouchPhase,
-        VirtualKeyCode, WindowEvent,
+        ElementState as WinitElementState, Event as WinitEvent, KeyboardInput, MouseScrollDelta,
+        Touch, TouchPhase, VirtualKeyCode, WindowEvent,
     },
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
@@ -78,7 +79,7 @@ async fn run() {
                     WindowEvent::KeyboardInput {
                         input:
                             KeyboardInput {
-                                state: ElementState::Pressed,
+                                state: WinitElementState::Pressed,
                                 virtual_keycode: Some(VirtualKeyCode::Escape),
                                 ..
                             },
@@ -103,6 +104,9 @@ async fn run() {
                 ..
             } => {
                 let key = pmb_wgpu::winit_to_pmb_keycode(key);
+                let state = pmb_wgpu::winit_to_pmb_key_state(state);
+                ui.handle_key(&mut sketch, key, state, size.width, size.height);
+
                 match (key, state) {
                     (zoom, ElementState::Pressed)
                         if config.prev_device == Device::Pen && zoom == config.pen_zoom_key =>
@@ -180,6 +184,8 @@ async fn run() {
                 ..
             } => {
                 let button = pmb_wgpu::winit_to_pmb_mouse_button(button);
+                let state = pmb_wgpu::winit_to_pmb_key_state(state);
+
                 match (button, state) {
                     (primary, ElementState::Pressed) if primary == config.primary_button => {
                         ui.next(&config, &mut sketch, Event::MouseDown(button));

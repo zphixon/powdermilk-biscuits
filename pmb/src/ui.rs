@@ -543,6 +543,133 @@ impl<B: Backend> Ui<B> {
         };
     }
 
+    pub fn handle_key<S: StrokeBackend>(
+        &mut self,
+        sketch: &mut Sketch<S>,
+        key: input::Keycode,
+        state: input::ElementState,
+        _width: u32,
+        _height: u32,
+    ) -> bool {
+        log::debug!("handle key {key:?} {state:?}");
+
+        use input::Keycode::*;
+        self.input.handle_key(key, state);
+        let mut request_redraw = false;
+
+        macro_rules! just_pressed {
+            ($key:ident) => {
+                just_pressed!($key, false, false)
+            };
+
+            (ctrl + $key:ident) => {
+                just_pressed!($key, true, false)
+            };
+
+            (shift + $key:ident) => {
+                just_pressed!($key, false, true)
+            };
+
+            (ctrl + shift + $key:ident) => {
+                just_pressed!($key, true, true)
+            };
+
+            ($key:ident, $ctrl:expr, $shift:expr) => {
+                self.input.just_pressed($key)
+                    && if $ctrl {
+                        self.input.control()
+                    } else {
+                        !self.input.control()
+                    }
+                    && if $shift {
+                        self.input.shift()
+                    } else {
+                        !self.input.shift()
+                    }
+            };
+        }
+
+        if just_pressed!(RBracket) {
+            self.increase_brush(crate::BRUSH_DELTA);
+            request_redraw = true;
+        }
+
+        if just_pressed!(LBracket) {
+            self.decrease_brush(crate::BRUSH_DELTA);
+            request_redraw = true;
+        }
+
+        if just_pressed!(C) {
+            // TODO
+            //sketch.clear_strokes();
+            request_redraw = true;
+        }
+
+        if just_pressed!(D) {
+            for stroke in sketch.strokes.iter() {
+                println!("stroke");
+                for point in stroke.points().iter() {
+                    println!("{},{},{}", point.x, point.y, point.pressure);
+                }
+                println!(
+                    "{} points, {} vertices, {} size, {} visible, {:?} color, {} top left, {} bottom right",
+                    stroke.points().len(),
+                    stroke.mesh.len(),
+                    stroke.brush_size(),
+                    stroke.visible,
+                    stroke.color(),
+                    stroke.top_left,
+                    stroke.bottom_right,
+                );
+            }
+            println!("brush={}", self.brush_size);
+            println!("zoom={:.02}", sketch.zoom);
+            println!("origin={}", sketch.origin);
+        }
+
+        if just_pressed!(ctrl + Z) {
+            // TODO
+            //self.undo_stroke();
+            request_redraw = true;
+        }
+
+        if just_pressed!(ctrl + S) {
+            // TODO
+            //self.save_file()
+            //    .problem(format!("Could not save file"))
+            //    .display();
+        }
+
+        if just_pressed!(Z) {
+            // TODO
+            //self.reset_view(width, height);
+            request_redraw = true;
+        }
+
+        if just_pressed!(ctrl + O) {
+            // TODO
+            //self.read_file(Option::<&str>::None)
+            //    .problem(format!("Could not open file"))
+            //    .display();
+            request_redraw = true;
+        }
+
+        if just_pressed!(ctrl + NumpadSubtract) {
+            // TODO
+            //sketch.change_zoom(-4.25, width, height);
+            request_redraw = true;
+        }
+
+        if just_pressed!(ctrl + NumpadAdd) {
+            // TODO
+            //self.change_zoom(4.25, width, height);
+            request_redraw = true;
+        }
+
+        self.input.upstrokes();
+        request_redraw
+    }
+
     pub fn read_file<S: StrokeBackend>(
         &mut self,
         path: Option<impl AsRef<std::path::Path>>,
