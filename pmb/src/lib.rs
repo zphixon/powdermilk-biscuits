@@ -1021,6 +1021,7 @@ impl Stylus {
 //    }
 //}
 
+#[allow(dead_code)]
 fn benchmark<S: StrokeBackend>() -> Vec<Stroke<S>> {
     use rand::Rng;
     let mut rng = rand::thread_rng();
@@ -1051,6 +1052,7 @@ fn benchmark<S: StrokeBackend>() -> Vec<Stroke<S>> {
     strokes
 }
 
+#[allow(dead_code)]
 fn grid<S>() -> Vec<Stroke<S>>
 where
     S: StrokeBackend,
