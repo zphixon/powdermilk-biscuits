@@ -186,7 +186,7 @@ fn main() {
                         ui.next(
                             &config,
                             &mut sketch,
-                            Pevent::BrushSize(powdermilk_biscuits::BRUSH_DELTA as i32),
+                            Pevent::IncreaseBrush(powdermilk_biscuits::BRUSH_DELTA),
                         );
                     }
 
@@ -194,7 +194,7 @@ fn main() {
                         ui.next(
                             &config,
                             &mut sketch,
-                            Pevent::BrushSize(-(powdermilk_biscuits::BRUSH_DELTA as i32)),
+                            Pevent::DecreaseBrush(powdermilk_biscuits::BRUSH_DELTA),
                         );
                     }
 

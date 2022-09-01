@@ -254,7 +254,7 @@ fn main() {
                         ui.next(
                             &config,
                             &mut sketch,
-                            Event::BrushSize(powdermilk_biscuits::BRUSH_DELTA as i32),
+                            Event::IncreaseBrush(powdermilk_biscuits::BRUSH_DELTA),
                         );
                     }
 
@@ -262,7 +262,7 @@ fn main() {
                         ui.next(
                             &config,
                             &mut sketch,
-                            Event::BrushSize(-(powdermilk_biscuits::BRUSH_DELTA as i32)),
+                            Event::DecreaseBrush(powdermilk_biscuits::BRUSH_DELTA),
                         );
                     }
 

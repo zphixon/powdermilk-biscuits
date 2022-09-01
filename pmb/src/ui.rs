@@ -2,6 +2,7 @@ use crate::{
     error::{ErrorKind, PmbError, PmbErrorExt},
     event::{Touch, TouchPhase},
     graphics::{PixelPos, StrokePos},
+    input,
     input::{ElementState, InputHandler, MouseButton},
     Backend, Config, Sketch, Stroke, StrokeBackend, Stylus, StylusPosition, StylusState, Tool,
 };
@@ -66,8 +67,10 @@ pub enum Event {
 
     ToolChange,
 
+    IncreaseBrush(usize),
+    DecreaseBrush(usize),
+
     // TODO better number types
-    BrushSize(i32),
     ActiveZoom(i32), // from e.g. mouse wheel
 }
 
@@ -273,6 +276,20 @@ impl<B: Backend> Ui<B> {
         self.update_visible_strokes(sketch);
     }
 
+    fn increase_brush(&mut self, by: usize) {
+        self.brush_size += by;
+        self.brush_size = self.brush_size.clamp(crate::MIN_BRUSH, crate::MAX_BRUSH);
+
+        log::debug!("increase brush {}", self.brush_size);
+    }
+
+    fn decrease_brush(&mut self, by: usize) {
+        self.brush_size -= by;
+        self.brush_size = self.brush_size.clamp(crate::MIN_BRUSH, crate::MAX_BRUSH);
+
+        log::debug!("decrease brush {}", self.brush_size);
+    }
+
     pub fn next<S: StrokeBackend>(
         &mut self,
         config: &Config,
@@ -295,17 +312,8 @@ impl<B: Backend> Ui<B> {
                 S::Ready
             }
 
-            (S::Ready, E::BrushSize(change)) => {
-                let next_brush = self.brush_size as i32 + change;
-
-                self.brush_size = if next_brush < crate::MIN_BRUSH as i32 {
-                    crate::MIN_BRUSH
-                } else if next_brush > crate::MAX_BRUSH as i32 {
-                    crate::MAX_BRUSH
-                } else {
-                    next_brush as usize
-                };
-
+            (S::Ready, E::IncreaseBrush(change)) => {
+                self.increase_brush(change);
                 S::Ready
             }
 
