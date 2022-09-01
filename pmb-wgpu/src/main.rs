@@ -1,7 +1,7 @@
 use powdermilk_biscuits::{
     event::{ElementState, Event},
     ui::{self, Ui},
-    Config, Device, Sketch, Tool,
+    Config, Device, Sketch,
 };
 use wgpu::SurfaceError;
 use winit::{
@@ -111,16 +111,19 @@ async fn run() {
                 ui.handle_key(&config, &mut sketch, key, state, size.width, size.height);
 
                 match (key, state) {
-                    (mouse, ElementState::Pressed) if mouse == config.toggle_use_mouse_for_pen => {
+                    (key, ElementState::Pressed) if key == config.toggle_use_mouse_for_pen => {
                         config.use_mouse_for_pen = !config.use_mouse_for_pen;
                         println!("using mouse for pen? {}", config.use_mouse_for_pen);
                     }
 
-                    (finger, ElementState::Pressed)
-                        if finger == config.toggle_use_finger_for_pen =>
-                    {
+                    (key, ElementState::Pressed) if key == config.toggle_use_finger_for_pen => {
                         config.use_finger_for_pen = !config.use_finger_for_pen;
                         println!("using finger for pen? {}", config.use_finger_for_pen);
+                    }
+
+                    (key, ElementState::Pressed) if key == config.toggle_stylus_invertability => {
+                        config.stylus_may_be_inverted = !config.stylus_may_be_inverted;
+                        println!("stylus invertable? {}", config.stylus_may_be_inverted);
                     }
 
                     _ => {}
@@ -168,7 +171,7 @@ async fn run() {
                     _ => {}
                 }
 
-                config.prev_device = Device::Mouse;
+                ui.prev_device = Device::Mouse;
                 window.request_redraw();
             }
 
@@ -181,7 +184,7 @@ async fn run() {
                     &mut sketch,
                     Event::MouseMove(pmb_wgpu::physical_pos_to_pixel_pos(position)),
                 );
-                config.prev_device = Device::Mouse;
+                ui.prev_device = Device::Mouse;
 
                 if config.use_mouse_for_pen {
                     if cursor_visible {
@@ -204,20 +207,13 @@ async fn run() {
                     WindowEvent::Touch(
                         touch @ Touch {
                             phase,
-                            pen_info: Some(pen_info),
+                            pen_info: Some(_),
                             ..
                         },
                     ),
                 ..
             } => {
                 let touch = pmb_wgpu::winit_to_pmb_touch(touch);
-                if config.stylus_may_be_inverted {
-                    if pen_info.inverted {
-                        config.active_tool = Tool::Eraser;
-                    } else {
-                        config.active_tool = Tool::Pen;
-                    }
-                }
 
                 match phase {
                     TouchPhase::Started => ui.next(&config, &mut sketch, Event::PenDown(touch)),
@@ -227,7 +223,7 @@ async fn run() {
                     }
                 }
 
-                config.prev_device = Device::Pen;
+                ui.prev_device = Device::Pen;
 
                 if cursor_visible {
                     cursor_visible = false;
@@ -259,7 +255,7 @@ async fn run() {
                     },
                 );
 
-                config.prev_device = Device::Touch;
+                ui.prev_device = Device::Touch;
 
                 if cursor_visible && config.use_finger_for_pen {
                     cursor_visible = false;

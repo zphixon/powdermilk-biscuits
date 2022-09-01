@@ -2,7 +2,8 @@ use crate::{
     error::{ErrorKind, PmbError, PmbErrorExt},
     event::{ElementState, Event, InputHandler, Keycode, Touch, TouchPhase},
     graphics::{PixelPos, StrokePos},
-    Backend, Config, Sketch, Stroke, StrokeBackend, Stylus, StylusPosition, StylusState, Tool,
+    Backend, Config, Device, Sketch, Stroke, StrokeBackend, Stylus, StylusPosition, StylusState,
+    Tool,
 };
 use std::path::{Path, PathBuf};
 
@@ -73,11 +74,16 @@ impl UiState {
 #[derive(Debug)]
 pub struct Ui<B: Backend> {
     pub state: UiState,
-    pub stylus: Stylus,
-    pub brush_size: usize,
     pub modified: bool,
     pub path: Option<std::path::PathBuf>,
+
     pub input: InputHandler,
+    pub prev_device: Device,
+
+    pub stylus: Stylus,
+    pub brush_size: usize,
+    pub active_tool: Tool,
+
     pub width: u32,
     pub height: u32,
     pub backend: B,
@@ -88,6 +94,8 @@ impl<B: Backend> Ui<B> {
         Self {
             state: UiState::default(),
             stylus: Stylus::default(),
+            prev_device: Device::Mouse,
+            active_tool: Tool::Pen,
             brush_size: crate::DEFAULT_BRUSH,
             modified: false,
             path: None,
@@ -141,7 +149,7 @@ impl<B: Backend> Ui<B> {
         sketch: &Sketch<S>,
         phase: TouchPhase,
     ) {
-        let eraser = config.active_tool == Tool::Eraser;
+        let eraser = self.active_tool == Tool::Eraser;
         let pressure = if self.input.button_down(config.primary_button) {
             1.0
         } else {
@@ -154,7 +162,7 @@ impl<B: Backend> Ui<B> {
     fn update_stylus_from_touch<S: StrokeBackend>(
         &mut self,
         config: &Config,
-        sketch: &Sketch<S>,
+        sketch: &mut Sketch<S>,
         touch: Touch,
     ) {
         let Touch {
@@ -167,9 +175,19 @@ impl<B: Backend> Ui<B> {
 
         let pressure = force.unwrap_or(1.0);
 
+        if let Some(pen_info) = pen_info {
+            if config.stylus_may_be_inverted {
+                if pen_info.inverted || pen_info.eraser {
+                    self.next(config, sketch, Event::ToolChange(Tool::Eraser));
+                } else {
+                    self.next(config, sketch, Event::ToolChange(Tool::Pen));
+                }
+            }
+        }
+
         let eraser = pen_info
             .map(|info| info.inverted || info.eraser)
-            .unwrap_or(config.active_tool == Tool::Eraser);
+            .unwrap_or(self.active_tool == Tool::Eraser);
 
         self.update_stylus(sketch, phase, location, eraser, pressure);
     }
@@ -270,15 +288,8 @@ impl<B: Backend> Ui<B> {
         use UiState as S;
 
         self.state = match (self.state, event) {
-            (S::Ready, E::ToolChange) => {
-                match config.active_tool {
-                    Tool::Pen => {
-                        self.stylus.state.eraser = false;
-                    }
-                    Tool::Eraser => {
-                        self.stylus.state.eraser = true;
-                    }
-                }
+            (S::Ready, E::ToolChange(tool)) => {
+                self.active_tool = tool;
                 S::Ready
             }
 
@@ -322,7 +333,7 @@ impl<B: Backend> Ui<B> {
                     .handle_mouse_button(button, ElementState::Pressed);
                 if config.use_mouse_for_pen {
                     self.update_stylus_from_mouse(config, sketch, TouchPhase::Start);
-                    match config.active_tool {
+                    match self.active_tool {
                         Tool::Pen => {
                             self.start_stroke(sketch);
                             S::MouseDraw
@@ -424,7 +435,7 @@ impl<B: Backend> Ui<B> {
 
             (S::Ready, E::PenDown(touch)) => {
                 self.update_stylus_from_touch(config, sketch, touch);
-                match config.active_tool {
+                match self.active_tool {
                     Tool::Pen => {
                         self.start_stroke(sketch);
                         S::PenDraw
@@ -497,7 +508,7 @@ impl<B: Backend> Ui<B> {
             (S::Ready, E::Touch(touch)) => {
                 if config.use_finger_for_pen {
                     self.update_stylus_from_touch(config, sketch, touch);
-                    match config.active_tool {
+                    match self.active_tool {
                         Tool::Pen => S::TouchDraw,
                         Tool::Eraser => S::TouchErase,
                     }
@@ -634,7 +645,7 @@ impl<B: Backend> Ui<B> {
             //self.change_zoom(4.25, width, height);
         }
 
-        if just_pressed!(pen_zoom) && config.prev_device == crate::Device::Pen {
+        if just_pressed!(pen_zoom) && self.prev_device == crate::Device::Pen {
             self.next(config, sketch, Event::StartZoom);
         }
 
@@ -643,10 +654,14 @@ impl<B: Backend> Ui<B> {
         }
 
         if just_pressed!(toggle_eraser_pen)
-            && (config.prev_device == crate::Device::Mouse || !config.stylus_may_be_inverted)
+            && (self.prev_device == crate::Device::Mouse || !config.stylus_may_be_inverted)
         {
-            // TODO move active_tool to Ui
-            //self.next(config, sketch, Event::ToolChange);
+            if self.active_tool == Tool::Eraser {
+                // TODO use previous tool
+                self.next(config, sketch, Event::ToolChange(Tool::Pen));
+            } else {
+                self.next(config, sketch, Event::ToolChange(Tool::Eraser));
+            }
         }
 
         self.input.upstrokes();

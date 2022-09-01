@@ -139,14 +139,13 @@ pub enum Device {
 // TODO handle key combinations
 #[derive(Debug)]
 pub struct Config {
-    pub prev_device: Device,
     pub use_mouse_for_pen: bool,
     pub use_finger_for_pen: bool,
     pub stylus_may_be_inverted: bool,
-    pub active_tool: Tool,
     pub primary_button: MouseButton,
     pub pan_button: MouseButton,
     pub pen_zoom: Keycode,
+    pub toggle_stylus_invertability: Keycode,
     pub toggle_use_mouse_for_pen: Keycode,
     pub toggle_use_finger_for_pen: Keycode,
     pub toggle_eraser_pen: Keycode,
@@ -165,14 +164,13 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Config {
-            prev_device: Device::Mouse,
             use_mouse_for_pen: false,
             use_finger_for_pen: true,
-            active_tool: Tool::Pen,
             stylus_may_be_inverted: true,
             primary_button: MouseButton::Left,
             pan_button: MouseButton::Middle,
             pen_zoom: Keycode::LControl,
+            toggle_stylus_invertability: Keycode::I,
             toggle_use_mouse_for_pen: Keycode::M,
             toggle_use_finger_for_pen: Keycode::F,
             toggle_eraser_pen: Keycode::E,

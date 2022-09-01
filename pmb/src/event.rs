@@ -1,4 +1,4 @@
-use crate::graphics::PixelPos;
+use crate::{graphics::PixelPos, Tool};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy)]
@@ -20,7 +20,7 @@ pub enum Event {
     StartZoom,
     EndZoom,
 
-    ToolChange,
+    ToolChange(Tool),
 
     IncreaseBrush(usize),
     DecreaseBrush(usize),
