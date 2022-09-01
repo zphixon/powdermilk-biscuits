@@ -517,17 +517,17 @@ impl<B: Backend> Ui<B> {
 
     pub fn handle_key<S: StrokeBackend>(
         &mut self,
+        config: &Config,
         sketch: &mut Sketch<S>,
         key: Keycode,
         state: ElementState,
         _width: u32,
         _height: u32,
-    ) -> bool {
+    ) {
         log::debug!("handle key {key:?} {state:?}");
 
         use Keycode::*;
         self.input.handle_key(key, state);
-        let mut request_redraw = false;
 
         macro_rules! just_pressed {
             ($key:ident) => {
@@ -563,18 +563,15 @@ impl<B: Backend> Ui<B> {
 
         if just_pressed!(RBracket) {
             self.increase_brush(crate::BRUSH_DELTA);
-            request_redraw = true;
         }
 
         if just_pressed!(LBracket) {
             self.decrease_brush(crate::BRUSH_DELTA);
-            request_redraw = true;
         }
 
         if just_pressed!(C) {
             // TODO
             //sketch.clear_strokes();
-            request_redraw = true;
         }
 
         if just_pressed!(D) {
@@ -602,7 +599,6 @@ impl<B: Backend> Ui<B> {
         if just_pressed!(ctrl + Z) {
             // TODO
             //self.undo_stroke();
-            request_redraw = true;
         }
 
         if just_pressed!(ctrl + S) {
@@ -615,7 +611,6 @@ impl<B: Backend> Ui<B> {
         if just_pressed!(Z) {
             // TODO
             //self.reset_view(width, height);
-            request_redraw = true;
         }
 
         if just_pressed!(ctrl + O) {
@@ -623,23 +618,19 @@ impl<B: Backend> Ui<B> {
             //self.read_file(Option::<&str>::None)
             //    .problem(format!("Could not open file"))
             //    .display();
-            request_redraw = true;
         }
 
         if just_pressed!(ctrl + NumpadSubtract) {
             // TODO
             //sketch.change_zoom(-4.25, width, height);
-            request_redraw = true;
         }
 
         if just_pressed!(ctrl + NumpadAdd) {
             // TODO
             //self.change_zoom(4.25, width, height);
-            request_redraw = true;
         }
 
         self.input.upstrokes();
-        request_redraw
     }
 
     pub fn read_file<S: StrokeBackend>(

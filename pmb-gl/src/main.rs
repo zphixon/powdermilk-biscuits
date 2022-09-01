@@ -195,7 +195,7 @@ fn main() {
             } => {
                 let key = pmb_gl::glutin_to_pmb_keycode(key);
                 let state = pmb_gl::glutin_to_pmb_key_state(state);
-                ui.handle_key(&mut sketch, key, state, size.width, size.height);
+                ui.handle_key(&config, &mut sketch, key, state, size.width, size.height);
 
                 match (key, state) {
                     (zoom, ElementState::Pressed)
