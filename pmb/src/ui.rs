@@ -390,7 +390,10 @@ impl<B: Backend> Ui<B> {
                     self.update_stylus_from_mouse(config, sketch, TouchPhase::Start);
                     // update stylus
                     match config.active_tool {
-                        Tool::Pen => S::MouseDraw,
+                        Tool::Pen => {
+                            self.start_stroke(sketch);
+                            S::MouseDraw
+                        }
                         Tool::Eraser => S::MouseErase,
                     }
                 } else {
