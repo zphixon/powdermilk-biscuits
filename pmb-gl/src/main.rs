@@ -198,12 +198,14 @@ fn main() {
                 ui.handle_key(&config, &mut sketch, key, state, size.width, size.height);
 
                 match (key, state) {
-                    (mouse, ElementState::Pressed) if mouse == config.use_mouse_for_pen_key => {
+                    (mouse, ElementState::Pressed) if mouse == config.toggle_use_mouse_for_pen => {
                         config.use_mouse_for_pen = !config.use_mouse_for_pen;
                         println!("using mouse for pen? {}", config.use_mouse_for_pen);
                     }
 
-                    (finger, ElementState::Pressed) if finger == config.use_finger_for_pen_key => {
+                    (finger, ElementState::Pressed)
+                        if finger == config.toggle_use_finger_for_pen =>
+                    {
                         config.use_finger_for_pen = !config.use_finger_for_pen;
                         println!("using finger for pen? {}", config.use_finger_for_pen);
                     }

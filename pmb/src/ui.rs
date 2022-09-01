@@ -634,15 +634,15 @@ impl<B: Backend> Ui<B> {
             //self.change_zoom(4.25, width, height);
         }
 
-        if just_pressed!(pen_zoom_key) && config.prev_device == crate::Device::Pen {
+        if just_pressed!(pen_zoom) && config.prev_device == crate::Device::Pen {
             self.next(config, sketch, Event::StartZoom);
         }
 
-        if !self.input.is_down(config.pen_zoom_key) {
+        if !self.input.is_down(config.pen_zoom) {
             self.next(config, sketch, Event::EndZoom);
         }
 
-        if just_pressed!(swap_eraser_key)
+        if just_pressed!(toggle_eraser_pen)
             && (config.prev_device == crate::Device::Mouse || !config.stylus_may_be_inverted)
         {
             // TODO move active_tool to Ui
