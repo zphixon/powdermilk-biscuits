@@ -136,6 +136,7 @@ pub enum Device {
     Pen,
 }
 
+// TODO handle key combinations
 #[derive(Debug)]
 pub struct Config {
     pub prev_device: Device,
@@ -151,6 +152,14 @@ pub struct Config {
     pub swap_eraser_key: Keycode,
     pub brush_increase: Keycode,
     pub brush_decrease: Keycode,
+    pub clear_strokes: Keycode,
+    pub debug_strokes: Keycode,
+    pub undo: Keycode,
+    pub save: Keycode,
+    pub reset_view: Keycode,
+    pub open: Keycode,
+    pub zoom_out: Keycode,
+    pub zoom_in: Keycode,
 }
 
 impl Default for Config {
@@ -169,6 +178,14 @@ impl Default for Config {
             swap_eraser_key: Keycode::E,
             brush_increase: Keycode::RBracket,
             brush_decrease: Keycode::LBracket,
+            clear_strokes: Keycode::C,
+            debug_strokes: Keycode::D,
+            undo: Keycode::Z,
+            save: Keycode::S,
+            reset_view: Keycode::Z,
+            open: Keycode::O,
+            zoom_out: Keycode::NumpadSubtract,
+            zoom_in: Keycode::NumpadAdd,
         }
     }
 }

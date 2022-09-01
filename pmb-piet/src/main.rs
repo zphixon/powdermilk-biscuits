@@ -228,16 +228,6 @@ fn main() {
                 ui.handle_key(&config, &mut sketch, key, state, size.width, size.height);
 
                 match (key, state) {
-                    (zoom, ElementState::Pressed)
-                        if config.prev_device == Device::Pen && zoom == config.pen_zoom_key =>
-                    {
-                        ui.next(&config, &mut sketch, Event::StartZoom);
-                    }
-
-                    (zoom, ElementState::Released) if zoom == config.pen_zoom_key => {
-                        ui.next(&config, &mut sketch, Event::EndZoom);
-                    }
-
                     (mouse, ElementState::Pressed) if mouse == config.use_mouse_for_pen_key => {
                         config.use_mouse_for_pen = !config.use_mouse_for_pen;
                         println!("using mouse for pen? {}", config.use_mouse_for_pen);
@@ -246,35 +236,6 @@ fn main() {
                     (finger, ElementState::Pressed) if finger == config.use_finger_for_pen_key => {
                         config.use_finger_for_pen = !config.use_finger_for_pen;
                         println!("using finger for pen? {}", config.use_finger_for_pen);
-                    }
-
-                    (swap, ElementState::Pressed)
-                        if (config.prev_device == Device::Mouse
-                            || !config.stylus_may_be_inverted)
-                            && swap == config.swap_eraser_key =>
-                    {
-                        if config.active_tool != Tool::Eraser {
-                            config.active_tool = Tool::Eraser;
-                        } else {
-                            config.active_tool = Tool::Pen;
-                        }
-                        ui.next(&config, &mut sketch, Event::ToolChange);
-                    }
-
-                    (brush, ElementState::Pressed) if brush == config.brush_increase => {
-                        ui.next(
-                            &config,
-                            &mut sketch,
-                            Event::IncreaseBrush(powdermilk_biscuits::BRUSH_DELTA),
-                        );
-                    }
-
-                    (brush, ElementState::Pressed) if brush == config.brush_decrease => {
-                        ui.next(
-                            &config,
-                            &mut sketch,
-                            Event::DecreaseBrush(powdermilk_biscuits::BRUSH_DELTA),
-                        );
                     }
 
                     _ => {}

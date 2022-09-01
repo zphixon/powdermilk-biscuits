@@ -531,28 +531,27 @@ impl<B: Backend> Ui<B> {
     ) {
         log::debug!("handle key {key:?} {state:?}");
 
-        use Keycode::*;
         self.input.handle_key(key, state);
 
         macro_rules! just_pressed {
-            ($key:ident) => {
-                just_pressed!($key, false, false)
+            ($action:ident) => {
+                just_pressed!($action, false, false)
             };
 
-            (ctrl + $key:ident) => {
-                just_pressed!($key, true, false)
+            (ctrl + $action:ident) => {
+                just_pressed!($action, true, false)
             };
 
-            (shift + $key:ident) => {
-                just_pressed!($key, false, true)
+            (shift + $action:ident) => {
+                just_pressed!($action, false, true)
             };
 
-            (ctrl + shift + $key:ident) => {
-                just_pressed!($key, true, true)
+            (ctrl + shift + $action:ident) => {
+                just_pressed!($action, true, true)
             };
 
-            ($key:ident, $ctrl:expr, $shift:expr) => {
-                self.input.just_pressed($key)
+            ($action:ident, $ctrl:expr, $shift:expr) => {
+                self.input.just_pressed(config.$action)
                     && if $ctrl {
                         self.input.control()
                     } else {
@@ -566,20 +565,20 @@ impl<B: Backend> Ui<B> {
             };
         }
 
-        if just_pressed!(RBracket) {
-            self.increase_brush(crate::BRUSH_DELTA);
+        if just_pressed!(brush_increase) {
+            self.next(config, sketch, Event::IncreaseBrush(crate::BRUSH_DELTA));
         }
 
-        if just_pressed!(LBracket) {
-            self.decrease_brush(crate::BRUSH_DELTA);
+        if just_pressed!(brush_decrease) {
+            self.next(config, sketch, Event::DecreaseBrush(crate::BRUSH_DELTA));
         }
 
-        if just_pressed!(C) {
+        if just_pressed!(clear_strokes) {
             // TODO
             //sketch.clear_strokes();
         }
 
-        if just_pressed!(D) {
+        if just_pressed!(debug_strokes) {
             for stroke in sketch.strokes.iter() {
                 println!("stroke");
                 for point in stroke.points().iter() {
@@ -601,38 +600,53 @@ impl<B: Backend> Ui<B> {
             println!("origin={}", sketch.origin);
         }
 
-        if just_pressed!(ctrl + Z) {
+        if just_pressed!(ctrl + undo) {
             // TODO
             //self.undo_stroke();
         }
 
-        if just_pressed!(ctrl + S) {
+        if just_pressed!(ctrl + save) {
             // TODO
             //self.save_file()
             //    .problem(format!("Could not save file"))
             //    .display();
         }
 
-        if just_pressed!(Z) {
+        if just_pressed!(reset_view) {
             // TODO
             //self.reset_view(width, height);
         }
 
-        if just_pressed!(ctrl + O) {
+        if just_pressed!(ctrl + open) {
             // TODO
             //self.read_file(Option::<&str>::None)
             //    .problem(format!("Could not open file"))
             //    .display();
         }
 
-        if just_pressed!(ctrl + NumpadSubtract) {
+        if just_pressed!(ctrl + zoom_out) {
             // TODO
             //sketch.change_zoom(-4.25, width, height);
         }
 
-        if just_pressed!(ctrl + NumpadAdd) {
+        if just_pressed!(ctrl + zoom_in) {
             // TODO
             //self.change_zoom(4.25, width, height);
+        }
+
+        if just_pressed!(pen_zoom_key) && config.prev_device == crate::Device::Pen {
+            self.next(config, sketch, Event::StartZoom);
+        }
+
+        if !self.input.is_down(config.pen_zoom_key) {
+            self.next(config, sketch, Event::EndZoom);
+        }
+
+        if just_pressed!(swap_eraser_key)
+            && (config.prev_device == crate::Device::Mouse || !config.stylus_may_be_inverted)
+        {
+            // TODO move active_tool to Ui
+            //self.next(config, sketch, Event::ToolChange);
         }
 
         self.input.upstrokes();
