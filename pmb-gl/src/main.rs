@@ -13,7 +13,7 @@ use pmb_gl::{GlBackend, GlStrokeBackend};
 use powdermilk_biscuits::{
     event::{ElementState, Event},
     ui::Ui,
-    Config, Device, Sketch,
+    Config, Device, Sketch, Tool,
 };
 
 fn main() {
@@ -510,7 +510,11 @@ fn main() {
 
                         gl.uniform_1_f32(
                             Some(&pen_cursor_erasing),
-                            if ui.stylus.eraser() { 1.0 } else { 0.0 },
+                            if ui.active_tool == Tool::Eraser {
+                                1.0
+                            } else {
+                                0.0
+                            },
                         );
                         gl.uniform_1_f32(
                             Some(&pen_cursor_pen_down),

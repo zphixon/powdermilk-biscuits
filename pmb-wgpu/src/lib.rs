@@ -3,7 +3,7 @@ use powdermilk_biscuits::{
     graphics::{ColorExt, PixelPos, StrokePoint},
     stroke::Stroke,
     ui::Ui,
-    Sketch,
+    Sketch, Tool,
 };
 use std::mem::size_of;
 use wgpu::{
@@ -546,7 +546,11 @@ impl CursorRenderer {
 
         let info_buffer = [
             if ui.stylus.down() { 1.0f32 } else { 0. },
-            if ui.stylus.eraser() { 1. } else { 0. },
+            if ui.active_tool == Tool::Eraser {
+                1.
+            } else {
+                0.
+            },
         ];
 
         pass.set_pipeline(&self.pipeline);
