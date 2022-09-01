@@ -3,8 +3,8 @@ use piet_common::{
     Color, ImageFormat, RenderContext, StrokeStyle,
 };
 use powdermilk_biscuits::{
-    input::ElementState,
-    ui::{Event, Ui},
+    event::{ElementState, Event},
+    ui::Ui,
     Backend, Config, Device, Sketch, Tool,
 };
 use softbuffer::GraphicsContext;
@@ -20,9 +20,8 @@ use winit::{
 
 mod backend {
     use powdermilk_biscuits::{
-        event::{PenInfo, Touch, TouchPhase},
+        event::{ElementState, Keycode, MouseButton, PenInfo, Touch, TouchPhase},
         graphics::{PixelPos, StrokePoint},
-        input::{ElementState, Keycode, MouseButton},
         Backend, StrokeBackend,
     };
     use winit::event::{

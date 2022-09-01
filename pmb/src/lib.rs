@@ -1,15 +1,14 @@
 pub mod error;
 pub mod event;
 pub mod graphics;
-pub mod input;
 pub mod migrate;
 pub mod stroke;
 pub mod ui;
 
 use crate::{
     error::{ErrorKind, PmbError, PmbErrorExt},
+    event::{Keycode, MouseButton},
     graphics::{Color, ColorExt, PixelPos, StrokePoint, StrokePos},
-    input::{Keycode, MouseButton},
     migrate::Version,
     stroke::{Stroke, StrokeElement},
 };

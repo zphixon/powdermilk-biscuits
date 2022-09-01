@@ -1,7 +1,6 @@
 use powdermilk_biscuits::{
-    event::{PenInfo, Touch, TouchPhase},
+    event::{ElementState, Keycode, MouseButton, PenInfo, Touch, TouchPhase},
     graphics::{ColorExt, PixelPos, StrokePoint},
-    input::{ElementState, Keycode, MouseButton},
     stroke::Stroke,
     ui::Ui,
     Sketch,

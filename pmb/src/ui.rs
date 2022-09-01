@@ -1,9 +1,7 @@
 use crate::{
     error::{ErrorKind, PmbError, PmbErrorExt},
-    event::{Touch, TouchPhase},
+    event::{ElementState, Event, InputHandler, Keycode, Touch, TouchPhase},
     graphics::{PixelPos, StrokePos},
-    input,
-    input::{ElementState, InputHandler, MouseButton},
     Backend, Config, Sketch, Stroke, StrokeBackend, Stylus, StylusPosition, StylusState, Tool,
 };
 use std::path::{Path, PathBuf};
@@ -46,34 +44,6 @@ pub fn open_dialog() -> Option<PathBuf> {
         .pick_file()
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum Event {
-    Touch(Touch),
-    TouchMove(Touch),
-    Release(Touch),
-
-    PenDown(Touch),
-    PenMove(Touch),
-    PenUp(Touch),
-
-    MouseDown(MouseButton),
-    MouseMove(PixelPos),
-    MouseUp(MouseButton),
-
-    StartPan,
-    EndPan,
-    StartZoom,
-    EndZoom,
-
-    ToolChange,
-
-    IncreaseBrush(usize),
-    DecreaseBrush(usize),
-
-    // TODO better number types
-    ActiveZoom(i32), // from e.g. mouse wheel
-}
-
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub enum UiState {
     #[default]
@@ -107,7 +77,7 @@ pub struct Ui<B: Backend> {
     pub brush_size: usize,
     pub modified: bool,
     pub path: Option<std::path::PathBuf>,
-    pub input: crate::input::InputHandler,
+    pub input: InputHandler,
     pub width: u32,
     pub height: u32,
     pub backend: B,
@@ -546,14 +516,14 @@ impl<B: Backend> Ui<B> {
     pub fn handle_key<S: StrokeBackend>(
         &mut self,
         sketch: &mut Sketch<S>,
-        key: input::Keycode,
-        state: input::ElementState,
+        key: Keycode,
+        state: ElementState,
         _width: u32,
         _height: u32,
     ) -> bool {
         log::debug!("handle key {key:?} {state:?}");
 
-        use input::Keycode::*;
+        use Keycode::*;
         self.input.handle_key(key, state);
         let mut request_redraw = false;
 

@@ -1,6 +1,6 @@
 use powdermilk_biscuits::{
-    input::ElementState,
-    ui::{self, Event, Ui},
+    event::{ElementState, Event},
+    ui::{self, Ui},
     Config, Device, Sketch, Tool,
 };
 use wgpu::SurfaceError;
@@ -330,7 +330,7 @@ async fn run() {
             }
 
             WinitEvent::MainEventsCleared => {
-                use powdermilk_biscuits::input::Keycode::*;
+                use powdermilk_biscuits::event::Keycode::*;
 
                 if ui.input.just_pressed(A) {
                     graphics.aa = !graphics.aa;

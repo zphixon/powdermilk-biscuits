@@ -11,8 +11,8 @@ use glutin::{
 };
 use pmb_gl::{GlBackend, GlStrokeBackend};
 use powdermilk_biscuits::{
-    input::ElementState,
-    ui::{Event, Ui},
+    event::{ElementState, Event},
+    ui::Ui,
     Config, Device, Sketch, Tool,
 };
 
