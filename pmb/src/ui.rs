@@ -302,6 +302,7 @@ impl<B: Backend> Ui<B> {
                 }
 
                 sketch.update_stroke_primitive();
+                self.update_visible_strokes(sketch);
 
                 S::Ready
             }
@@ -406,6 +407,7 @@ impl<B: Backend> Ui<B> {
                 let next = self.stylus.pos;
                 sketch.zoom += prev.y - next.y;
                 sketch.update_stroke_primitive();
+                self.update_visible_strokes(sketch);
                 S::PenZoom
             }
 
