@@ -10,7 +10,7 @@ use glutin::{
     ContextBuilder,
 };
 use pmb_gl::{GlBackend, GlStrokeBackend};
-use powdermilk_biscuits::ui::{Config, Device, Event as Pevent, Sketch, Tool, Ui, UiState};
+use powdermilk_biscuits::ui::{Config, Device, Event as Pevent, Sketch, Tool, Ui};
 
 fn main() {
     let ev = EventLoop::new();
@@ -369,80 +369,64 @@ fn main() {
                     gl.clear(glow::COLOR_BUFFER_BIT);
                 }
 
-                for stroke in sketch.strokes.iter_mut() {
-                    unsafe {
-                        if stroke.is_dirty() {
-                            stroke.replace_backend_with(|points_bytes, mesh_bytes, mesh_len| {
-                                let f32_size = size_of::<f32>() as i32;
+                if let Some(last) = sketch.strokes.last_mut() {
+                    if last.is_dirty() {
+                        last.replace_backend_with(|points_bytes, mesh_bytes, mesh_len| unsafe {
+                            let f32_size = size_of::<f32>() as i32;
 
-                                let line_vao = gl.create_vertex_array().unwrap();
-                                gl.bind_vertex_array(Some(line_vao));
+                            let line_vao = gl.create_vertex_array().unwrap();
+                            gl.bind_vertex_array(Some(line_vao));
 
-                                let points = gl.create_buffer().unwrap();
-                                gl.bind_buffer(glow::ARRAY_BUFFER, Some(points));
-                                gl.buffer_data_u8_slice(
-                                    glow::ARRAY_BUFFER,
-                                    points_bytes,
-                                    glow::STATIC_DRAW,
-                                );
+                            let points = gl.create_buffer().unwrap();
+                            gl.bind_buffer(glow::ARRAY_BUFFER, Some(points));
+                            gl.buffer_data_u8_slice(
+                                glow::ARRAY_BUFFER,
+                                points_bytes,
+                                glow::STATIC_DRAW,
+                            );
 
-                                gl.vertex_attrib_pointer_f32(
-                                    0,
-                                    2,
-                                    glow::FLOAT,
-                                    false,
-                                    f32_size * 3,
-                                    0,
-                                );
-                                gl.vertex_attrib_pointer_f32(
-                                    1,
-                                    1,
-                                    glow::FLOAT,
-                                    false,
-                                    f32_size * 3,
-                                    f32_size * 2,
-                                );
-                                gl.enable_vertex_attrib_array(0);
-                                gl.enable_vertex_attrib_array(1);
+                            gl.vertex_attrib_pointer_f32(0, 2, glow::FLOAT, false, f32_size * 3, 0);
+                            gl.vertex_attrib_pointer_f32(
+                                1,
+                                1,
+                                glow::FLOAT,
+                                false,
+                                f32_size * 3,
+                                f32_size * 2,
+                            );
+                            gl.enable_vertex_attrib_array(0);
+                            gl.enable_vertex_attrib_array(1);
 
-                                let mesh_vao = gl.create_vertex_array().unwrap();
-                                gl.bind_vertex_array(Some(mesh_vao));
-                                let mesh = gl.create_buffer().unwrap();
-                                gl.bind_buffer(glow::ARRAY_BUFFER, Some(mesh));
-                                gl.buffer_data_u8_slice(
-                                    glow::ARRAY_BUFFER,
-                                    mesh_bytes,
-                                    glow::STATIC_DRAW,
-                                );
-                                gl.vertex_attrib_pointer_f32(
-                                    0,
-                                    2,
-                                    glow::FLOAT,
-                                    false,
-                                    f32_size * 3,
-                                    0,
-                                );
-                                gl.vertex_attrib_pointer_f32(
-                                    1,
-                                    1,
-                                    glow::FLOAT,
-                                    false,
-                                    f32_size * 3,
-                                    f32_size * 2,
-                                );
-                                gl.enable_vertex_attrib_array(0);
-                                gl.enable_vertex_attrib_array(1);
+                            let mesh_vao = gl.create_vertex_array().unwrap();
+                            gl.bind_vertex_array(Some(mesh_vao));
+                            let mesh = gl.create_buffer().unwrap();
+                            gl.bind_buffer(glow::ARRAY_BUFFER, Some(mesh));
+                            gl.buffer_data_u8_slice(
+                                glow::ARRAY_BUFFER,
+                                mesh_bytes,
+                                glow::STATIC_DRAW,
+                            );
+                            gl.vertex_attrib_pointer_f32(0, 2, glow::FLOAT, false, f32_size * 3, 0);
+                            gl.vertex_attrib_pointer_f32(
+                                1,
+                                1,
+                                glow::FLOAT,
+                                false,
+                                f32_size * 3,
+                                f32_size * 2,
+                            );
+                            gl.enable_vertex_attrib_array(0);
+                            gl.enable_vertex_attrib_array(1);
 
-                                GlStrokeBackend {
-                                    line_vao,
-                                    points,
-                                    mesh_vao,
-                                    mesh,
-                                    mesh_len: mesh_len as i32,
-                                    dirty: false,
-                                }
-                            });
-                        }
+                            GlStrokeBackend {
+                                line_vao,
+                                points,
+                                mesh_vao,
+                                mesh,
+                                mesh_len: mesh_len as i32,
+                                dirty: false,
+                            }
+                        });
                     }
                 }
 
