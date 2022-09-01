@@ -25,8 +25,7 @@ pub enum Event {
     IncreaseBrush(usize),
     DecreaseBrush(usize),
 
-    // TODO better number types
-    ActiveZoom(i32), // from e.g. mouse wheel
+    ScrollZoom(f32),
 }
 
 #[derive(Clone, Copy, Debug)]

@@ -289,10 +289,10 @@ fn main() {
             } => {
                 match delta {
                     MouseScrollDelta::LineDelta(_, delta) => {
-                        ui.next(&config, &mut sketch, Event::ActiveZoom(delta as i32));
+                        ui.next(&config, &mut sketch, Event::ScrollZoom(delta));
                     }
                     MouseScrollDelta::PixelDelta(delta) => {
-                        ui.next(&config, &mut sketch, Event::ActiveZoom(delta.y as i32));
+                        ui.next(&config, &mut sketch, Event::ScrollZoom(delta.y as f32));
                     }
                 }
 

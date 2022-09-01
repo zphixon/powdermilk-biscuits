@@ -50,7 +50,7 @@ pub enum UiState {
     Ready,
     Pan,
     PreZoom,
-    Zoom,
+    PenZoom,
     Select,
     PenDraw,
     PenErase,
@@ -287,8 +287,8 @@ impl<B: Backend> Ui<B> {
                 S::Ready
             }
 
-            (S::Ready, E::ActiveZoom(change)) => {
-                let next_zoom = sketch.zoom + change as f32;
+            (S::Ready, E::ScrollZoom(change)) => {
+                let next_zoom = sketch.zoom + change;
                 sketch.zoom = if next_zoom < crate::MIN_ZOOM {
                     crate::MIN_ZOOM
                 } else if next_zoom > crate::MAX_ZOOM {
@@ -308,7 +308,7 @@ impl<B: Backend> Ui<B> {
 
             // pan handling
             (S::Ready, E::StartPan) => S::Pan,
-            (S::Zoom, E::EndZoom) => S::Pan,
+            (S::PenZoom, E::EndZoom) => S::Pan,
             (S::Pan, E::EndPan) => S::Ready,
 
             (S::Ready, E::MouseDown(button)) => {
@@ -394,19 +394,19 @@ impl<B: Backend> Ui<B> {
             }
 
             // zoom handling
-            (S::Zoom, E::EndPan) => S::PreZoom,
-            (S::Pan, E::StartZoom) => S::Zoom,
-            (S::PreZoom, E::StartPan) => S::Zoom,
+            (S::PenZoom, E::EndPan) => S::PreZoom,
+            (S::Pan, E::StartZoom) => S::PenZoom,
+            (S::PreZoom, E::StartPan) => S::PenZoom,
             (S::Ready, E::StartZoom) => S::PreZoom,
             (S::PreZoom, E::EndZoom) => S::Ready,
 
-            (S::Zoom, E::PenMove(touch)) => {
+            (S::PenZoom, E::PenMove(touch)) => {
                 let prev = self.stylus.pos;
                 self.update_stylus_from_touch(config, sketch, touch);
                 let next = self.stylus.pos;
                 sketch.zoom += prev.y - next.y;
                 sketch.update_stroke_primitive();
-                S::Zoom
+                S::PenZoom
             }
 
             // pen draw/erase
