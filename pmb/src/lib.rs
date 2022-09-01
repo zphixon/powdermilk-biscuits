@@ -182,14 +182,14 @@ pub struct Sketch<S: StrokeBackend> {
 
 impl<S: StrokeBackend> Default for Sketch<S> {
     fn default() -> Self {
-        Self::new()
+        Self::new(grid())
     }
 }
 
 impl<S: StrokeBackend> Sketch<S> {
-    pub fn new() -> Self {
+    pub fn new(strokes: Vec<Stroke<S>>) -> Self {
         let mut this = Self {
-            strokes: Vec::new(),
+            strokes,
             zoom: crate::DEFAULT_ZOOM,
             origin: StrokePoint::default(),
         };
@@ -199,13 +199,17 @@ impl<S: StrokeBackend> Sketch<S> {
         this
     }
 
+    pub fn empty() -> Self {
+        Self::new(Vec::new())
+    }
+
     pub fn with_filename<B: Backend>(
         ui: &mut ui::Ui<B>,
         path: impl AsRef<std::path::Path>,
     ) -> Self {
         log::info!("create State from {}", path.as_ref().display());
 
-        let mut this = Sketch::new();
+        let mut this = Sketch::new(grid());
         ui.read_file(Some(path), &mut this)
             .problem(String::from("Could not open file"))
             .display();

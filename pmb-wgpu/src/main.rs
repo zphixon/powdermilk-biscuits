@@ -31,7 +31,10 @@ async fn run() {
         .unwrap();
 
     let mut config = Config::default();
-    let mut ui = Ui::new(800, 600);
+    let mut ui = {
+        let winit::dpi::PhysicalSize { width, height } = window.inner_size();
+        Ui::<pmb_wgpu::WgpuBackend>::new(width, height)
+    };
     let mut sketch: Sketch<pmb_wgpu::WgpuStrokeBackend> =
         if let Some(filename) = std::env::args().nth(1) {
             Sketch::with_filename(&mut ui, std::path::PathBuf::from(filename))
