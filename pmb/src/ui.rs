@@ -1,8 +1,9 @@
 use crate::{
+    error::{ErrorKind, PmbError, PmbErrorExt},
     event::{Touch, TouchPhase},
     graphics::{PixelPos, StrokePos},
-    input::{ElementState, InputHandler, Keycode, MouseButton},
-    Backend, Stroke, StrokeBackend, StrokePoint, Stylus, StylusPosition, StylusState,
+    input::{ElementState, InputHandler, MouseButton},
+    Backend, Config, Sketch, Stroke, StrokeBackend, Stylus, StylusPosition, StylusState, Tool,
 };
 use std::path::{Path, PathBuf};
 
@@ -93,96 +94,6 @@ impl UiState {
     pub fn redraw(&self) -> bool {
         use UiState::*;
         !matches!(self, Ready | OpenDialog | SaveDialog)
-    }
-}
-
-#[derive(Default, PartialEq, Debug, Clone, Copy)]
-pub enum Tool {
-    #[default]
-    Pen,
-    Eraser,
-}
-
-#[derive(Debug, Default, PartialEq, Clone, Copy)]
-pub enum Device {
-    #[default]
-    Mouse,
-    Touch,
-    Pen,
-}
-
-#[derive(Debug)]
-pub struct Config {
-    pub prev_device: Device,
-    pub use_mouse_for_pen: bool,
-    pub use_finger_for_pen: bool,
-    pub stylus_may_be_inverted: bool,
-    pub active_tool: Tool,
-    pub primary_button: MouseButton,
-    pub pan_button: MouseButton,
-    pub pen_zoom_key: Keycode,
-    pub use_mouse_for_pen_key: Keycode,
-    pub use_finger_for_pen_key: Keycode,
-    pub swap_eraser_key: Keycode,
-    pub brush_increase: Keycode,
-    pub brush_decrease: Keycode,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Config {
-            prev_device: Device::Mouse,
-            use_mouse_for_pen: false,
-            use_finger_for_pen: true,
-            active_tool: Tool::Pen,
-            stylus_may_be_inverted: true,
-            primary_button: MouseButton::Left,
-            pan_button: MouseButton::Middle,
-            pen_zoom_key: Keycode::LControl,
-            use_mouse_for_pen_key: Keycode::M,
-            use_finger_for_pen_key: Keycode::F,
-            swap_eraser_key: Keycode::E,
-            brush_increase: Keycode::RBracket,
-            brush_decrease: Keycode::LBracket,
-        }
-    }
-}
-
-pub struct Sketch<S: StrokeBackend> {
-    pub strokes: Vec<Stroke<S>>,
-    pub zoom: f32,
-    pub origin: StrokePoint,
-}
-
-impl<S: StrokeBackend> Default for Sketch<S> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<S: StrokeBackend> Sketch<S> {
-    pub fn new() -> Self {
-        let mut this = Self {
-            strokes: Vec::new(),
-            zoom: crate::DEFAULT_ZOOM,
-            origin: StrokePoint::default(),
-        };
-
-        this.update_stroke_primitive();
-
-        this
-    }
-
-    pub fn update_visible_strokes(&mut self, top_left: StrokePos, bottom_right: StrokePos) {
-        for stroke in self.strokes.iter_mut() {
-            stroke.update_visible(top_left, bottom_right);
-        }
-    }
-
-    fn update_stroke_primitive(&mut self) {
-        for stroke in self.strokes.iter_mut() {
-            stroke.draw_tesselated = stroke.brush_size * self.zoom > 1.0;
-        }
     }
 }
 
@@ -622,5 +533,146 @@ impl<B: Backend> Ui<B> {
 
             (any, _) => any,
         };
+    }
+
+    pub fn read_file<S: StrokeBackend>(
+        &mut self,
+        path: Option<impl AsRef<std::path::Path>>,
+        sketch: &mut Sketch<S>,
+    ) -> Result<(), PmbError> {
+        use crate::{
+            migrate,
+            migrate::{UpgradeType, Version},
+        };
+
+        // if we are modified
+        if self.modified {
+            // ask to save first
+            if !self
+                .ask_to_save_then_save(
+                    sketch,
+                    "Would you like to save before opening another file?",
+                )
+                .problem(String::from("Could not save file"))?
+            {
+                return Ok(());
+            }
+        }
+
+        // if we were passed a path, use that, otherwise ask for one
+        log::info!("finding where to read from");
+        let path = match path
+            .map(|path| path.as_ref().to_path_buf())
+            .or_else(open_dialog)
+        {
+            Some(path) => path,
+            None => {
+                return Ok(());
+            }
+        };
+
+        // open the new file
+        let file = match std::fs::File::open(&path) {
+            Ok(file) => file,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                log::info!("using a new file");
+                // if it doesn't exist don't try to read it
+                self.path = Some(path);
+                self.modified = true;
+                return Ok(());
+            }
+            Err(err) => Err(PmbError::from(err))?,
+        };
+
+        // read the new file
+        let disk: Sketch<S> = match crate::read(file).problem(format!("{}", path.display())) {
+            Ok(disk) => disk,
+
+            Err(PmbError {
+                kind: ErrorKind::VersionMismatch(version),
+                ..
+            }) => {
+                log::warn!("version mismatch, got {version} want {}", Version::CURRENT);
+
+                match Version::upgrade_type(version) {
+                    UpgradeType::Smooth => migrate::from(version, &path)?,
+
+                    UpgradeType::Rocky => match rfd::MessageDialog::new()
+                        .set_title("Migrate version")
+                        .set_buttons(rfd::MessageButtons::YesNo)
+                        .set_description("Significant internal changes have been made to Powdermilk Biscuits since you last opened this file. Although it has not been marked as significantly incompatible with the current version, you may still experience data loss by attempting to upgrade this file to the most recent version.\n\nNo changes will be made to the file as is, and you will be prompted to save the file in a new location instead of overwriting it.\n\nProceed?")
+                        .show()
+                    {
+                        rfd::MessageDialogResult::Yes => {
+                            let state = migrate::from(version, &path)?;
+                            sketch.update_from(state);
+                            self.modified = true;
+                            self.path = None;
+
+                            return Ok(());
+                        },
+
+                        _ => return Ok(()),
+                    },
+
+                    UpgradeType::Incompatible => {
+                        return Err(PmbError::new(ErrorKind::IncompatibleVersion(version)));
+                    }
+                }
+            }
+
+            err => err?,
+        };
+
+        sketch.update_from(disk);
+        self.modified = false;
+        self.path = Some(path);
+
+        log::info!(
+            "success, read from {}",
+            self.path.as_ref().unwrap().display()
+        );
+
+        Ok(())
+    }
+
+    pub fn ask_to_save_then_save<S: StrokeBackend>(
+        &mut self,
+        sketch: &Sketch<S>,
+        why: &str,
+    ) -> Result<bool, PmbError> {
+        log::info!("asking to save {why:?}");
+        match (ask_to_save(why), self.path.as_ref()) {
+            // if they say yes and the file we're editing has a path
+            (rfd::MessageDialogResult::Yes, Some(path)) => {
+                log::info!("writing as {}", path.display());
+                crate::write(path, sketch).problem(format!("{}", path.display()))?;
+                self.modified = false;
+                Ok(true)
+            }
+
+            // they say yes and the file doesn't have a path yet
+            (rfd::MessageDialogResult::Yes, None) => {
+                log::info!("asking where to save");
+                // ask where to save it
+                match save_dialog("Save unnamed file", None) {
+                    Some(new_filename) => {
+                        log::info!("writing as {}", new_filename.display());
+                        // try write to disk
+                        crate::write(&new_filename, sketch)
+                            .problem(format!("{}", new_filename.display()))?;
+                        self.modified = false;
+                        Ok(true)
+                    }
+
+                    None => Ok(false),
+                }
+            }
+
+            // they say no, don't write changes
+            (rfd::MessageDialogResult::No, _) => Ok(true),
+
+            _ => Ok(false),
+        }
     }
 }

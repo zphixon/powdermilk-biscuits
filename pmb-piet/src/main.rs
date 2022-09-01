@@ -2,23 +2,32 @@ use piet_common::{
     kurbo::{BezPath, Point},
     Color, ImageFormat, RenderContext, StrokeStyle,
 };
-use powdermilk_biscuits::{graphics::PixelPos, Backend, State};
+use powdermilk_biscuits::{
+    graphics::PixelPos,
+    ui::{Event, Ui},
+    Backend, Config, Device, Sketch, Tool,
+};
 use softbuffer::GraphicsContext;
 use winit::{
     dpi::{LogicalPosition, PhysicalSize},
-    event::{Event, MouseScrollDelta, VirtualKeyCode, WindowEvent},
+    event::{
+        ElementState, Event as WinitEvent, KeyboardInput, MouseScrollDelta, Touch, TouchPhase,
+        VirtualKeyCode, WindowEvent,
+    },
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
 
 mod backend {
     use powdermilk_biscuits::{
+        event::{PenInfo, Touch, TouchPhase},
         graphics::{PixelPos, StrokePoint},
         input::{ElementState, Keycode, MouseButton},
         Backend, StrokeBackend,
     };
     use winit::event::{
         ElementState as WinitElementState, MouseButton as WinitMouseButton,
+        PenInfo as WinitPenInfo, Touch as WinitTouch, TouchPhase as WinitTouchPhase,
         VirtualKeyCode as WinitKeycode,
     };
 
@@ -73,13 +82,6 @@ mod backend {
         fn make_dirty(&mut self) {}
     }
 
-    pub fn winit_to_pmb_key_state(state: WinitElementState) -> ElementState {
-        match state {
-            WinitElementState::Pressed => ElementState::Pressed,
-            WinitElementState::Released => ElementState::Released,
-        }
-    }
-
     pub fn winit_to_pmb_mouse_button(button: WinitMouseButton) -> MouseButton {
         match button {
             WinitMouseButton::Left => MouseButton::Left,
@@ -125,6 +127,32 @@ mod backend {
 
         panic!("unmatched keycode: {code:?}");
     }
+
+    pub fn winit_to_pmb_touch_phase(phase: WinitTouchPhase) -> TouchPhase {
+        match phase {
+            WinitTouchPhase::Started => TouchPhase::Start,
+            WinitTouchPhase::Moved => TouchPhase::Move,
+            WinitTouchPhase::Ended => TouchPhase::End,
+            WinitTouchPhase::Cancelled => TouchPhase::Cancel,
+        }
+    }
+
+    pub fn winit_to_pmb_pen_info(pen_info: WinitPenInfo) -> PenInfo {
+        PenInfo {
+            barrel: pen_info.barrel,
+            inverted: pen_info.inverted,
+            eraser: pen_info.eraser,
+        }
+    }
+
+    pub fn winit_to_pmb_touch(touch: WinitTouch) -> Touch {
+        Touch {
+            force: touch.force.map(|f| f.normalized()),
+            phase: winit_to_pmb_touch_phase(touch.phase),
+            location: physical_pos_to_pixel_pos(touch.location),
+            pen_info: touch.pen_info.map(winit_to_pmb_pen_info),
+        }
+    }
 }
 
 fn main() {
@@ -147,49 +175,42 @@ fn main() {
     style.set_line_join(piet_common::LineJoin::Round);
 
     let backend = backend::PietBackend;
-    let mut state: State<backend::PietBackend, backend::PietStrokeBackend> =
-        if let Some(filename) = std::env::args().nth(1) {
-            State::with_filename(std::path::PathBuf::from(filename))
-        } else {
-            State::default()
-        };
-    state.reset_view(size.width, size.height);
 
-    let corner = PixelPos {
-        x: size.width as f32 / 2.,
-        y: size.height as f32 / 2.,
-    };
-    state.set_origin(
-        size.width,
-        size.height,
-        backend.pixel_to_stroke(size.width, size.height, state.zoom, corner),
-    );
+    let mut cursor_visible = true;
+    let mut config = Config::default();
+    let mut ui = Ui::<backend::PietBackend>::new(800, 600);
+    let mut sketch: Sketch<backend::PietStrokeBackend> =
+        if let Some(filename) = std::env::args().nth(1) {
+            Sketch::with_filename(&mut ui, std::path::PathBuf::from(filename))
+        } else {
+            Sketch::default()
+        };
 
     ev.run(move |event, _, flow| {
         *flow = ControlFlow::Wait;
 
         match event {
-            Event::WindowEvent {
+            WinitEvent::WindowEvent {
                 event: WindowEvent::CloseRequested,
                 ..
             } => {
                 *flow = ControlFlow::Exit;
             }
 
-            Event::WindowEvent {
+            WinitEvent::WindowEvent {
                 event: WindowEvent::KeyboardInput { input, .. },
                 ..
             } if Some(VirtualKeyCode::Escape) == input.virtual_keycode => {
                 *flow = ControlFlow::Exit;
             }
 
-            Event::WindowEvent {
+            WinitEvent::WindowEvent {
                 event:
                     WindowEvent::KeyboardInput {
                         input:
-                            winit::event::KeyboardInput {
-                                state: key_state,
+                            KeyboardInput {
                                 virtual_keycode: Some(key),
+                                state,
                                 ..
                             },
                         ..
@@ -197,83 +218,214 @@ fn main() {
                 ..
             } => {
                 let key = backend::winit_to_pmb_keycode(key);
-                let key_state = backend::winit_to_pmb_key_state(key_state);
-                if state.handle_key(key, key_state, size.width, size.height) {
-                    gc.window().request_redraw();
+                match (key, state) {
+                    (zoom, ElementState::Pressed)
+                        if config.prev_device == Device::Pen && zoom == config.pen_zoom_key =>
+                    {
+                        ui.next(&config, &mut sketch, Event::StartZoom);
+                    }
+
+                    (zoom, ElementState::Released) if zoom == config.pen_zoom_key => {
+                        ui.next(&config, &mut sketch, Event::EndZoom);
+                    }
+
+                    (mouse, ElementState::Pressed) if mouse == config.use_mouse_for_pen_key => {
+                        config.use_mouse_for_pen = !config.use_mouse_for_pen;
+                        println!("using mouse for pen? {}", config.use_mouse_for_pen);
+                    }
+
+                    (finger, ElementState::Pressed) if finger == config.use_finger_for_pen_key => {
+                        config.use_finger_for_pen = !config.use_finger_for_pen;
+                        println!("using finger for pen? {}", config.use_finger_for_pen);
+                    }
+
+                    (swap, ElementState::Pressed)
+                        if (config.prev_device == Device::Mouse
+                            || !config.stylus_may_be_inverted)
+                            && swap == config.swap_eraser_key =>
+                    {
+                        if config.active_tool != Tool::Eraser {
+                            config.active_tool = Tool::Eraser;
+                        } else {
+                            config.active_tool = Tool::Pen;
+                        }
+                        ui.next(&config, &mut sketch, Event::ToolChange);
+                    }
+
+                    (brush, ElementState::Pressed) if brush == config.brush_increase => {
+                        ui.next(
+                            &config,
+                            &mut sketch,
+                            Event::BrushSize(powdermilk_biscuits::BRUSH_DELTA as i32),
+                        );
+                    }
+
+                    (brush, ElementState::Pressed) if brush == config.brush_decrease => {
+                        ui.next(
+                            &config,
+                            &mut sketch,
+                            Event::BrushSize(-(powdermilk_biscuits::BRUSH_DELTA as i32)),
+                        );
+                    }
+
+                    _ => {}
                 }
+
+                gc.window().request_redraw();
             }
 
-            Event::WindowEvent {
-                event:
-                    WindowEvent::MouseInput {
-                        state: key_state,
-                        button,
-                        ..
-                    },
-                ..
-            } => {
-                let button = backend::winit_to_pmb_mouse_button(button);
-                let key_state = backend::winit_to_pmb_key_state(key_state);
-                state.handle_mouse_button(button, key_state);
-            }
-
-            Event::WindowEvent {
+            WinitEvent::WindowEvent {
                 event: WindowEvent::MouseWheel { delta, .. },
                 ..
             } => {
-                let zoom_in = match delta {
-                    MouseScrollDelta::LineDelta(_, y) if y.is_sign_positive() => true,
-                    MouseScrollDelta::PixelDelta(pos) if pos.y.is_sign_positive() => true,
-                    MouseScrollDelta::LineDelta(_, y) if y.is_sign_negative() => false,
-                    MouseScrollDelta::PixelDelta(pos) if pos.y.is_sign_negative() => false,
-                    _ => unreachable!(),
-                };
-                const ZOOM_SPEED: f32 = 4.25;
+                match delta {
+                    MouseScrollDelta::LineDelta(_, delta) => {
+                        ui.next(&config, &mut sketch, Event::ActiveZoom(delta as i32));
+                    }
+                    MouseScrollDelta::PixelDelta(delta) => {
+                        ui.next(&config, &mut sketch, Event::ActiveZoom(delta.y as i32));
+                    }
+                }
 
-                let dzoom = if zoom_in { ZOOM_SPEED } else { -ZOOM_SPEED };
-                state.change_zoom(dzoom, size.width, size.height);
                 gc.window().request_redraw();
             }
 
-            Event::WindowEvent {
+            WinitEvent::WindowEvent {
+                event: WindowEvent::MouseInput { state, button, .. },
+                ..
+            } => {
+                let button = backend::winit_to_pmb_mouse_button(button);
+                match (button, state) {
+                    (primary, ElementState::Pressed) if primary == config.primary_button => {
+                        ui.next(&config, &mut sketch, Event::MouseDown(button));
+                    }
+                    (primary, ElementState::Released) if primary == config.primary_button => {
+                        ui.next(&config, &mut sketch, Event::MouseUp(button));
+                    }
+                    (pan, ElementState::Pressed) if pan == config.pan_button => {
+                        ui.next(&config, &mut sketch, Event::StartPan);
+                    }
+                    (pan, ElementState::Released) if pan == config.pan_button => {
+                        ui.next(&config, &mut sketch, Event::EndPan);
+                    }
+                    _ => {}
+                }
+
+                config.prev_device = Device::Mouse;
+                gc.window().request_redraw();
+            }
+
+            WinitEvent::WindowEvent {
                 event: WindowEvent::CursorMoved { position, .. },
                 ..
             } => {
-                if state.handle_cursor_move(
-                    size.width,
-                    size.height,
-                    backend::physical_pos_to_pixel_pos(position),
-                ) {
+                ui.next(
+                    &config,
+                    &mut sketch,
+                    Event::MouseMove(backend::physical_pos_to_pixel_pos(position)),
+                );
+                config.prev_device = Device::Mouse;
+
+                if config.use_mouse_for_pen {
+                    if cursor_visible {
+                        cursor_visible = false;
+                        gc.window().set_cursor_visible(false);
+                    }
+                    gc.window().request_redraw();
+                } else if !cursor_visible {
+                    cursor_visible = true;
+                    gc.window().set_cursor_visible(true);
+                }
+
+                if ui.state.redraw() {
                     gc.window().request_redraw();
                 }
             }
 
-            Event::WindowEvent {
-                event: WindowEvent::Touch(touch),
+            WinitEvent::WindowEvent {
+                event:
+                    WindowEvent::Touch(
+                        touch @ Touch {
+                            phase,
+                            pen_info: Some(pen_info),
+                            ..
+                        },
+                    ),
                 ..
             } => {
-                let PhysicalSize { width, height } = size;
-                let pixel_pos = PixelPos {
-                    x: touch.location.x as f32,
-                    y: touch.location.y as f32,
-                };
+                let touch = backend::winit_to_pmb_touch(touch);
+                if config.stylus_may_be_inverted {
+                    if pen_info.inverted {
+                        config.active_tool = Tool::Eraser;
+                    } else {
+                        config.active_tool = Tool::Pen;
+                    }
+                }
 
-                let ndc = backend.pixel_to_ndc(width, height, pixel_pos);
-                let stroke_point = backend.pixel_to_stroke(width, height, state.zoom, pixel_pos);
-                let stroke_pos =
-                    backend.pixel_to_pos(width, height, state.zoom, state.origin, pixel_pos);
-                print!(
-                    "p={} n={} i={} o={}\r",
-                    pixel_pos, ndc, stroke_point, stroke_pos
-                );
-                use std::io::Write;
-                std::io::stdout().flush().unwrap();
+                match phase {
+                    TouchPhase::Started => ui.next(&config, &mut sketch, Event::PenDown(touch)),
+                    TouchPhase::Moved => ui.next(&config, &mut sketch, Event::PenMove(touch)),
+                    TouchPhase::Ended | TouchPhase::Cancelled => {
+                        ui.next(&config, &mut sketch, Event::PenUp(touch))
+                    }
+                }
 
-                // TODO
+                config.prev_device = Device::Pen;
+
+                if cursor_visible {
+                    cursor_visible = false;
+                    gc.window().set_cursor_visible(false);
+                }
+
                 gc.window().request_redraw();
             }
 
-            Event::RedrawRequested(_) => {
+            WinitEvent::WindowEvent {
+                event:
+                    WindowEvent::Touch(
+                        touch @ Touch {
+                            phase,
+                            pen_info: None,
+                            ..
+                        },
+                    ),
+                ..
+            } => {
+                let touch = backend::winit_to_pmb_touch(touch);
+                ui.next(
+                    &config,
+                    &mut sketch,
+                    match phase {
+                        TouchPhase::Started => Event::Touch(touch),
+                        TouchPhase::Moved => Event::PenMove(touch),
+                        TouchPhase::Ended | TouchPhase::Cancelled => Event::Release(touch),
+                    },
+                );
+
+                config.prev_device = Device::Touch;
+
+                if cursor_visible && config.use_finger_for_pen {
+                    cursor_visible = false;
+                    gc.window().set_cursor_visible(false);
+                }
+
+                gc.window().request_redraw();
+            }
+
+            WinitEvent::WindowEvent {
+                event: WindowEvent::Resized(new_size),
+                ..
+            } => {
+                if new_size.height < 10 || new_size.width < 10 {
+                    gc.window().set_inner_size(size);
+                } else {
+                    size = new_size;
+                    ui.resize(new_size.width, new_size.height, &mut sketch);
+                    gc.window().request_redraw();
+                }
+            }
+
+            WinitEvent::RedrawRequested(_) => {
                 let PhysicalSize { width, height } = size;
                 let mut target = device
                     .bitmap_target(width as usize, height as usize, 1.0)
@@ -282,7 +434,7 @@ fn main() {
                 {
                     let mut ctx = target.render_context();
 
-                    for stroke in state.strokes.iter() {
+                    for stroke in sketch.strokes.iter() {
                         if !stroke.visible || stroke.erased {
                             continue;
                         }
@@ -292,15 +444,15 @@ fn main() {
                                 let start = backend.pos_to_pixel(
                                     width,
                                     height,
-                                    state.zoom,
-                                    state.origin,
+                                    sketch.zoom,
+                                    sketch.origin,
                                     a.into(),
                                 );
                                 let end = backend.pos_to_pixel(
                                     width,
                                     height,
-                                    state.zoom,
-                                    state.origin,
+                                    sketch.zoom,
+                                    sketch.origin,
                                     b.into(),
                                 );
 
@@ -322,7 +474,7 @@ fn main() {
                                         stroke.color[2],
                                         0xff,
                                     ),
-                                    (stroke.brush_size * state.zoom * a.pressure) as f64,
+                                    (stroke.brush_size * sketch.zoom * a.pressure) as f64,
                                     &style,
                                 );
                             }
@@ -342,19 +494,6 @@ fn main() {
                     width as u16,
                     height as u16,
                 );
-            }
-
-            Event::WindowEvent {
-                event: WindowEvent::Resized(new_size),
-                ..
-            } => {
-                if new_size.height < 10 || new_size.width < 10 {
-                    gc.window().set_inner_size(size);
-                } else {
-                    size = new_size;
-                    state.change_zoom(0.0, size.width, size.height);
-                    gc.window().request_redraw();
-                }
             }
 
             _ => {}

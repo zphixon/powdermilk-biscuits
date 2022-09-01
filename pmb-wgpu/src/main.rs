@@ -1,9 +1,14 @@
-use pmb_wgpu::WgpuState as State;
-use powdermilk_biscuits::ui;
+use powdermilk_biscuits::{
+    ui::{self, Event, Ui},
+    Config, Device, Sketch, Tool,
+};
 use wgpu::SurfaceError;
 use winit::{
     dpi::LogicalPosition,
-    event::{ElementState, Event, KeyboardInput, MouseScrollDelta, VirtualKeyCode, WindowEvent},
+    event::{
+        ElementState, Event as WinitEvent, KeyboardInput, MouseScrollDelta, Touch, TouchPhase,
+        VirtualKeyCode, WindowEvent,
+    },
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
@@ -24,18 +29,17 @@ async fn run() {
         .build(&ev)
         .unwrap();
 
-    let mut state: State = if let Some(filename) = std::env::args().nth(1) {
-        if filename == "--benchmark" {
-            State::benchmark()
+    let mut config = Config::default();
+    let mut ui = Ui::new(800, 600);
+    let mut sketch: Sketch<pmb_wgpu::WgpuStrokeBackend> =
+        if let Some(filename) = std::env::args().nth(1) {
+            Sketch::with_filename(&mut ui, std::path::PathBuf::from(filename))
         } else {
-            State::with_filename(std::path::PathBuf::from(filename))
-        }
-    } else {
-        State::default()
-    };
+            Sketch::default()
+        };
 
     let mut graphics = pmb_wgpu::Graphics::new(&window).await;
-    graphics.buffer_all_strokes(&mut state);
+    graphics.buffer_all_strokes(&mut sketch);
 
     let mut size = window.inner_size();
     let mut cursor_visible = true;
@@ -46,20 +50,20 @@ async fn run() {
         log::info!("{event:?}");
 
         match event {
-            Event::WindowEvent {
+            WinitEvent::WindowEvent {
                 event: WindowEvent::Focused(focused),
                 ..
             } if !focused => {
-                state.input.clear();
+                ui.input.clear();
             }
 
-            Event::WindowEvent {
+            WinitEvent::WindowEvent {
                 event: WindowEvent::CloseRequested,
                 ..
             } => {
-                if state.modified {
-                    if state
-                        .ask_to_save_then_save("Would you like to save before exiting?")
+                if ui.modified {
+                    if ui
+                        .ask_to_save_then_save(&sketch, "Would you like to save before exiting?")
                         .unwrap_or(false)
                     {
                         *flow = ControlFlow::Exit;
@@ -69,7 +73,7 @@ async fn run() {
                 }
             }
 
-            Event::WindowEvent {
+            WinitEvent::WindowEvent {
                 event:
                     WindowEvent::KeyboardInput {
                         input:
@@ -85,7 +89,215 @@ async fn run() {
                 *flow = ControlFlow::Exit;
             }
 
-            Event::WindowEvent {
+            WinitEvent::WindowEvent {
+                event:
+                    WindowEvent::KeyboardInput {
+                        input:
+                            KeyboardInput {
+                                virtual_keycode: Some(key),
+                                state,
+                                ..
+                            },
+                        ..
+                    },
+                ..
+            } => {
+                let key = pmb_wgpu::winit_to_pmb_keycode(key);
+                match (key, state) {
+                    (zoom, ElementState::Pressed)
+                        if config.prev_device == Device::Pen && zoom == config.pen_zoom_key =>
+                    {
+                        ui.next(&config, &mut sketch, Event::StartZoom);
+                    }
+
+                    (zoom, ElementState::Released) if zoom == config.pen_zoom_key => {
+                        ui.next(&config, &mut sketch, Event::EndZoom);
+                    }
+
+                    (mouse, ElementState::Pressed) if mouse == config.use_mouse_for_pen_key => {
+                        config.use_mouse_for_pen = !config.use_mouse_for_pen;
+                        println!("using mouse for pen? {}", config.use_mouse_for_pen);
+                    }
+
+                    (finger, ElementState::Pressed) if finger == config.use_finger_for_pen_key => {
+                        config.use_finger_for_pen = !config.use_finger_for_pen;
+                        println!("using finger for pen? {}", config.use_finger_for_pen);
+                    }
+
+                    (swap, ElementState::Pressed)
+                        if (config.prev_device == Device::Mouse
+                            || !config.stylus_may_be_inverted)
+                            && swap == config.swap_eraser_key =>
+                    {
+                        if config.active_tool != Tool::Eraser {
+                            config.active_tool = Tool::Eraser;
+                        } else {
+                            config.active_tool = Tool::Pen;
+                        }
+                        ui.next(&config, &mut sketch, Event::ToolChange);
+                    }
+
+                    (brush, ElementState::Pressed) if brush == config.brush_increase => {
+                        ui.next(
+                            &config,
+                            &mut sketch,
+                            Event::BrushSize(powdermilk_biscuits::BRUSH_DELTA as i32),
+                        );
+                    }
+
+                    (brush, ElementState::Pressed) if brush == config.brush_decrease => {
+                        ui.next(
+                            &config,
+                            &mut sketch,
+                            Event::BrushSize(-(powdermilk_biscuits::BRUSH_DELTA as i32)),
+                        );
+                    }
+
+                    _ => {}
+                }
+
+                window.request_redraw();
+            }
+
+            WinitEvent::WindowEvent {
+                event: WindowEvent::MouseWheel { delta, .. },
+                ..
+            } => {
+                match delta {
+                    MouseScrollDelta::LineDelta(_, delta) => {
+                        ui.next(&config, &mut sketch, Event::ActiveZoom(delta as i32));
+                    }
+                    MouseScrollDelta::PixelDelta(delta) => {
+                        ui.next(&config, &mut sketch, Event::ActiveZoom(delta.y as i32));
+                    }
+                }
+
+                window.request_redraw();
+            }
+
+            WinitEvent::WindowEvent {
+                event: WindowEvent::MouseInput { state, button, .. },
+                ..
+            } => {
+                let button = pmb_wgpu::winit_to_pmb_mouse_button(button);
+                match (button, state) {
+                    (primary, ElementState::Pressed) if primary == config.primary_button => {
+                        ui.next(&config, &mut sketch, Event::MouseDown(button));
+                    }
+                    (primary, ElementState::Released) if primary == config.primary_button => {
+                        ui.next(&config, &mut sketch, Event::MouseUp(button));
+                    }
+                    (pan, ElementState::Pressed) if pan == config.pan_button => {
+                        ui.next(&config, &mut sketch, Event::StartPan);
+                    }
+                    (pan, ElementState::Released) if pan == config.pan_button => {
+                        ui.next(&config, &mut sketch, Event::EndPan);
+                    }
+                    _ => {}
+                }
+
+                config.prev_device = Device::Mouse;
+                window.request_redraw();
+            }
+
+            WinitEvent::WindowEvent {
+                event: WindowEvent::CursorMoved { position, .. },
+                ..
+            } => {
+                ui.next(
+                    &config,
+                    &mut sketch,
+                    Event::MouseMove(pmb_wgpu::physical_pos_to_pixel_pos(position)),
+                );
+                config.prev_device = Device::Mouse;
+
+                if config.use_mouse_for_pen {
+                    if cursor_visible {
+                        cursor_visible = false;
+                        window.set_cursor_visible(false);
+                    }
+                    window.request_redraw();
+                } else if !cursor_visible {
+                    cursor_visible = true;
+                    window.set_cursor_visible(true);
+                }
+
+                if ui.state.redraw() {
+                    window.request_redraw();
+                }
+            }
+
+            WinitEvent::WindowEvent {
+                event:
+                    WindowEvent::Touch(
+                        touch @ Touch {
+                            phase,
+                            pen_info: Some(pen_info),
+                            ..
+                        },
+                    ),
+                ..
+            } => {
+                let touch = pmb_wgpu::winit_to_pmb_touch(touch);
+                if config.stylus_may_be_inverted {
+                    if pen_info.inverted {
+                        config.active_tool = Tool::Eraser;
+                    } else {
+                        config.active_tool = Tool::Pen;
+                    }
+                }
+
+                match phase {
+                    TouchPhase::Started => ui.next(&config, &mut sketch, Event::PenDown(touch)),
+                    TouchPhase::Moved => ui.next(&config, &mut sketch, Event::PenMove(touch)),
+                    TouchPhase::Ended | TouchPhase::Cancelled => {
+                        ui.next(&config, &mut sketch, Event::PenUp(touch))
+                    }
+                }
+
+                config.prev_device = Device::Pen;
+
+                if cursor_visible {
+                    cursor_visible = false;
+                    window.set_cursor_visible(false);
+                }
+
+                window.request_redraw();
+            }
+
+            WinitEvent::WindowEvent {
+                event:
+                    WindowEvent::Touch(
+                        touch @ Touch {
+                            phase,
+                            pen_info: None,
+                            ..
+                        },
+                    ),
+                ..
+            } => {
+                let touch = pmb_wgpu::winit_to_pmb_touch(touch);
+                ui.next(
+                    &config,
+                    &mut sketch,
+                    match phase {
+                        TouchPhase::Started => Event::Touch(touch),
+                        TouchPhase::Moved => Event::PenMove(touch),
+                        TouchPhase::Ended | TouchPhase::Cancelled => Event::Release(touch),
+                    },
+                );
+
+                config.prev_device = Device::Touch;
+
+                if cursor_visible && config.use_finger_for_pen {
+                    cursor_visible = false;
+                    window.set_cursor_visible(false);
+                }
+
+                window.request_redraw();
+            }
+
+            WinitEvent::WindowEvent {
                 event:
                     WindowEvent::Resized(new_size)
                     | WindowEvent::ScaleFactorChanged {
@@ -95,111 +307,31 @@ async fn run() {
                 ..
             } => {
                 size = new_size;
+                ui.resize(new_size.width, new_size.height, &mut sketch);
                 graphics.resize(new_size);
                 window.request_redraw();
             }
 
-            Event::WindowEvent {
-                event: WindowEvent::MouseWheel { delta, .. },
-                ..
-            } => {
-                let zoom_in = match delta {
-                    MouseScrollDelta::LineDelta(_, y) if y.is_sign_positive() => true,
-                    MouseScrollDelta::PixelDelta(pos) if pos.y.is_sign_positive() => true,
-                    MouseScrollDelta::LineDelta(_, y) if y.is_sign_negative() => false,
-                    MouseScrollDelta::PixelDelta(pos) if pos.y.is_sign_negative() => false,
-                    _ => unreachable!(),
-                };
-                const ZOOM_SPEED: f32 = 4.25;
-
-                let dzoom = if zoom_in { ZOOM_SPEED } else { -ZOOM_SPEED };
-                state.change_zoom(dzoom, size.width, size.height);
-                window.request_redraw();
-            }
-
-            Event::WindowEvent {
-                event:
-                    WindowEvent::MouseInput {
-                        state: key_state,
-                        button,
-                        ..
-                    },
-                ..
-            } => {
-                let button = pmb_wgpu::winit_to_pmb_mouse_button(button);
-                let key_state = pmb_wgpu::winit_to_pmb_key_state(key_state);
-                state.handle_mouse_button(button, key_state);
-            }
-
-            Event::RedrawRequested(_) => match graphics.render(&mut state, size, cursor_visible) {
-                Err(SurfaceError::Lost) => graphics.resize(graphics.size),
-                Err(SurfaceError::OutOfMemory) => {
-                    ui::error("Out of memory!");
-                    *flow = ControlFlow::Exit;
-                }
-                _ => {}
-            },
-
-            Event::WindowEvent {
-                event:
-                    WindowEvent::KeyboardInput {
-                        input:
-                            KeyboardInput {
-                                state: key_state,
-                                virtual_keycode: Some(key),
-                                ..
-                            },
-                        ..
-                    },
-                ..
-            } => {
-                let key = pmb_wgpu::winit_to_pmb_keycode(key);
-                let key_state = pmb_wgpu::winit_to_pmb_key_state(key_state);
-                if state.handle_key(key, key_state, size.width, size.height) {
-                    window.request_redraw();
+            WinitEvent::RedrawRequested(_) => {
+                match graphics.render(&mut sketch, &ui, size, cursor_visible) {
+                    Err(SurfaceError::Lost) => graphics.resize(graphics.size),
+                    Err(SurfaceError::OutOfMemory) => {
+                        ui::error("Out of memory!");
+                        *flow = ControlFlow::Exit;
+                    }
+                    _ => {}
                 }
             }
 
-            Event::WindowEvent {
-                event: WindowEvent::CursorMoved { position, .. },
-                ..
-            } => {
-                if state.handle_cursor_move(
-                    size.width,
-                    size.height,
-                    pmb_wgpu::physical_pos_to_pixel_pos(position),
-                ) {
-                    window.request_redraw();
-                }
-
-                if !cursor_visible {
-                    cursor_visible = true;
-                    window.set_cursor_visible(true);
-                    window.request_redraw();
-                }
-            }
-
-            Event::WindowEvent {
-                event: WindowEvent::Touch(touch),
-                ..
-            } => {
-                cursor_visible = false;
-                window.set_cursor_visible(false);
-
-                state.handle_touch(pmb_wgpu::winit_to_pmb_touch(touch), size.width, size.height);
-
-                window.request_redraw();
-            }
-
-            Event::MainEventsCleared => {
+            WinitEvent::MainEventsCleared => {
                 use powdermilk_biscuits::input::Keycode::*;
 
-                if state.input.just_pressed(A) {
+                if ui.input.just_pressed(A) {
                     graphics.aa = !graphics.aa;
                     window.request_redraw();
                 }
 
-                match (state.path.as_ref(), state.modified) {
+                match (ui.path.as_ref(), ui.modified) {
                     (Some(path), true) => {
                         let title = format!("{} (modified)", path.display());
                         window.set_title(title.as_str());

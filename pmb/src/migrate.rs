@@ -19,7 +19,7 @@
 
 use crate::{
     error::{ErrorKind, PmbError},
-    Backend, State, StrokeBackend,
+    Sketch, StrokeBackend,
 };
 use std::{
     fmt::{Display, Formatter, Result as FmtResult},
@@ -45,7 +45,7 @@ impl Display for Version {
 }
 
 impl Version {
-    pub const CURRENT: Self = Version(4);
+    pub const CURRENT: Self = Version(5);
 
     pub fn upgrade_type(from: Self) -> UpgradeType {
         use UpgradeType::*;
@@ -55,6 +55,7 @@ impl Version {
         }
 
         match from {
+            Version(4) => Rocky,
             Version(3) => Smooth,
             Version(2) => Smooth,
             Version(1) => Smooth,
@@ -63,9 +64,8 @@ impl Version {
     }
 }
 
-pub fn from<B, S>(version: Version, path: impl AsRef<Path>) -> Result<State<B, S>, PmbError>
+pub fn from<S>(version: Version, path: impl AsRef<Path>) -> Result<Sketch<S>, PmbError>
 where
-    B: Backend,
     S: StrokeBackend,
 {
     log::info!(
@@ -81,10 +81,41 @@ where
     match version {
         version if version == Version::CURRENT => unreachable!(),
 
+        Version(4) => {
+            let v4: v4::StateV4 = v4::read(file)?.into();
+
+            let state = Sketch {
+                strokes: v4
+                    .strokes
+                    .into_iter()
+                    .map(|v4| Stroke {
+                        points: {
+                            v4.points
+                                .iter()
+                                .map(|point| StrokeElement {
+                                    x: point.x,
+                                    y: point.y,
+                                    pressure: point.pressure,
+                                })
+                                .collect()
+                        },
+                        color: v4.color,
+                        brush_size: v4.brush_size,
+                        erased: v4.erased,
+                        ..Default::default()
+                    })
+                    .collect(),
+                zoom: v4.zoom,
+                ..Default::default()
+            };
+
+            return Ok(state);
+        }
+
         Version(3) => {
             let v3: v3::StateV3 = v3::read(file)?.into();
 
-            let state = State {
+            let state = Sketch {
                 strokes: v3
                     .strokes
                     .into_iter()
@@ -106,7 +137,6 @@ where
                         ..Default::default()
                     })
                     .collect(),
-                brush_size: v3.brush_size,
                 zoom: v3.zoom,
                 ..Default::default()
             };
@@ -117,7 +147,7 @@ where
         Version(2) => {
             let v2: v2::StateV2 = v2::read(file)?.into();
 
-            let state = State {
+            let state = Sketch {
                 strokes: v2
                     .strokes
                     .into_iter()
@@ -137,7 +167,6 @@ where
                         ..Default::default()
                     })
                     .collect(),
-                brush_size: v2.brush_size,
                 zoom: v2.zoom,
                 ..Default::default()
             };
@@ -148,7 +177,7 @@ where
         Version(1) => {
             let v1: v1::StateV1 = v1::read(file)?.into();
 
-            let state = State {
+            let state = Sketch {
                 strokes: v1
                     .strokes
                     .into_iter()
@@ -168,7 +197,6 @@ where
                         ..Default::default()
                     })
                     .collect(),
-                brush_size: v1.brush_size,
                 zoom: v1.zoom,
                 ..Default::default()
             };
@@ -177,6 +205,63 @@ where
         }
 
         _ => Err(PmbError::new(ErrorKind::UnknownVersion(version))),
+    }
+}
+
+mod v4 {
+    use super::*;
+    use bincode::config::standard;
+
+    #[derive(bincode::Decode)]
+    pub struct StrokeElementV4 {
+        pub x: f32,
+        pub y: f32,
+        pub pressure: f32,
+    }
+
+    #[derive(bincode::Decode)]
+    pub struct StrokePointV4 {
+        pub x: f32,
+        pub y: f32,
+    }
+
+    #[derive(bincode::Decode)]
+    pub struct StrokeV4 {
+        pub points: Vec<StrokeElementV4>,
+        pub color: [u8; 3],
+        pub brush_size: f32,
+        pub erased: bool,
+    }
+
+    #[derive(bincode::Decode)]
+    pub struct StateV4 {
+        pub strokes: Vec<StrokeV4>,
+        pub brush_size: usize,
+        pub zoom: f32,
+        pub origin: StrokePointV4,
+    }
+
+    pub fn read(mut reader: impl Read) -> Result<StateV4, PmbError> {
+        let mut magic = [0; 3];
+        reader.read_exact(&mut magic)?;
+
+        if magic != crate::PMB_MAGIC {
+            return Err(PmbError::new(ErrorKind::MissingHeader));
+        }
+
+        let mut version_bytes = [0; std::mem::size_of::<u64>()];
+        reader.read_exact(&mut version_bytes)?;
+        let version = Version(u64::from_le_bytes(version_bytes));
+
+        if version != Version(4) {
+            return Err(PmbError::new(ErrorKind::VersionMismatch(version)));
+        }
+
+        let mut deflate_reader = flate2::read::DeflateDecoder::new(reader);
+        Ok(bincode::decode_from_std_read(
+            &mut deflate_reader,
+            standard(),
+        )?)
     }
 }
 

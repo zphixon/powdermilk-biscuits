@@ -1,23 +1,23 @@
 use glow::{Context, HasContext};
 use glutin::{
-    event::{Event, KeyboardInput, MouseScrollDelta, VirtualKeyCode, WindowEvent},
+    dpi::PhysicalSize,
+    event::{
+        ElementState, Event as Gevent, KeyboardInput, MouseScrollDelta, Touch, TouchPhase,
+        VirtualKeyCode, WindowEvent,
+    },
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
     ContextBuilder,
 };
-use pmb_gl::{GlState as State, GlStrokeBackend};
-use powdermilk_biscuits::{TITLE_MODIFIED, TITLE_UNMODIFIED};
-use std::mem::size_of;
+use pmb_gl::{GlBackend, GlStrokeBackend};
+use powdermilk_biscuits::{ui::Event as Pevent, ui::Ui, Config, Device, Sketch, Tool};
 
 fn main() {
-    // build window and GL context
     let ev = EventLoop::new();
-    let builder = WindowBuilder::new()
-        .with_position(glutin::dpi::LogicalPosition {
-            x: 1920. / 2. - 800. / 2.,
-            y: 1080. + 1080. / 2. - 600. / 2.,
-        })
-        .with_title(TITLE_UNMODIFIED);
+    let builder = WindowBuilder::new().with_position(glutin::dpi::LogicalPosition {
+        x: 1920. / 2. - 800. / 2.,
+        y: 1080. + 1080. / 2. - 600. / 2.,
+    });
 
     let context = unsafe {
         ContextBuilder::new()
@@ -95,242 +95,272 @@ fn main() {
         );
     };
 
-    let mut cursor_visible = true;
-    let mut aa = true;
-    let mut size = context.window().inner_size();
-
-    let mut state: State = if let Some(filename) = std::env::args().nth(1) {
-        if filename == "--benchmark" {
-            State::benchmark()
-        } else {
-            State::with_filename(std::path::PathBuf::from(filename))
-        }
-    } else {
-        State::default()
+    let mut sketch = Sketch::<GlStrokeBackend>::default();
+    let mut ui = {
+        let PhysicalSize { width, height } = context.window().inner_size();
+        Ui::<GlBackend>::new(width, height)
     };
 
-    for stroke in state.strokes.iter_mut() {
-        stroke.replace_backend_with(|points_bytes, mesh_bytes, mesh_len| unsafe {
-            let f32_size = size_of::<f32>() as i32;
+    let mut config = Config::default();
+    let mut cursor_visible = true;
+    let mut size = context.window().inner_size();
 
-            let line_vao = gl.create_vertex_array().unwrap();
-            gl.bind_vertex_array(Some(line_vao));
+    ev.run(move |event, _, flow| {
+        *flow = ControlFlow::Wait;
 
-            let points = gl.create_buffer().unwrap();
-            gl.bind_buffer(glow::ARRAY_BUFFER, Some(points));
-            gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, points_bytes, glow::STATIC_DRAW);
+        //println!("{:?} {:?}", config.active_tool, event);
+        //println!("{}", ui.stylus.pos);
+        //println!("{:?}", ui.state);
+        let window = context.window();
 
-            gl.vertex_attrib_pointer_f32(0, 2, glow::FLOAT, false, f32_size * 3, 0);
-            gl.vertex_attrib_pointer_f32(1, 1, glow::FLOAT, false, f32_size * 3, f32_size * 2);
-            gl.enable_vertex_attrib_array(0);
-            gl.enable_vertex_attrib_array(1);
-
-            let mesh_vao = gl.create_vertex_array().unwrap();
-            gl.bind_vertex_array(Some(mesh_vao));
-            let mesh = gl.create_buffer().unwrap();
-            gl.bind_buffer(glow::ARRAY_BUFFER, Some(mesh));
-            gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, mesh_bytes, glow::STATIC_DRAW);
-            gl.vertex_attrib_pointer_f32(0, 2, glow::FLOAT, false, f32_size * 3, 0);
-            gl.vertex_attrib_pointer_f32(1, 1, glow::FLOAT, false, f32_size * 3, f32_size * 2);
-            gl.enable_vertex_attrib_array(0);
-            gl.enable_vertex_attrib_array(1);
-
-            GlStrokeBackend {
-                line_vao,
-                points,
-                mesh_vao,
-                mesh,
-                mesh_len: mesh_len as i32,
-                dirty: false,
-            }
-        });
-    }
-
-    // gl origin in stroke space
-    ev.run(move |event, _, control_flow| {
-        *control_flow = ControlFlow::Wait;
         match event {
-            Event::WindowEvent {
-                event: WindowEvent::Focused(focused),
-                ..
-            } if !focused => {
-                state.input.clear();
-            }
-
-            Event::WindowEvent {
-                event:
-                    WindowEvent::KeyboardInput {
-                        input:
-                            KeyboardInput {
-                                virtual_keycode: Some(key),
-                                state: key_state,
-                                ..
-                            },
-                        ..
-                    },
-                ..
-            } if key != VirtualKeyCode::Escape => {
-                use powdermilk_biscuits::input::Keycode::*;
-                let key = pmb_gl::glutin_to_pmb_keycode(key);
-                let key_state = pmb_gl::glutin_to_pmb_key_state(key_state);
-
-                if state.handle_key(key, key_state, size.width, size.height) {
-                    context.window().request_redraw();
-                }
-
-                if state.input.just_pressed(A) {
-                    aa = !aa;
-
-                    if aa {
-                        unsafe { gl.enable(glow::MULTISAMPLE) };
-                    } else {
-                        unsafe { gl.disable(glow::MULTISAMPLE) };
-                    }
-
-                    context.window().request_redraw();
-                }
-
-                if state.input.shift() && state.input.just_pressed(S) {
-                    let num_string = std::fs::read_to_string("img/num.txt").expect("read num.txt");
-                    let num = num_string.trim().parse::<usize>().expect("parse num.txt");
-                    let filename = format!("img/strokes{num}.png");
-
-                    let image = unsafe {
-                        let mut data = std::iter::repeat(0)
-                            .take(size.width as usize * size.height as usize * 4)
-                            .collect::<Vec<_>>();
-                        gl.read_pixels(
-                            0,
-                            0,
-                            size.width as i32,
-                            size.height as i32,
-                            glow::RGBA,
-                            glow::UNSIGNED_BYTE,
-                            glow::PixelPackData::Slice(data.as_mut_slice()),
-                        );
-                        image::DynamicImage::ImageRgba8(
-                            image::RgbaImage::from_raw(size.width, size.height, data).unwrap(),
-                        )
-                    };
-
-                    image.flipv().save(&filename).unwrap();
-                    let next_num = num + 1;
-                    std::fs::write("img/num.txt", format!("{next_num}")).unwrap();
-                    println!("wrote image as {filename}");
-                }
-            }
-
-            Event::WindowEvent {
-                event: WindowEvent::CloseRequested,
-                ..
-            } => {
-                if state.modified {
-                    if state
-                        .ask_to_save_then_save("Would you like to save before exiting?")
-                        .unwrap_or(false)
-                    {
-                        *control_flow = ControlFlow::Exit;
-                    }
-                } else {
-                    *control_flow = ControlFlow::Exit;
-                }
-            }
-
-            Event::WindowEvent {
+            Gevent::WindowEvent {
                 event:
                     WindowEvent::KeyboardInput {
                         input:
                             KeyboardInput {
                                 virtual_keycode: Some(VirtualKeyCode::Escape),
-                                state: glutin::event::ElementState::Pressed,
+                                state: ElementState::Pressed,
+                                ..
+                            },
+                        ..
+                    },
+                ..
+            }
+            | Gevent::WindowEvent {
+                event: WindowEvent::CloseRequested,
+                ..
+            } => {
+                *flow = ControlFlow::Exit;
+            }
+
+            Gevent::WindowEvent {
+                event:
+                    WindowEvent::KeyboardInput {
+                        input:
+                            KeyboardInput {
+                                virtual_keycode: Some(key),
+                                state,
                                 ..
                             },
                         ..
                     },
                 ..
             } => {
-                *control_flow = ControlFlow::Exit;
+                let key = pmb_gl::glutin_to_pmb_keycode(key);
+                match (key, state) {
+                    (zoom, ElementState::Pressed)
+                        if config.prev_device == Device::Pen && zoom == config.pen_zoom_key =>
+                    {
+                        ui.next(&config, &mut sketch, Pevent::StartZoom);
+                    }
+
+                    (zoom, ElementState::Released) if zoom == config.pen_zoom_key => {
+                        ui.next(&config, &mut sketch, Pevent::EndZoom);
+                    }
+
+                    (mouse, ElementState::Pressed) if mouse == config.use_mouse_for_pen_key => {
+                        config.use_mouse_for_pen = !config.use_mouse_for_pen;
+                        println!("using mouse for pen? {}", config.use_mouse_for_pen);
+                    }
+
+                    (finger, ElementState::Pressed) if finger == config.use_finger_for_pen_key => {
+                        config.use_finger_for_pen = !config.use_finger_for_pen;
+                        println!("using finger for pen? {}", config.use_finger_for_pen);
+                    }
+
+                    (swap, ElementState::Pressed)
+                        if (config.prev_device == Device::Mouse
+                            || !config.stylus_may_be_inverted)
+                            && swap == config.swap_eraser_key =>
+                    {
+                        if config.active_tool != Tool::Eraser {
+                            config.active_tool = Tool::Eraser;
+                        } else {
+                            config.active_tool = Tool::Pen;
+                        }
+                        ui.next(&config, &mut sketch, Pevent::ToolChange);
+                    }
+
+                    (brush, ElementState::Pressed) if brush == config.brush_increase => {
+                        ui.next(
+                            &config,
+                            &mut sketch,
+                            Pevent::BrushSize(powdermilk_biscuits::BRUSH_DELTA as i32),
+                        );
+                    }
+
+                    (brush, ElementState::Pressed) if brush == config.brush_decrease => {
+                        ui.next(
+                            &config,
+                            &mut sketch,
+                            Pevent::BrushSize(-(powdermilk_biscuits::BRUSH_DELTA as i32)),
+                        );
+                    }
+
+                    _ => {}
+                }
+
+                window.request_redraw();
             }
 
-            Event::WindowEvent {
-                event: WindowEvent::Touch(touch),
-                ..
-            } => {
-                cursor_visible = false;
-                context.window().set_cursor_visible(false);
-
-                state.handle_touch(pmb_gl::glutin_to_pmb_touch(touch), size.width, size.height);
-
-                context.window().request_redraw();
-            }
-
-            Event::WindowEvent {
+            Gevent::WindowEvent {
                 event: WindowEvent::MouseWheel { delta, .. },
                 ..
             } => {
-                let zoom_in = match delta {
-                    MouseScrollDelta::LineDelta(_, y) if y.is_sign_positive() => true,
-                    MouseScrollDelta::PixelDelta(pos) if pos.y.is_sign_positive() => true,
-                    MouseScrollDelta::LineDelta(_, y) if y.is_sign_negative() => false,
-                    MouseScrollDelta::PixelDelta(pos) if pos.y.is_sign_negative() => false,
-                    _ => unreachable!(),
-                };
-                const ZOOM_SPEED: f32 = 4.25;
+                match delta {
+                    MouseScrollDelta::LineDelta(_, delta) => {
+                        ui.next(&config, &mut sketch, Pevent::ActiveZoom(delta as i32));
+                    }
+                    MouseScrollDelta::PixelDelta(delta) => {
+                        ui.next(&config, &mut sketch, Pevent::ActiveZoom(delta.y as i32));
+                    }
+                }
 
-                let dzoom = if zoom_in { ZOOM_SPEED } else { -ZOOM_SPEED };
-                state.change_zoom(dzoom, size.width, size.height);
-
-                context.window().request_redraw();
+                window.request_redraw();
             }
 
-            Event::WindowEvent {
-                event:
-                    WindowEvent::MouseInput {
-                        state: key_state,
-                        button,
-                        ..
-                    },
+            Gevent::WindowEvent {
+                event: WindowEvent::MouseInput { state, button, .. },
                 ..
             } => {
                 let button = pmb_gl::glutin_to_pmb_mouse_button(button);
-                let key_state = pmb_gl::glutin_to_pmb_key_state(key_state);
-                state.handle_mouse_button(button, key_state);
-                context.window().request_redraw();
+                match (button, state) {
+                    (primary, ElementState::Pressed) if primary == config.primary_button => {
+                        ui.next(&config, &mut sketch, Pevent::MouseDown(button));
+                    }
+                    (primary, ElementState::Released) if primary == config.primary_button => {
+                        ui.next(&config, &mut sketch, Pevent::MouseUp(button));
+                    }
+                    (pan, ElementState::Pressed) if pan == config.pan_button => {
+                        ui.next(&config, &mut sketch, Pevent::StartPan);
+                    }
+                    (pan, ElementState::Released) if pan == config.pan_button => {
+                        ui.next(&config, &mut sketch, Pevent::EndPan);
+                    }
+                    _ => {}
+                }
+
+                config.prev_device = Device::Mouse;
+                window.request_redraw();
             }
 
-            Event::WindowEvent {
+            Gevent::WindowEvent {
                 event: WindowEvent::CursorMoved { position, .. },
                 ..
             } => {
-                if state.handle_cursor_move(
-                    size.width,
-                    size.height,
-                    pmb_gl::physical_pos_to_pixel_pos(position),
-                ) {
-                    context.window().request_redraw();
+                ui.next(
+                    &config,
+                    &mut sketch,
+                    Pevent::MouseMove(pmb_gl::physical_pos_to_pixel_pos(position)),
+                );
+                config.prev_device = Device::Mouse;
+
+                if config.use_mouse_for_pen {
+                    if cursor_visible {
+                        cursor_visible = false;
+                        window.set_cursor_visible(false);
+                    }
+                    window.request_redraw();
+                } else if !cursor_visible {
+                    cursor_visible = true;
+                    window.set_cursor_visible(true);
                 }
 
-                if !cursor_visible {
-                    cursor_visible = true;
-                    context.window().set_cursor_visible(cursor_visible);
-                    context.window().request_redraw();
+                if ui.state.redraw() {
+                    window.request_redraw();
                 }
             }
 
-            Event::MainEventsCleared => match (state.path.as_ref(), state.modified) {
-                (Some(path), true) => {
-                    let title = format!("{} (modified)", path.display());
-                    context.window().set_title(title.as_str());
+            Gevent::WindowEvent {
+                event:
+                    WindowEvent::Touch(
+                        touch @ Touch {
+                            phase,
+                            pen_info: Some(pen_info),
+                            ..
+                        },
+                    ),
+                ..
+            } => {
+                let touch = pmb_gl::glutin_to_pmb_touch(touch);
+                if config.stylus_may_be_inverted {
+                    if pen_info.inverted {
+                        config.active_tool = Tool::Eraser;
+                    } else {
+                        config.active_tool = Tool::Pen;
+                    }
                 }
-                (Some(path), false) => context.window().set_title(&path.display().to_string()),
-                (None, true) => context.window().set_title(TITLE_MODIFIED),
-                (None, false) => context.window().set_title(TITLE_UNMODIFIED),
-            },
 
-            Event::RedrawRequested(_) => {
+                match phase {
+                    TouchPhase::Started => ui.next(&config, &mut sketch, Pevent::PenDown(touch)),
+                    TouchPhase::Moved => ui.next(&config, &mut sketch, Pevent::PenMove(touch)),
+                    TouchPhase::Ended | TouchPhase::Cancelled => {
+                        ui.next(&config, &mut sketch, Pevent::PenUp(touch))
+                    }
+                }
+
+                config.prev_device = Device::Pen;
+
+                if cursor_visible {
+                    cursor_visible = false;
+                    window.set_cursor_visible(false);
+                }
+
+                window.request_redraw();
+            }
+
+            Gevent::WindowEvent {
+                event:
+                    WindowEvent::Touch(
+                        touch @ Touch {
+                            phase,
+                            pen_info: None,
+                            ..
+                        },
+                    ),
+                ..
+            } => {
+                let touch = pmb_gl::glutin_to_pmb_touch(touch);
+                ui.next(
+                    &config,
+                    &mut sketch,
+                    match phase {
+                        TouchPhase::Started => Pevent::Touch(touch),
+                        TouchPhase::Moved => Pevent::PenMove(touch),
+                        TouchPhase::Ended | TouchPhase::Cancelled => Pevent::Release(touch),
+                    },
+                );
+
+                config.prev_device = Device::Touch;
+
+                if cursor_visible && config.use_finger_for_pen {
+                    cursor_visible = false;
+                    window.set_cursor_visible(false);
+                }
+
+                window.request_redraw();
+            }
+
+            Gevent::WindowEvent {
+                event: WindowEvent::Resized(new_size),
+                ..
+            } => {
+                size = new_size;
+                ui.resize(new_size.width, new_size.height, &mut sketch);
+                context.resize(new_size);
+                unsafe {
+                    gl.viewport(0, 0, new_size.width as i32, new_size.height as i32);
+                }
+                window.request_redraw();
+            }
+
+            Gevent::RedrawRequested(_) => {
+                use std::mem::size_of;
+
                 unsafe {
                     gl.use_program(Some(strokes_program));
-                    let view = pmb_gl::view_matrix(state.zoom, state.zoom, size, state.origin);
+                    let view = pmb_gl::view_matrix(sketch.zoom, sketch.zoom, size, sketch.origin);
                     gl.uniform_matrix_4_f32_slice(
                         Some(&strokes_view),
                         false,
@@ -339,7 +369,7 @@ fn main() {
                     gl.clear(glow::COLOR_BUFFER_BIT);
                 }
 
-                if let Some(last) = state.strokes.last_mut() {
+                if let Some(last) = sketch.strokes.last_mut() {
                     if last.is_dirty() {
                         last.replace_backend_with(|points_bytes, mesh_bytes, mesh_len| unsafe {
                             let f32_size = size_of::<f32>() as i32;
@@ -400,7 +430,7 @@ fn main() {
                     }
                 }
 
-                for stroke in state.strokes.iter() {
+                for stroke in sketch.strokes.iter() {
                     if !stroke.visible || stroke.points().is_empty() || stroke.erased() {
                         continue;
                     }
@@ -445,7 +475,8 @@ fn main() {
 
                 if !cursor_visible {
                     let circle =
-                        powdermilk_biscuits::graphics::circle_points(state.brush_size as f32, 32);
+                        powdermilk_biscuits::graphics::circle_points(ui.brush_size as f32, 32);
+
                     unsafe {
                         gl.use_program(Some(pen_cursor_program));
                         let vbo = gl.create_buffer().unwrap();
@@ -469,14 +500,14 @@ fn main() {
 
                         gl.uniform_1_f32(
                             Some(&pen_cursor_erasing),
-                            if state.stylus.eraser() { 1.0 } else { 0.0 },
+                            if ui.stylus.eraser() { 1.0 } else { 0.0 },
                         );
                         gl.uniform_1_f32(
                             Some(&pen_cursor_pen_down),
-                            if state.stylus.down() { 1.0 } else { 0.0 },
+                            if ui.stylus.down() { 1.0 } else { 0.0 },
                         );
 
-                        let view = pmb_gl::view_matrix(state.zoom, 1.0, size, state.stylus.point);
+                        let view = pmb_gl::view_matrix(sketch.zoom, 1.0, size, ui.stylus.point);
 
                         gl.uniform_matrix_4_f32_slice(
                             Some(&pen_cursor_view),
@@ -489,17 +520,6 @@ fn main() {
                 }
 
                 context.swap_buffers().unwrap();
-            }
-
-            Event::WindowEvent {
-                event: WindowEvent::Resized(new_size),
-                ..
-            } => {
-                size = new_size;
-                context.resize(new_size);
-                unsafe {
-                    gl.viewport(0, 0, new_size.width as i32, new_size.height as i32);
-                };
             }
 
             _ => {}

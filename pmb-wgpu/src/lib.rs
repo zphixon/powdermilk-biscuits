@@ -3,7 +3,8 @@ use powdermilk_biscuits::{
     graphics::{ColorExt, PixelPos, StrokePoint},
     input::{ElementState, Keycode, MouseButton},
     stroke::Stroke,
-    State,
+    ui::Ui,
+    Sketch,
 };
 use std::mem::size_of;
 use wgpu::{
@@ -29,7 +30,6 @@ use winit::{
     window::Window,
 };
 
-pub type WgpuState = State<WgpuBackend, WgpuStrokeBackend>;
 pub type WgpuStroke = Stroke<WgpuStrokeBackend>;
 
 const NUM_SEGMENTS: usize = 50;
@@ -353,14 +353,14 @@ impl StrokeRenderer {
         queue: &Queue,
         frame: &TextureView,
         encoder: &mut CommandEncoder,
-        state: &WgpuState,
+        sketch: &Sketch<WgpuStrokeBackend>,
         size: Size,
         load: LoadOp<WgpuColor>,
         should_draw: fn(&WgpuStroke) -> bool,
         data: fn(&WgpuStroke) -> BufferSlice,
         len: fn(&WgpuStroke) -> u32,
     ) {
-        let stroke_view = view_matrix(state.zoom, state.zoom, size, state.origin);
+        let stroke_view = view_matrix(sketch.zoom, sketch.zoom, size, sketch.origin);
         queue.write_buffer(
             &self.view_uniform_buffer,
             0,
@@ -382,7 +382,7 @@ impl StrokeRenderer {
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &self.view_bind_group, &[]);
 
-        for stroke in state.strokes.iter() {
+        for stroke in sketch.strokes.iter() {
             if !stroke.visible
                 || !should_draw(stroke)
                 || stroke.erased()
@@ -520,15 +520,11 @@ impl CursorRenderer {
         queue: &Queue,
         frame: &TextureView,
         encoder: &mut CommandEncoder,
-        state: &WgpuState,
+        ui: &Ui<WgpuBackend>,
+        zoom: f32,
         size: Size,
     ) {
-        let cursor_view = view_matrix(
-            state.zoom,
-            state.brush_size as f32,
-            size,
-            state.stylus.point,
-        );
+        let cursor_view = view_matrix(zoom, ui.brush_size as f32, size, ui.stylus.point);
 
         queue.write_buffer(
             &self.view_uniform_buffer,
@@ -550,8 +546,8 @@ impl CursorRenderer {
         });
 
         let info_buffer = [
-            if state.stylus.down() { 1.0f32 } else { 0. },
-            if state.stylus.eraser() { 1. } else { 0. },
+            if ui.stylus.down() { 1.0f32 } else { 0. },
+            if ui.stylus.eraser() { 1. } else { 0. },
         ];
 
         pass.set_pipeline(&self.pipeline);
@@ -700,8 +696,8 @@ impl Graphics {
         });
     }
 
-    pub fn buffer_all_strokes(&mut self, state: &mut WgpuState) {
-        for stroke in state.strokes.iter_mut() {
+    pub fn buffer_all_strokes(&mut self, sketch: &mut Sketch<WgpuStrokeBackend>) {
+        for stroke in sketch.strokes.iter_mut() {
             if stroke.is_dirty() {
                 self.buffer_stroke(stroke);
             }
@@ -710,11 +706,12 @@ impl Graphics {
 
     pub fn render(
         &mut self,
-        state: &mut WgpuState,
+        sketch: &mut Sketch<WgpuStrokeBackend>,
+        ui: &Ui<WgpuBackend>,
         size: PhysicalSize<u32>,
         cursor_visible: bool,
     ) -> Result<(), SurfaceError> {
-        self.buffer_all_strokes(state);
+        self.buffer_all_strokes(sketch);
 
         macro_rules! render {
             ($frame:expr) => {
@@ -728,7 +725,7 @@ impl Graphics {
                     &self.queue,
                     $frame,
                     &mut encoder,
-                    state,
+                    sketch,
                     size,
                     LoadOp::Clear(WgpuColor::BLACK),
                     |stroke| !stroke.draw_tesselated,
@@ -739,7 +736,7 @@ impl Graphics {
                     &self.queue,
                     $frame,
                     &mut encoder,
-                    state,
+                    sketch,
                     size,
                     LoadOp::Load,
                     |stroke| stroke.draw_tesselated,
@@ -748,8 +745,14 @@ impl Graphics {
                 );
 
                 if !cursor_visible {
-                    self.cursor_renderer
-                        .render(&self.queue, $frame, &mut encoder, state, size);
+                    self.cursor_renderer.render(
+                        &self.queue,
+                        $frame,
+                        &mut encoder,
+                        ui,
+                        sketch.zoom,
+                        size,
+                    );
                 }
 
                 self.queue.submit(Some(encoder.finish()));
