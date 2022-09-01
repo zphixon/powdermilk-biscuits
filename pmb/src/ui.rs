@@ -287,6 +287,11 @@ impl<B: Backend> Ui<B> {
                 S::Ready
             }
 
+            (S::Ready, E::DecreaseBrush(change)) => {
+                self.decrease_brush(change);
+                S::Ready
+            }
+
             (S::Ready, E::ScrollZoom(change)) => {
                 let next_zoom = sketch.zoom + change;
                 sketch.zoom = if next_zoom < crate::MIN_ZOOM {
