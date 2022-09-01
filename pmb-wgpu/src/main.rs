@@ -51,7 +51,7 @@ async fn run() {
     ev.run(move |event, _, flow| {
         *flow = ControlFlow::Wait;
 
-        log::info!("{event:?}");
+        log::trace!("{event:?}");
 
         match event {
             WinitEvent::WindowEvent {
