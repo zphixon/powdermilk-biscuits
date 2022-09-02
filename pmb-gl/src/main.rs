@@ -9,7 +9,7 @@ use glutin::{
     window::WindowBuilder,
     ContextBuilder,
 };
-use pmb_gl::{GlBackend, GlStrokeBackend};
+use pmb_gl::{GlCoords, GlStrokeBackend};
 use powdermilk_biscuits::{
     event::{ElementState, Event},
     ui::Ui,
@@ -101,7 +101,7 @@ fn main() {
 
     let mut ui = {
         let PhysicalSize { width, height } = context.window().inner_size();
-        Ui::<GlBackend>::new(width, height)
+        Ui::<GlCoords>::new(width, height)
     };
     let mut sketch: Sketch<pmb_gl::GlStrokeBackend> =
         if let Some(filename) = std::env::args().nth(1) {

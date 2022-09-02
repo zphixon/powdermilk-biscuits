@@ -2,8 +2,8 @@ use crate::{
     error::{ErrorKind, PmbError, PmbErrorExt},
     event::{ElementState, Event, InputHandler, Keycode, Touch, TouchPhase},
     graphics::{PixelPos, StrokePos},
-    Backend, Config, Device, Sketch, Stroke, StrokeBackend, Stylus, StylusPosition, StylusState,
-    Tool,
+    Config, CoordinateSystem, Device, Sketch, Stroke, StrokeBackend, Stylus, StylusPosition,
+    StylusState, Tool,
 };
 use std::path::{Path, PathBuf};
 
@@ -72,7 +72,7 @@ impl UiState {
 }
 
 #[derive(Debug)]
-pub struct Ui<B: Backend> {
+pub struct Ui<C: CoordinateSystem> {
     pub state: UiState,
     pub modified: bool,
     pub path: Option<std::path::PathBuf>,
@@ -86,10 +86,10 @@ pub struct Ui<B: Backend> {
 
     pub width: u32,
     pub height: u32,
-    pub backend: B,
+    pub coords: C,
 }
 
-impl<B: Backend> Ui<B> {
+impl<C: CoordinateSystem> Ui<C> {
     pub fn new(width: u32, height: u32) -> Self {
         Self {
             state: UiState::default(),
@@ -102,7 +102,7 @@ impl<B: Backend> Ui<B> {
             input: InputHandler::default(),
             width,
             height,
-            backend: B::default(),
+            coords: C::default(),
         }
     }
 
@@ -115,7 +115,7 @@ impl<B: Backend> Ui<B> {
 
     fn start_stroke<S: StrokeBackend>(&mut self, sketch: &mut Sketch<S>) {
         let stroke_brush_size = self
-            .backend
+            .coords
             .pixel_to_stroke(
                 self.width,
                 self.height,
@@ -201,7 +201,7 @@ impl<B: Backend> Ui<B> {
         pressure: f64,
     ) {
         let point = self
-            .backend
+            .coords
             .pixel_to_stroke(self.width, self.height, sketch.zoom, location);
         let pos = crate::graphics::xform_point_to_pos(sketch.origin, point);
 
@@ -229,7 +229,7 @@ impl<B: Backend> Ui<B> {
     }
 
     fn update_visible_strokes<S: StrokeBackend>(&self, sketch: &mut Sketch<S>) {
-        let top_left = self.backend.pixel_to_pos(
+        let top_left = self.coords.pixel_to_pos(
             self.width,
             self.height,
             sketch.zoom,
@@ -237,7 +237,7 @@ impl<B: Backend> Ui<B> {
             PixelPos::default(),
         );
 
-        let bottom_right = self.backend.pixel_to_pos(
+        let bottom_right = self.coords.pixel_to_pos(
             self.width,
             self.height,
             sketch.zoom,
@@ -360,7 +360,7 @@ impl<B: Backend> Ui<B> {
             }
 
             (S::Pan, E::MouseMove(location)) => {
-                let prev = self.backend.pixel_to_pos(
+                let prev = self.coords.pixel_to_pos(
                     self.width,
                     self.height,
                     sketch.zoom,
@@ -370,7 +370,7 @@ impl<B: Backend> Ui<B> {
 
                 self.input.handle_mouse_move(location);
 
-                let next = self.backend.pixel_to_pos(
+                let next = self.coords.pixel_to_pos(
                     self.width,
                     self.height,
                     sketch.zoom,
@@ -388,7 +388,7 @@ impl<B: Backend> Ui<B> {
             }
 
             (S::Pan, E::TouchMove(touch)) => {
-                let prev = self.backend.pixel_to_pos(
+                let prev = self.coords.pixel_to_pos(
                     self.width,
                     self.height,
                     sketch.zoom,
@@ -400,7 +400,7 @@ impl<B: Backend> Ui<B> {
                 // self.input.cursor_pos() for next
                 self.input.handle_mouse_move(touch.location);
 
-                let next = self.backend.pixel_to_pos(
+                let next = self.coords.pixel_to_pos(
                     self.width,
                     self.height,
                     sketch.zoom,

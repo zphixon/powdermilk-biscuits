@@ -34,9 +34,9 @@ pub type WgpuStroke = Stroke<WgpuStrokeBackend>;
 const NUM_SEGMENTS: usize = 50;
 
 #[derive(Debug, Default, Clone, Copy)]
-pub struct WgpuBackend;
+pub struct WgpuCoords;
 
-impl powdermilk_biscuits::Backend for WgpuBackend {
+impl powdermilk_biscuits::CoordinateSystem for WgpuCoords {
     type Ndc = WgpuNdc;
 
     fn pixel_to_ndc(&self, width: u32, height: u32, pos: PixelPos) -> Self::Ndc {
@@ -519,7 +519,7 @@ impl CursorRenderer {
         queue: &Queue,
         frame: &TextureView,
         encoder: &mut CommandEncoder,
-        ui: &Ui<WgpuBackend>,
+        ui: &Ui<WgpuCoords>,
         zoom: f32,
         size: Size,
     ) {
@@ -710,7 +710,7 @@ impl Graphics {
     pub fn render(
         &mut self,
         sketch: &mut Sketch<WgpuStrokeBackend>,
-        ui: &Ui<WgpuBackend>,
+        ui: &Ui<WgpuCoords>,
         size: PhysicalSize<u32>,
         cursor_visible: bool,
     ) -> Result<(), SurfaceError> {

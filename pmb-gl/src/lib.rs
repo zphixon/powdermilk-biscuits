@@ -13,9 +13,9 @@ use powdermilk_biscuits::{
 };
 
 #[derive(Debug, Default, Clone, Copy)]
-pub struct GlBackend {}
+pub struct GlCoords {}
 
-impl powdermilk_biscuits::Backend for GlBackend {
+impl powdermilk_biscuits::CoordinateSystem for GlCoords {
     type Ndc = GlPos;
 
     fn pixel_to_ndc(&self, width: u32, height: u32, pos: PixelPos) -> Self::Ndc {

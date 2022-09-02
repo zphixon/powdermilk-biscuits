@@ -69,7 +69,7 @@ pub fn write<S: StrokeBackend>(
     Ok(())
 }
 
-pub trait Backend: std::fmt::Debug + Default + Clone + Copy {
+pub trait CoordinateSystem: std::fmt::Debug + Default + Clone + Copy {
     type Ndc: std::fmt::Display + Clone + Copy;
 
     fn pixel_to_ndc(&self, width: u32, height: u32, pos: PixelPos) -> Self::Ndc;
@@ -218,8 +218,8 @@ impl<S: StrokeBackend> Sketch<S> {
         Self::new(Vec::new())
     }
 
-    pub fn with_filename<B: Backend>(
-        ui: &mut ui::Ui<B>,
+    pub fn with_filename<C: CoordinateSystem>(
+        ui: &mut ui::Ui<C>,
         path: impl AsRef<std::path::Path>,
     ) -> Self {
         log::info!("create State from {}", path.as_ref().display());

@@ -5,7 +5,7 @@ use piet_common::{
 use powdermilk_biscuits::{
     event::{ElementState, Event},
     ui::Ui,
-    Backend, Config, Device, Sketch,
+    Config, CoordinateSystem, Device, Sketch,
 };
 use softbuffer::GraphicsContext;
 use winit::{
@@ -22,7 +22,7 @@ mod backend {
     use powdermilk_biscuits::{
         event::{ElementState, Keycode, MouseButton, PenInfo, Touch, TouchPhase},
         graphics::{PixelPos, StrokePoint},
-        Backend, StrokeBackend,
+        CoordinateSystem, StrokeBackend,
     };
     use winit::event::{
         ElementState as WinitElementState, MouseButton as WinitMouseButton,
@@ -31,9 +31,9 @@ mod backend {
     };
 
     #[derive(Debug, Default, Clone, Copy)]
-    pub struct PietBackend;
+    pub struct PietCoords;
 
-    impl Backend for PietBackend {
+    impl CoordinateSystem for PietCoords {
         type Ndc = PixelPos;
 
         fn pixel_to_ndc(&self, _width: u32, _height: u32, pos: PixelPos) -> Self::Ndc {
@@ -180,11 +180,11 @@ fn main() {
     style.set_line_cap(piet_common::LineCap::Round);
     style.set_line_join(piet_common::LineJoin::Round);
 
-    let backend = backend::PietBackend;
+    let coords = backend::PietCoords;
 
     let mut cursor_visible = true;
     let mut config = Config::default();
-    let mut ui = Ui::<backend::PietBackend>::new(800, 600);
+    let mut ui = Ui::<backend::PietCoords>::new(800, 600);
     let mut sketch: Sketch<backend::PietStrokeBackend> =
         if let Some(filename) = std::env::args().nth(1) {
             Sketch::with_filename(&mut ui, std::path::PathBuf::from(filename))
@@ -411,14 +411,14 @@ fn main() {
 
                         for pair in stroke.points.windows(2) {
                             if let [a, b] = pair {
-                                let start = backend.pos_to_pixel(
+                                let start = coords.pos_to_pixel(
                                     width,
                                     height,
                                     sketch.zoom,
                                     sketch.origin,
                                     a.into(),
                                 );
-                                let end = backend.pos_to_pixel(
+                                let end = coords.pos_to_pixel(
                                     width,
                                     height,
                                     sketch.zoom,
