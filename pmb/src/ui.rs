@@ -626,8 +626,15 @@ impl<C: CoordinateSystem> Ui<C> {
         }
 
         if just_pressed!(reset_view) {
-            // TODO
-            //self.reset_view(width, height);
+            sketch.zoom = crate::DEFAULT_ZOOM;
+            self.move_origin(
+                sketch,
+                StrokePos {
+                    x: sketch.origin.x,
+                    y: sketch.origin.y,
+                },
+                StrokePos { x: 0., y: 0. },
+            );
         }
 
         if just_pressed!(ctrl + open) {
