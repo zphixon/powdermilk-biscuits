@@ -250,7 +250,7 @@ async fn run() {
                     &mut sketch,
                     match phase {
                         TouchPhase::Started => Event::Touch(touch),
-                        TouchPhase::Moved => Event::PenMove(touch),
+                        TouchPhase::Moved => Event::TouchMove(touch),
                         TouchPhase::Ended | TouchPhase::Cancelled => Event::Release(touch),
                     },
                 );
