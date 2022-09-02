@@ -326,6 +326,7 @@ impl<C: CoordinateSystem> Ui<C> {
                             S::MouseDraw
                         }
                         Tool::Eraser => S::MouseErase,
+                        Tool::Pan => S::Pan,
                     }
                 } else {
                     S::Pan
@@ -430,6 +431,7 @@ impl<C: CoordinateSystem> Ui<C> {
                         S::PenDraw
                     }
                     Tool::Eraser => S::PenErase,
+                    Tool::Pan => S::Pan,
                 }
             }
 
@@ -503,6 +505,7 @@ impl<C: CoordinateSystem> Ui<C> {
                             S::TouchDraw
                         }
                         Tool::Eraser => S::TouchErase,
+                        Tool::Pan => S::Pan,
                     }
                 } else {
                     S::Gesture(1)

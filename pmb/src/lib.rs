@@ -128,6 +128,7 @@ pub enum Tool {
     #[default]
     Pen,
     Eraser,
+    Pan,
 }
 
 #[derive(Debug, Default, PartialEq, Clone, Copy)]
