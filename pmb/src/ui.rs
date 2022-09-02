@@ -375,31 +375,6 @@ impl<C: CoordinateSystem> Ui<C> {
                 S::Pan
             }
 
-            (S::Pan, E::TouchMove(touch)) => {
-                let prev = self.coords.pixel_to_pos(
-                    self.width,
-                    self.height,
-                    sketch.zoom,
-                    sketch.origin,
-                    touch.location,
-                );
-
-                // updates cursor position, hence touch.location for prev and
-                // self.input.cursor_pos() for next
-                self.input.handle_mouse_move(touch.location);
-
-                let next = self.coords.pixel_to_pos(
-                    self.width,
-                    self.height,
-                    sketch.zoom,
-                    sketch.origin,
-                    self.input.cursor_pos(),
-                );
-
-                self.move_origin(sketch, prev, next);
-                S::Pan
-            }
-
             // zoom handling
             (S::PenZoom, E::EndPan) => S::PreZoom,
             (S::Pan, E::StartZoom) => S::PenZoom,
@@ -508,6 +483,7 @@ impl<C: CoordinateSystem> Ui<C> {
                         Tool::Pan => S::Pan,
                     }
                 } else {
+                    self.input.handle_mouse_move(touch.location);
                     S::Gesture(1)
                 }
             }
@@ -526,7 +502,50 @@ impl<C: CoordinateSystem> Ui<C> {
 
             (S::TouchDraw | S::TouchErase, E::Touch(_)) => S::Gesture(2),
             (S::TouchErase, E::Release(_)) => S::Ready,
+
             (S::Gesture(i), E::Touch(_)) => S::Gesture(i + 1),
+
+            (S::Gesture(i), E::TouchMove(touch)) => {
+                let tool = config.tool_for_gesture(i);
+                self.next(config, sketch, E::ToolChange(tool));
+
+                match tool {
+                    Tool::Pen => {
+                        // TODO dedup, logic???
+                        self.update_stylus_from_touch(config, sketch, touch);
+                        self.continue_stroke(sketch);
+                    }
+
+                    Tool::Eraser => {
+                        // TODO
+                    }
+
+                    Tool::Pan => {
+                        let prev = self.coords.pixel_to_pos(
+                            self.width,
+                            self.height,
+                            sketch.zoom,
+                            sketch.origin,
+                            self.input.cursor_pos(),
+                        );
+
+                        self.input.handle_mouse_move(touch.location);
+
+                        let next = self.coords.pixel_to_pos(
+                            self.width,
+                            self.height,
+                            sketch.zoom,
+                            sketch.origin,
+                            self.input.cursor_pos(),
+                        );
+
+                        self.move_origin(sketch, prev, next);
+                    }
+                }
+
+                S::Gesture(i)
+            }
+
             (S::Gesture(i), E::Release(_)) => {
                 if i == 1 {
                     S::Ready

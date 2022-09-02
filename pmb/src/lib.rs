@@ -162,6 +162,10 @@ pub struct Config {
     pub open: Keycode,
     pub zoom_out: Keycode,
     pub zoom_in: Keycode,
+    pub tool_for_gesture_1: Tool,
+    pub tool_for_gesture_2: Tool,
+    pub tool_for_gesture_3: Tool,
+    pub tool_for_gesture_4: Tool,
 }
 
 impl Default for Config {
@@ -187,6 +191,22 @@ impl Default for Config {
             open: Keycode::O,
             zoom_out: Keycode::NumpadSubtract,
             zoom_in: Keycode::NumpadAdd,
+            tool_for_gesture_1: Tool::Pan,
+            tool_for_gesture_2: Tool::Pan,
+            tool_for_gesture_3: Tool::Pan,
+            tool_for_gesture_4: Tool::Pan,
+        }
+    }
+}
+
+impl Config {
+    pub fn tool_for_gesture(&self, i: u8) -> Tool {
+        match i {
+            1 => self.tool_for_gesture_1,
+            2 => self.tool_for_gesture_2,
+            3 => self.tool_for_gesture_3,
+            4 => self.tool_for_gesture_4,
+            _ => Tool::Pan,
         }
     }
 }
