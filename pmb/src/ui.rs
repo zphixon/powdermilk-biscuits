@@ -498,15 +498,31 @@ impl<C: CoordinateSystem> Ui<C> {
                 if config.use_finger_for_pen {
                     self.update_stylus_from_touch(config, sketch, touch);
                     match self.active_tool {
-                        Tool::Pen => S::TouchDraw,
+                        Tool::Pen => {
+                            self.start_stroke(sketch);
+                            S::TouchDraw
+                        }
                         Tool::Eraser => S::TouchErase,
                     }
                 } else {
                     S::Gesture(1)
                 }
             }
+
+            (S::TouchDraw, E::TouchMove(touch)) => {
+                self.update_stylus_from_touch(config, sketch, touch);
+                self.continue_stroke(sketch);
+                S::TouchDraw
+            }
+
+            (S::TouchDraw, E::Release(touch)) => {
+                self.update_stylus_from_touch(config, sketch, touch);
+                self.end_stroke(sketch);
+                S::Ready
+            }
+
             (S::TouchDraw | S::TouchErase, E::Touch(_)) => S::Gesture(2),
-            (S::TouchDraw | S::TouchErase, E::Release(_)) => S::Ready,
+            (S::TouchErase, E::Release(_)) => S::Ready,
             (S::Gesture(i), E::Touch(_)) => S::Gesture(i + 1),
             (S::Gesture(i), E::Release(_)) => {
                 if i == 1 {
