@@ -162,6 +162,11 @@ mod backend {
 }
 
 fn main() {
+    env_logger::init();
+    if cfg!(debug_assertions) && cfg!(windows) {
+        println!("\u{1b}[93mThe program was built in debug mode, which enables certain Direct2D debugging features that have a significantly negative impact on performance.\u{1b}[m");
+    }
+
     let ev = EventLoop::new();
     let window = WindowBuilder::new()
         .with_position(LogicalPosition {

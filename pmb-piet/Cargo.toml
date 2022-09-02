@@ -8,10 +8,14 @@ edition = '2021'
 [dependencies]
 env_logger = '0.9.0'
 log = '*'
-piet-common = '0.5.0'
 powdermilk-biscuits = { path = '../pmb' }
 bytemuck = '1.12.1'
 
 # TODO use glutin
 winit = { git = 'https://github.com/zphixon/winit', branch = 'pen-info2' }
 softbuffer = { git = 'https://github.com/john01dav/softbuffer' }
+
+[dependencies.piet-common]
+git = 'https://github.com/linebender/piet'
+rev = '45ddf3a8229c5384c3119a7c13b8ceb9b124cefb'
+package = 'piet-common'
