@@ -5,6 +5,8 @@ pub mod migrate;
 pub mod stroke;
 pub mod ui;
 
+pub extern crate rand;
+
 use crate::{
     error::{ErrorKind, PmbError, PmbErrorExt},
     event::{Keycode, MouseButton},
