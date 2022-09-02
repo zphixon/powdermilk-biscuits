@@ -114,20 +114,7 @@ impl<C: CoordinateSystem> Ui<C> {
     }
 
     fn start_stroke<S: StrokeBackend>(&mut self, sketch: &mut Sketch<S>) {
-        let stroke_brush_size = self
-            .coords
-            .pixel_to_stroke(
-                self.width,
-                self.height,
-                sketch.zoom,
-                PixelPos {
-                    x: ((self.width / 2) + self.brush_size as u32) as f32,
-                    y: (self.height / 2) as f32,
-                },
-            )
-            .x
-            / 2.0;
-
+        let stroke_brush_size = self.brush_size as f32 / sketch.zoom;
         sketch
             .strokes
             .push(Stroke::new(rand::random(), stroke_brush_size, true));
