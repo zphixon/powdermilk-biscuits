@@ -71,6 +71,18 @@ Backend:
   - write it to the atlas using glTexSubImage2D or whatever in WGPU
   - use the atlas allocation in the StrokeBackend as a uniform/push constant
 - draw atlased strokes with instances and ubos
+- how do we notify the backend that a stroke needs to be re-rendered?
+  - zooming in would cause the quality of the texture to degrade, when do we decide it's time to ask piet to draw it again and how do we update the texture atlas
+  - panning the canvas causes strokes to go out of view, how do we decide when to update the uniform buffer?
+
+roughly speaking, an entire new frame from scratch would look like:
+- update instance buffer with the texture and sketch coordinates for visible strokes
+- update uniform buffer with atlas width, height, and view matrix
+- draw instances
+- if there's a wet stroke
+  - tell piet to render it
+  - upload the resulting texture
+  - draw single instance
 
 Keybinds:
 - c: clear strokes
