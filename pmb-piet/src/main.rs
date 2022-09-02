@@ -444,7 +444,8 @@ fn main() {
                                         stroke.color[2],
                                         0xff,
                                     ),
-                                    (stroke.brush_size * sketch.zoom * a.pressure) as f64,
+                                    powdermilk_biscuits::rand::random::<f64>() * 20.,
+                                    //(stroke.brush_size * sketch.zoom * a.pressure) as f64,
                                     &style,
                                 );
                             }
