@@ -587,8 +587,8 @@ impl<C: CoordinateSystem> Ui<C> {
         }
 
         if just_pressed!(clear_strokes) {
-            // TODO
-            //sketch.clear_strokes();
+            sketch.clear_strokes();
+            self.modified = true;
         }
 
         if just_pressed!(debug_strokes) {

@@ -254,6 +254,10 @@ impl<S: StrokeBackend> Sketch<S> {
             stroke.update_bounding_box();
         });
     }
+
+    pub fn clear_strokes(&mut self) {
+        self.strokes.clear();
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
