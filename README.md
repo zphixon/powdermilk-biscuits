@@ -1,6 +1,6 @@
 # Powdermilk Biscuits
 
-![Screenshot of the text "Powdermilk Biscuits" handwritten on a tablet using this program. Each stroke is a different color, and the strokes are rendered using a cubic Bezier interpolator.](pmb.png)
+![Screenshot of the text "Powdermilk Biscuits" handwritten on a tablet using this program. Each stroke is a different color, and the strokes are rendered with line segments whose stroke width correspond to the pressure of the pen.](pmb.png)
 
 Heavens, it's tasty.
 
