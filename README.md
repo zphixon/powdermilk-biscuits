@@ -61,7 +61,16 @@ Optimizations:
     - Instanced drawing of quads
   - Wet texture/sampler bind group
 - Most optimizations require choosing a backend
-  - I want piet, maybe wgpu
+  - I want piet & wgpu
+
+Backend:
+- piet for drawing strokes to a wet texture
+- on every frame, re-upload the wet texture (hopefully this is fast?)
+- once the stroke is finished
+  - allocate the wet texture in the atlas
+  - write it to the atlas using glTexSubImage2D or whatever in WGPU
+  - use the atlas allocation in the StrokeBackend as a uniform/push constant
+- draw atlased strokes with instances and ubos
 
 Keybinds:
 - c: clear strokes
