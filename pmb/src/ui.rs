@@ -396,6 +396,8 @@ impl<B: Backend> Ui<B> {
                     touch.location,
                 );
 
+                // updates cursor position, hence touch.location for prev and
+                // self.input.cursor_pos() for next
                 self.input.handle_mouse_move(touch.location);
 
                 let next = self.backend.pixel_to_pos(
