@@ -617,6 +617,7 @@ impl<C: CoordinateSystem> Ui<C> {
 
         if self.input.combo_just_pressed(&config.reset_view) {
             sketch.zoom = crate::DEFAULT_ZOOM;
+            sketch.update_stroke_primitive();
             self.move_origin(
                 sketch,
                 StrokePos {
