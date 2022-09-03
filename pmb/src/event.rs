@@ -51,6 +51,24 @@ pub struct Touch {
     pub pen_info: Option<PenInfo>,
 }
 
+pub struct Combination {
+    keys: Vec<Keycode>,
+}
+
+impl std::fmt::Debug for Combination {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.keys)
+    }
+}
+
+impl From<Keycode> for Combination {
+    fn from(key: Keycode) -> Self {
+        Combination {
+            keys: vec![key.normalize_mirrored()],
+        }
+    }
+}
+
 #[derive(Eq, Hash, PartialEq, Clone, Copy, Debug)]
 #[rustfmt::skip]
 pub enum Keycode {
@@ -67,6 +85,46 @@ pub enum Keycode {
     Power, PrevTrack, RAlt, RBracket, RControl, RShift, RWin, Semicolon, Slash, Sleep, Stop, Sysrq,
     Tab, Underline, Unlabeled, VolumeDown, VolumeUp, Wake, WebBack, WebFavorites, WebForward,
     WebHome, WebRefresh, WebSearch, WebStop, Yen, Copy, Paste, Cut
+}
+
+impl Keycode {
+    pub fn normalize_mirrored(&self) -> Keycode {
+        use Keycode::*;
+
+        macro_rules! normalize {
+            ($($variant:ident => $normal:ident),* $(,)?) => {
+                match self {
+                    $($variant => $normal,)*
+                    _ => *self,
+                }
+            };
+        }
+
+        normalize!(
+            RControl => LControl,
+            RShift => LShift,
+            RAlt => LAlt,
+            RWin => LWin,
+        )
+    }
+}
+
+impl std::ops::BitOr for Keycode {
+    type Output = Combination;
+
+    fn bitor(self, rhs: Self) -> Self::Output {
+        Combination {
+            keys: vec![self.normalize_mirrored(), rhs.normalize_mirrored()],
+        }
+    }
+}
+
+impl std::ops::BitOr<Keycode> for Combination {
+    type Output = Combination;
+    fn bitor(mut self, rhs: Keycode) -> Self::Output {
+        self.keys.push(rhs.normalize_mirrored());
+        self
+    }
 }
 
 #[derive(Eq, Hash, PartialEq, Clone, Copy, Debug)]
@@ -110,7 +168,7 @@ impl KeyState {
 
 #[derive(Default, Debug)]
 pub struct InputHandler {
-    keys: HashMap<Keycode, KeyState>,
+    pub(super) keys: HashMap<Keycode, KeyState>,
     buttons: HashMap<MouseButton, KeyState>,
     cursor_pos: PixelPos,
 }
@@ -159,20 +217,24 @@ impl InputHandler {
     }
 
     pub(super) fn handle_key(&mut self, key: Keycode, state: ElementState) {
+        let key = key.normalize_mirrored();
         let key_state = self.keys.entry(key).or_insert(KeyState::Released);
         let next_state = cycle_state(*key_state, state);
         *key_state = next_state;
     }
 
     pub fn is_down(&self, key: Keycode) -> bool {
+        let key = key.normalize_mirrored();
         self.keys.contains_key(&key) && self.keys[&key].is_down()
     }
 
     pub fn just_pressed(&self, key: Keycode) -> bool {
+        let key = key.normalize_mirrored();
         self.keys.contains_key(&key) && self.keys[&key].just_pressed()
     }
 
     pub fn just_released(&self, key: Keycode) -> bool {
+        let key = key.normalize_mirrored();
         self.keys.contains_key(&key) && self.keys[&key].just_released()
     }
 
@@ -189,6 +251,11 @@ impl InputHandler {
     pub fn clear(&mut self) {
         self.keys.clear();
         self.buttons.clear();
+    }
+
+    pub fn combo_just_pressed(&self, combo: &Combination) -> bool {
+        combo.keys.iter().all(|combo| self.is_down(*combo))
+            && combo.keys.iter().any(|combo| self.just_pressed(*combo))
     }
 
     pub(super) fn upstrokes(&mut self) {

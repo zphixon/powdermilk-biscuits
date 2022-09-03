@@ -15,6 +15,7 @@ use crate::{
     stroke::{Stroke, StrokeElement},
 };
 use bincode::config::standard;
+use event::Combination;
 use std::io::{Read, Write};
 
 pub const TITLE_UNMODIFIED: &str = "hi! <3";
@@ -148,20 +149,20 @@ pub struct Config {
     pub primary_button: MouseButton,
     pub pan_button: MouseButton,
     pub pen_zoom: Keycode,
-    pub toggle_stylus_invertability: Keycode,
-    pub toggle_use_mouse_for_pen: Keycode,
-    pub toggle_use_finger_for_pen: Keycode,
-    pub toggle_eraser_pen: Keycode,
-    pub brush_increase: Keycode,
-    pub brush_decrease: Keycode,
-    pub clear_strokes: Keycode,
-    pub debug_strokes: Keycode,
-    pub undo: Keycode,
-    pub save: Keycode,
-    pub reset_view: Keycode,
-    pub open: Keycode,
-    pub zoom_out: Keycode,
-    pub zoom_in: Keycode,
+    pub toggle_stylus_invertability: Combination,
+    pub toggle_use_mouse_for_pen: Combination,
+    pub toggle_use_finger_for_pen: Combination,
+    pub toggle_eraser_pen: Combination,
+    pub brush_increase: Combination,
+    pub brush_decrease: Combination,
+    pub clear_strokes: Combination,
+    pub debug_strokes: Combination,
+    pub undo: Combination,
+    pub save: Combination,
+    pub reset_view: Combination,
+    pub open: Combination,
+    pub zoom_out: Combination,
+    pub zoom_in: Combination,
     pub tool_for_gesture_1: Tool,
     pub tool_for_gesture_2: Tool,
     pub tool_for_gesture_3: Tool,
@@ -170,32 +171,38 @@ pub struct Config {
 
 impl Default for Config {
     fn default() -> Self {
-        Config {
+        use Keycode::*;
+
+        let this = Config {
             use_mouse_for_pen: false,
             use_finger_for_pen: true,
             stylus_may_be_inverted: true,
             primary_button: MouseButton::Left,
             pan_button: MouseButton::Middle,
-            pen_zoom: Keycode::LControl,
-            toggle_stylus_invertability: Keycode::I,
-            toggle_use_mouse_for_pen: Keycode::M,
-            toggle_use_finger_for_pen: Keycode::F,
-            toggle_eraser_pen: Keycode::E,
-            brush_increase: Keycode::RBracket,
-            brush_decrease: Keycode::LBracket,
-            clear_strokes: Keycode::C,
-            debug_strokes: Keycode::D,
-            undo: Keycode::Z,
-            save: Keycode::S,
-            reset_view: Keycode::Z,
-            open: Keycode::O,
-            zoom_out: Keycode::NumpadSubtract,
-            zoom_in: Keycode::NumpadAdd,
+            pen_zoom: LControl,
+            toggle_stylus_invertability: LControl | I,
+            toggle_use_mouse_for_pen: LControl | M,
+            toggle_use_finger_for_pen: LControl | F,
+            toggle_eraser_pen: LControl | E,
+            brush_increase: RBracket.into(),
+            brush_decrease: LBracket.into(),
+            clear_strokes: LControl | C,
+            debug_strokes: LControl | D,
+            undo: LControl | Z,
+            save: LControl | S,
+            reset_view: LShift | Z,
+            open: LControl | O,
+            zoom_out: LControl | NumpadSubtract,
+            zoom_in: LControl | NumpadAdd,
             tool_for_gesture_1: Tool::Pan,
             tool_for_gesture_2: Tool::Pan,
             tool_for_gesture_3: Tool::Pan,
             tool_for_gesture_4: Tool::Pan,
-        }
+        };
+
+        println!("{:#?}", this);
+
+        this
     }
 }
 

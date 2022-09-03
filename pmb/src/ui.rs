@@ -571,52 +571,20 @@ impl<C: CoordinateSystem> Ui<C> {
 
         self.input.handle_key(key, state);
 
-        macro_rules! just_pressed {
-            ($action:ident) => {
-                just_pressed!($action, false, false)
-            };
-
-            (ctrl + $action:ident) => {
-                just_pressed!($action, true, false)
-            };
-
-            (shift + $action:ident) => {
-                just_pressed!($action, false, true)
-            };
-
-            (ctrl + shift + $action:ident) => {
-                just_pressed!($action, true, true)
-            };
-
-            ($action:ident, $ctrl:expr, $shift:expr) => {
-                self.input.just_pressed(config.$action)
-                    && if $ctrl {
-                        self.input.control()
-                    } else {
-                        !self.input.control()
-                    }
-                    && if $shift {
-                        self.input.shift()
-                    } else {
-                        !self.input.shift()
-                    }
-            };
-        }
-
-        if just_pressed!(brush_increase) {
+        if self.input.combo_just_pressed(&config.brush_increase) {
             self.next(config, sketch, Event::IncreaseBrush(crate::BRUSH_DELTA));
         }
 
-        if just_pressed!(brush_decrease) {
+        if self.input.combo_just_pressed(&config.brush_decrease) {
             self.next(config, sketch, Event::DecreaseBrush(crate::BRUSH_DELTA));
         }
 
-        if just_pressed!(clear_strokes) {
+        if self.input.combo_just_pressed(&config.clear_strokes) {
             sketch.clear_strokes();
             self.modified = true;
         }
 
-        if just_pressed!(debug_strokes) {
+        if self.input.combo_just_pressed(&config.debug_strokes) {
             for stroke in sketch.strokes.iter() {
                 println!("stroke");
                 for point in stroke.points().iter() {
@@ -638,19 +606,21 @@ impl<C: CoordinateSystem> Ui<C> {
             println!("origin={}", sketch.origin);
         }
 
-        if just_pressed!(ctrl + undo) {
+        if self.input.combo_just_pressed(&config.undo) {
+            println!("undo");
             // TODO
             //self.undo_stroke();
         }
 
-        if just_pressed!(ctrl + save) {
+        if self.input.combo_just_pressed(&config.save) {
+            println!("save");
             // TODO
             //self.save_file()
             //    .problem(format!("Could not save file"))
             //    .display();
         }
 
-        if just_pressed!(reset_view) {
+        if self.input.combo_just_pressed(&config.reset_view) {
             sketch.zoom = crate::DEFAULT_ZOOM;
             self.move_origin(
                 sketch,
@@ -662,24 +632,27 @@ impl<C: CoordinateSystem> Ui<C> {
             );
         }
 
-        if just_pressed!(ctrl + open) {
+        if self.input.combo_just_pressed(&config.open) {
+            println!("open");
             // TODO
             //self.read_file(Option::<&str>::None)
             //    .problem(format!("Could not open file"))
             //    .display();
         }
 
-        if just_pressed!(ctrl + zoom_out) {
+        if self.input.combo_just_pressed(&config.zoom_out) {
+            println!("zoom out");
             // TODO
             //sketch.change_zoom(-4.25, width, height);
         }
 
-        if just_pressed!(ctrl + zoom_in) {
+        if self.input.combo_just_pressed(&config.zoom_in) {
+            println!("zoom in");
             // TODO
             //self.change_zoom(4.25, width, height);
         }
 
-        if just_pressed!(pen_zoom) && self.prev_device == crate::Device::Pen {
+        if self.input.just_pressed(config.pen_zoom) && self.prev_device == crate::Device::Pen {
             self.next(config, sketch, Event::StartZoom);
         }
 
@@ -687,11 +660,11 @@ impl<C: CoordinateSystem> Ui<C> {
             self.next(config, sketch, Event::EndZoom);
         }
 
-        if just_pressed!(toggle_eraser_pen)
+        if self.input.combo_just_pressed(&config.toggle_eraser_pen)
             && (self.prev_device == crate::Device::Mouse || !config.stylus_may_be_inverted)
         {
             if self.active_tool == Tool::Eraser {
-                // TODO use previous tool
+                // TODO use previous tool?
                 self.next(config, sketch, Event::ToolChange(Tool::Pen));
             } else {
                 self.next(config, sketch, Event::ToolChange(Tool::Eraser));
