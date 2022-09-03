@@ -456,12 +456,12 @@ fn main() {
                         };
                         let circle = Circle::new(center, (ui.brush_size / 2) as f64);
                         let color = match (ui.active_tool == Tool::Eraser, ui.stylus.down()) {
-                            (true, true) => 0xfa3433ff,
-                            (true, false) => 0x531111ff,
-                            (false, true) => 0xffffffff,
-                            (false, false) => 0x555555ff,
+                            (true, true) => Color::rgb8(0xfa, 0x34, 0x33),
+                            (true, false) => Color::rgb8(0x53, 0x11, 0x11),
+                            (false, true) => Color::WHITE,
+                            (false, false) => Color::grey8(0x55),
                         };
-                        ctx.stroke(circle, &Color::from_rgba32_u32(color), 1.0);
+                        ctx.stroke(circle, &color, 1.0);
                     }
 
                     ctx.finish().unwrap();
