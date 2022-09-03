@@ -1,11 +1,11 @@
 use piet_common::{
-    kurbo::{BezPath, Point},
+    kurbo::{BezPath, Circle, Point},
     Color, ImageFormat, RenderContext, StrokeStyle,
 };
 use powdermilk_biscuits::{
     event::{ElementState, Event},
     ui::Ui,
-    Config, CoordinateSystem, Device, Sketch,
+    Config, CoordinateSystem, Device, Sketch, Tool,
 };
 use softbuffer::GraphicsContext;
 use winit::{
@@ -441,6 +441,27 @@ fn main() {
                                 );
                             }
                         }
+                    }
+
+                    if !cursor_visible {
+                        let pos = coords.stroke_to_pixel(
+                            ui.width,
+                            ui.height,
+                            sketch.zoom,
+                            ui.stylus.point,
+                        );
+                        let center = Point {
+                            x: pos.x as f64,
+                            y: pos.y as f64,
+                        };
+                        let circle = Circle::new(center, (ui.brush_size / 2) as f64);
+                        let color = match (ui.active_tool == Tool::Eraser, ui.stylus.down()) {
+                            (true, true) => 0xfa3433ff,
+                            (true, false) => 0x531111ff,
+                            (false, true) => 0xffffffff,
+                            (false, false) => 0x555555ff,
+                        };
+                        ctx.stroke(circle, &Color::from_rgba32_u32(color), 1.0);
                     }
 
                     ctx.finish().unwrap();
