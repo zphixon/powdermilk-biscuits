@@ -431,9 +431,9 @@ fn main() {
                                 ctx.stroke_styled(
                                     path,
                                     &Color::rgba8(
-                                        stroke.color[0],
-                                        stroke.color[1],
                                         stroke.color[2],
+                                        stroke.color[1],
+                                        stroke.color[0],
                                         0xff,
                                     ),
                                     (stroke.brush_size * sketch.zoom * a.pressure) as f64,
@@ -456,8 +456,8 @@ fn main() {
                         };
                         let circle = Circle::new(center, (ui.brush_size / 2) as f64);
                         let color = match (ui.active_tool == Tool::Eraser, ui.stylus.down()) {
-                            (true, true) => Color::rgb(0.980, 0.203, 0.200),
-                            (true, false) => Color::rgb(0.325, 0.067, 0.067),
+                            (true, true) => Color::rgb(0.200, 0.203, 0.980),
+                            (true, false) => Color::rgb(0.067, 0.067, 0.325),
                             (false, true) => Color::WHITE,
                             (false, false) => Color::grey(0.333),
                         };
@@ -467,6 +467,7 @@ fn main() {
                     ctx.finish().unwrap();
                 }
 
+                // uses ARGB because, fucking, why not???
                 gc.set_buffer(
                     bytemuck::cast_slice(
                         target
