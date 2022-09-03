@@ -1,7 +1,7 @@
 use crate::{
     error::{ErrorKind, PmbError, PmbErrorExt},
     event::{ElementState, Event, InputHandler, Keycode, Touch, TouchPhase},
-    graphics::{PixelPos, StrokePos},
+    graphics::{Color, ColorExt, PixelPos, StrokePos},
     Config, CoordinateSystem, Device, Sketch, Stroke, StrokeBackend, Stylus, StylusPosition,
     StylusState, Tool,
 };
@@ -117,7 +117,7 @@ impl<C: CoordinateSystem> Ui<C> {
         let stroke_brush_size = self.brush_size as f32 / sketch.zoom;
         sketch
             .strokes
-            .push(Stroke::new(rand::random(), stroke_brush_size, true));
+            .push(Stroke::new(Color::NICE_RED, stroke_brush_size, true));
     }
 
     fn continue_stroke<S: StrokeBackend>(&mut self, sketch: &mut Sketch<S>) {
