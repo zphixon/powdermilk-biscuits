@@ -165,9 +165,9 @@ impl<C: CoordinateSystem> Ui<C> {
         if let Some(pen_info) = pen_info {
             if config.stylus_may_be_inverted {
                 if pen_info.inverted || pen_info.eraser {
-                    self.next(config, sketch, Event::ToolChange(Tool::Eraser));
+                    self.active_tool = Tool::Eraser;
                 } else {
-                    self.next(config, sketch, Event::ToolChange(Tool::Pen));
+                    self.active_tool = Tool::Pen;
                 }
             }
         }
@@ -275,11 +275,6 @@ impl<C: CoordinateSystem> Ui<C> {
         use UiState as S;
 
         self.state = match (self.state, event) {
-            (S::Ready, E::ToolChange(tool)) => {
-                self.active_tool = tool;
-                S::Ready
-            }
-
             (S::Ready, E::IncreaseBrush(change)) => {
                 self.increase_brush(change);
                 S::Ready
@@ -507,7 +502,7 @@ impl<C: CoordinateSystem> Ui<C> {
 
             (S::Gesture(i), E::TouchMove(touch)) => {
                 let tool = config.tool_for_gesture(i);
-                self.next(config, sketch, E::ToolChange(tool));
+                self.active_tool = tool;
 
                 match tool {
                     Tool::Pen => {
@@ -665,9 +660,9 @@ impl<C: CoordinateSystem> Ui<C> {
         {
             if self.active_tool == Tool::Eraser {
                 // TODO use previous tool?
-                self.next(config, sketch, Event::ToolChange(Tool::Pen));
+                self.active_tool = Tool::Pen;
             } else {
-                self.next(config, sketch, Event::ToolChange(Tool::Eraser));
+                self.active_tool = Tool::Eraser;
             }
         }
 
