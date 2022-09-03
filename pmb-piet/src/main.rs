@@ -456,10 +456,10 @@ fn main() {
                         };
                         let circle = Circle::new(center, (ui.brush_size / 2) as f64);
                         let color = match (ui.active_tool == Tool::Eraser, ui.stylus.down()) {
-                            (true, true) => Color::rgb8(0xfa, 0x34, 0x33),
-                            (true, false) => Color::rgb8(0x53, 0x11, 0x11),
+                            (true, true) => Color::rgb(0.980, 0.203, 0.200),
+                            (true, false) => Color::rgb(0.325, 0.067, 0.067),
                             (false, true) => Color::WHITE,
-                            (false, false) => Color::grey8(0x55),
+                            (false, false) => Color::grey(0.333),
                         };
                         ctx.stroke(circle, &color, 1.0);
                     }
