@@ -10,8 +10,7 @@ struct Frag {
 }
 
 @group(0) @binding(0) var<uniform> view: mat4x4<f32>;
-
-var<push_constant> penState: vec2<f32>;
+@group(0) @binding(1) var<uniform> penState: vec2<f32>;
 
 @vertex fn vmain(@location(0) in: vec2<f32>) -> Frag {
   var out: Frag;

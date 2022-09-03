@@ -407,6 +407,7 @@ struct CursorRenderer {
     pipeline: RenderPipeline,
     bind_group: BindGroup,
     view_uniform_buffer: Buffer,
+    pen_state_uniform_buffer: Buffer,
 }
 
 impl CursorRenderer {
@@ -423,21 +424,40 @@ impl CursorRenderer {
 
         let bind_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("cursor bind layout"),
-            entries: &[BindGroupLayoutEntry {
-                binding: 0,
-                ty: BindingType::Buffer {
-                    ty: BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
+            entries: &[
+                BindGroupLayoutEntry {
+                    binding: 0,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    // TODO separate bind group layouts?
+                    visibility: ShaderStages::VERTEX_FRAGMENT,
+                    count: None,
                 },
-                visibility: ShaderStages::VERTEX,
-                count: None,
-            }],
+                BindGroupLayoutEntry {
+                    binding: 1,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    visibility: ShaderStages::VERTEX_FRAGMENT,
+                    count: None,
+                },
+            ],
         });
 
         let view_uniform_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("cursor uniform buffer"),
             contents: bytemuck::cast_slice(&glam::Mat4::IDENTITY.to_cols_array()),
+            usage: BufferUsages::COPY_DST | BufferUsages::UNIFORM,
+        });
+
+        let pen_state_uniform_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("cursor pen state buffer"),
+            contents: bytemuck::cast_slice(&[0.0, 0.0]),
             usage: BufferUsages::COPY_DST | BufferUsages::UNIFORM,
         });
 
@@ -453,10 +473,16 @@ impl CursorRenderer {
         let bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("cursor bind group"),
             layout: &bind_layout,
-            entries: &[BindGroupEntry {
-                binding: 0,
-                resource: view_uniform_buffer.as_entire_binding(),
-            }],
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: view_uniform_buffer.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: pen_state_uniform_buffer.as_entire_binding(),
+                },
+            ],
         });
 
         let cts = [Some(ColorTargetState {
@@ -511,6 +537,7 @@ impl CursorRenderer {
             pipeline,
             bind_group,
             view_uniform_buffer,
+            pen_state_uniform_buffer,
         }
     }
 
@@ -524,11 +551,25 @@ impl CursorRenderer {
         size: Size,
     ) {
         let cursor_view = view_matrix(zoom, ui.brush_size as f32, size, ui.stylus.point);
+        let info_buffer = [
+            if ui.stylus.down() { 1.0f32 } else { 0. },
+            if ui.active_tool == Tool::Eraser {
+                1.
+            } else {
+                0.
+            },
+        ];
 
         queue.write_buffer(
             &self.view_uniform_buffer,
             0,
             bytemuck::cast_slice(&cursor_view.to_cols_array()),
+        );
+
+        queue.write_buffer(
+            &self.pen_state_uniform_buffer,
+            0,
+            bytemuck::cast_slice(&info_buffer),
         );
 
         let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
@@ -544,18 +585,8 @@ impl CursorRenderer {
             depth_stencil_attachment: None,
         });
 
-        let info_buffer = [
-            if ui.stylus.down() { 1.0f32 } else { 0. },
-            if ui.active_tool == Tool::Eraser {
-                1.
-            } else {
-                0.
-            },
-        ];
-
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &self.bind_group, &[]);
-        pass.set_push_constants(ShaderStages::VERTEX, 0, bytemuck::cast_slice(&info_buffer));
         pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         pass.draw(0..(NUM_SEGMENTS + 1) as u32, 0..1);
     }
