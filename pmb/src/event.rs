@@ -51,11 +51,22 @@ pub struct Touch {
 
 pub struct Combination {
     keys: Vec<Keycode>,
+    repeatable: bool,
 }
 
 impl Combination {
     // Vec::with_capacity is not const yet :(
-    pub const INACTIVE: Combination = Combination { keys: Vec::new() };
+    pub const INACTIVE: Combination = Combination {
+        keys: Vec::new(),
+        repeatable: false,
+    };
+
+    pub fn repeatable(self) -> Combination {
+        Combination {
+            repeatable: true,
+            ..self
+        }
+    }
 }
 
 impl std::fmt::Debug for Combination {
@@ -68,6 +79,7 @@ impl From<Keycode> for Combination {
     fn from(key: Keycode) -> Self {
         Combination {
             keys: vec![key.normalize_mirrored()],
+            repeatable: false,
         }
     }
 }
@@ -123,6 +135,7 @@ impl std::ops::BitOr for Keycode {
     fn bitor(self, rhs: Self) -> Self::Output {
         Combination {
             keys: vec![self.normalize_mirrored(), rhs.normalize_mirrored()],
+            repeatable: false,
         }
     }
 }
@@ -277,11 +290,12 @@ impl InputHandler {
     }
 
     pub fn combo_just_pressed(&self, combo: &Combination) -> bool {
-        combo
+        (combo
             .keys
             .iter()
             .filter(|key| !key.modifier())
             .any(|key| self.just_pressed(*key))
+            || combo.repeatable)
             && combo.keys.iter().all(|key| self.is_down(*key))
     }
 
