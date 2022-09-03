@@ -48,6 +48,9 @@ fn main() {
     let pen_cursor_erasing;
     let pen_cursor_pen_down;
 
+    let cursor_vao;
+    let cursor_buffer;
+
     // set up shaders
     unsafe {
         gl.enable(glow::MULTISAMPLE);
@@ -97,6 +100,20 @@ fn main() {
             false,
             &glam::Mat4::IDENTITY.to_cols_array(),
         );
+
+        cursor_vao = gl.create_vertex_array().unwrap();
+        gl.bind_vertex_array(Some(cursor_vao));
+        cursor_buffer = gl.create_buffer().unwrap();
+        gl.bind_buffer(glow::ARRAY_BUFFER, Some(cursor_buffer));
+
+        let float_size = std::mem::size_of::<f32>();
+        let circle = powdermilk_biscuits::graphics::circle_points(1., 50);
+        let bytes =
+            std::slice::from_raw_parts(circle.as_ptr() as *const u8, circle.len() * float_size);
+
+        gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, bytes, glow::STATIC_DRAW);
+        gl.enable_vertex_attrib_array(0);
+        gl.vertex_attrib_pointer_f32(0, 2, glow::FLOAT, false, 2 * float_size as i32, 0);
     };
 
     let mut ui = {
@@ -471,29 +488,10 @@ fn main() {
                 }
 
                 if !cursor_visible {
-                    let circle =
-                        powdermilk_biscuits::graphics::circle_points(ui.brush_size as f32, 32);
-
                     unsafe {
                         gl.use_program(Some(pen_cursor_program));
-                        let vbo = gl.create_buffer().unwrap();
-                        gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
-                        let vao = gl.create_vertex_array().unwrap();
-                        gl.bind_vertex_array(Some(vao));
-                        let bytes = std::slice::from_raw_parts(
-                            circle.as_ptr() as *const u8,
-                            circle.len() * size_of::<f32>(),
-                        );
-                        gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, bytes, glow::STATIC_DRAW);
-                        gl.enable_vertex_attrib_array(0);
-                        gl.vertex_attrib_pointer_f32(
-                            0,
-                            2,
-                            glow::FLOAT,
-                            false,
-                            size_of::<f32>() as i32 * 2,
-                            0,
-                        );
+                        gl.bind_vertex_array(Some(cursor_vao));
+                        gl.bind_buffer(glow::ARRAY_BUFFER, Some(cursor_buffer));
 
                         gl.uniform_1_f32(
                             Some(&pen_cursor_erasing),
@@ -508,7 +506,12 @@ fn main() {
                             if ui.stylus.down() { 1.0 } else { 0.0 },
                         );
 
-                        let view = pmb_gl::view_matrix(sketch.zoom, 1.0, size, ui.stylus.point);
+                        let view = pmb_gl::view_matrix(
+                            sketch.zoom,
+                            ui.brush_size as f32,
+                            size,
+                            ui.stylus.point,
+                        );
 
                         gl.uniform_matrix_4_f32_slice(
                             Some(&pen_cursor_view),
@@ -516,7 +519,7 @@ fn main() {
                             &view.to_cols_array(),
                         );
 
-                        gl.draw_arrays(glow::LINE_LOOP, 0, circle.len() as i32 / 2);
+                        gl.draw_arrays(glow::LINE_LOOP, 0, 50);
                     }
                 }
 
