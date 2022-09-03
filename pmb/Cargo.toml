@@ -5,6 +5,7 @@ edition = '2021'
 
 [features]
 default = []
+pmb-release = []
 
 [dependencies]
 log = '0.4.17'

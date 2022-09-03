@@ -53,6 +53,11 @@ pub struct Combination {
     keys: Vec<Keycode>,
 }
 
+impl Combination {
+    // Vec::with_capacity is not const yet :(
+    pub const INACTIVE: Combination = Combination { keys: Vec::new() };
+}
+
 impl std::fmt::Debug for Combination {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self.keys)

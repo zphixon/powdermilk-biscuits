@@ -149,14 +149,9 @@ pub struct Config {
     pub primary_button: MouseButton,
     pub pan_button: MouseButton,
     pub pen_zoom: Keycode,
-    pub toggle_stylus_invertability: Combination,
-    pub toggle_use_mouse_for_pen: Combination,
-    pub toggle_use_finger_for_pen: Combination,
     pub toggle_eraser_pen: Combination,
     pub brush_increase: Combination,
     pub brush_decrease: Combination,
-    pub clear_strokes: Combination,
-    pub debug_strokes: Combination,
     pub undo: Combination,
     pub save: Combination,
     pub reset_view: Combination,
@@ -167,30 +162,43 @@ pub struct Config {
     pub tool_for_gesture_2: Tool,
     pub tool_for_gesture_3: Tool,
     pub tool_for_gesture_4: Tool,
+
+    pub debug_toggle_stylus_invertability: Combination,
+    pub debug_toggle_use_mouse_for_pen: Combination,
+    pub debug_toggle_use_finger_for_pen: Combination,
+    pub debug_clear_strokes: Combination,
+    pub debug_print_strokes: Combination,
 }
 
 impl Default for Config {
+    #[cfg(feature = "pmb-release")]
     fn default() -> Self {
+        Self::new()
+    }
+
+    #[cfg(not(feature = "pmb-release"))]
+    fn default() -> Self {
+        Self::debug()
+    }
+}
+
+impl Config {
+    pub fn new() -> Config {
         use Keycode::*;
 
-        let this = Config {
+        Config {
             use_mouse_for_pen: false,
-            use_finger_for_pen: true,
+            use_finger_for_pen: false,
             stylus_may_be_inverted: true,
             primary_button: MouseButton::Left,
             pan_button: MouseButton::Middle,
             pen_zoom: LControl,
-            toggle_stylus_invertability: LControl | I,
-            toggle_use_mouse_for_pen: LControl | M,
-            toggle_use_finger_for_pen: LControl | F,
-            toggle_eraser_pen: LControl | E,
+            toggle_eraser_pen: E.into(),
             brush_increase: RBracket.into(),
             brush_decrease: LBracket.into(),
-            clear_strokes: LControl | C,
-            debug_strokes: LControl | D,
             undo: LControl | Z,
             save: LControl | S,
-            reset_view: LShift | Z,
+            reset_view: Z.into(),
             open: LControl | O,
             zoom_out: LControl | NumpadSubtract,
             zoom_in: LControl | NumpadAdd,
@@ -198,15 +206,27 @@ impl Default for Config {
             tool_for_gesture_2: Tool::Pan,
             tool_for_gesture_3: Tool::Pan,
             tool_for_gesture_4: Tool::Pan,
-        };
 
-        println!("{:#?}", this);
-
-        this
+            debug_toggle_stylus_invertability: Combination::INACTIVE,
+            debug_toggle_use_mouse_for_pen: Combination::INACTIVE,
+            debug_toggle_use_finger_for_pen: Combination::INACTIVE,
+            debug_clear_strokes: Combination::INACTIVE,
+            debug_print_strokes: Combination::INACTIVE,
+        }
     }
-}
 
-impl Config {
+    pub fn debug() -> Config {
+        use Keycode::*;
+        Config {
+            debug_toggle_stylus_invertability: I.into(),
+            debug_toggle_use_mouse_for_pen: M.into(),
+            debug_toggle_use_finger_for_pen: F.into(),
+            debug_clear_strokes: C.into(),
+            debug_print_strokes: D.into(),
+            ..Config::new()
+        }
+    }
+
     pub fn tool_for_gesture(&self, i: u8) -> Tool {
         match i {
             1 => self.tool_for_gesture_1,

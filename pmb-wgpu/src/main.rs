@@ -112,7 +112,7 @@ async fn run() {
 
                 if ui
                     .input
-                    .combo_just_pressed(&config.toggle_use_mouse_for_pen)
+                    .combo_just_pressed(&config.debug_toggle_use_mouse_for_pen)
                 {
                     config.use_mouse_for_pen = !config.use_mouse_for_pen;
                     println!("using mouse for pen? {}", config.use_mouse_for_pen);
@@ -120,7 +120,7 @@ async fn run() {
 
                 if ui
                     .input
-                    .combo_just_pressed(&config.toggle_use_finger_for_pen)
+                    .combo_just_pressed(&config.debug_toggle_use_finger_for_pen)
                 {
                     config.use_finger_for_pen = !config.use_finger_for_pen;
                     println!("using finger for pen? {}", config.use_finger_for_pen);
@@ -128,7 +128,7 @@ async fn run() {
 
                 if ui
                     .input
-                    .combo_just_pressed(&config.toggle_stylus_invertability)
+                    .combo_just_pressed(&config.debug_toggle_stylus_invertability)
                 {
                     config.stylus_may_be_inverted = !config.stylus_may_be_inverted;
                     println!("stylus invertable? {}", config.stylus_may_be_inverted);

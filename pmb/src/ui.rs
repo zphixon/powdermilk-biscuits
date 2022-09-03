@@ -574,12 +574,12 @@ impl<C: CoordinateSystem> Ui<C> {
             self.next(config, sketch, Event::DecreaseBrush(crate::BRUSH_DELTA));
         }
 
-        if self.input.combo_just_pressed(&config.clear_strokes) {
+        if self.input.combo_just_pressed(&config.debug_clear_strokes) {
             sketch.clear_strokes();
             self.modified = true;
         }
 
-        if self.input.combo_just_pressed(&config.debug_strokes) {
+        if self.input.combo_just_pressed(&config.debug_print_strokes) {
             for stroke in sketch.strokes.iter() {
                 println!("stroke");
                 for point in stroke.points().iter() {
