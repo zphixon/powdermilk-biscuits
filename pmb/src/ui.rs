@@ -555,7 +555,7 @@ impl<C: CoordinateSystem> Ui<C> {
 
     pub fn handle_key<S: StrokeBackend>(
         &mut self,
-        config: &Config,
+        config: &mut Config,
         sketch: &mut Sketch<S>,
         key: Keycode,
         state: ElementState,
@@ -664,6 +664,30 @@ impl<C: CoordinateSystem> Ui<C> {
             } else {
                 self.active_tool = Tool::Eraser;
             }
+        }
+
+        if self
+            .input
+            .combo_just_pressed(&config.debug_toggle_use_mouse_for_pen)
+        {
+            config.use_mouse_for_pen = !config.use_mouse_for_pen;
+            println!("using mouse for pen? {}", config.use_mouse_for_pen);
+        }
+
+        if self
+            .input
+            .combo_just_pressed(&config.debug_toggle_use_finger_for_pen)
+        {
+            config.use_finger_for_pen = !config.use_finger_for_pen;
+            println!("using finger for pen? {}", config.use_finger_for_pen);
+        }
+
+        if self
+            .input
+            .combo_just_pressed(&config.debug_toggle_stylus_invertability)
+        {
+            config.stylus_may_be_inverted = !config.stylus_may_be_inverted;
+            println!("stylus invertable? {}", config.stylus_may_be_inverted);
         }
 
         self.input.pump_key_state();

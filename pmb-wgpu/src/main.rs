@@ -108,32 +108,14 @@ async fn run() {
             } => {
                 let key = pmb_wgpu::winit_to_pmb_keycode(key);
                 let state = pmb_wgpu::winit_to_pmb_key_state(state);
-                ui.handle_key(&config, &mut sketch, key, state, size.width, size.height);
-
-                if ui
-                    .input
-                    .combo_just_pressed(&config.debug_toggle_use_mouse_for_pen)
-                {
-                    config.use_mouse_for_pen = !config.use_mouse_for_pen;
-                    println!("using mouse for pen? {}", config.use_mouse_for_pen);
-                }
-
-                if ui
-                    .input
-                    .combo_just_pressed(&config.debug_toggle_use_finger_for_pen)
-                {
-                    config.use_finger_for_pen = !config.use_finger_for_pen;
-                    println!("using finger for pen? {}", config.use_finger_for_pen);
-                }
-
-                if ui
-                    .input
-                    .combo_just_pressed(&config.debug_toggle_stylus_invertability)
-                {
-                    config.stylus_may_be_inverted = !config.stylus_may_be_inverted;
-                    println!("stylus invertable? {}", config.stylus_may_be_inverted);
-                }
-
+                ui.handle_key(
+                    &mut config,
+                    &mut sketch,
+                    key,
+                    state,
+                    size.width,
+                    size.height,
+                );
                 window.request_redraw();
             }
 
