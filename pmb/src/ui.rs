@@ -666,7 +666,7 @@ impl<C: CoordinateSystem> Ui<C> {
             }
         }
 
-        self.input.upstrokes();
+        self.input.pump_key_state();
     }
 
     pub fn read_file<S: StrokeBackend>(

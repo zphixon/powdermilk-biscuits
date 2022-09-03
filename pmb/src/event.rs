@@ -91,14 +91,14 @@ pub enum Keycode {
 }
 
 impl Keycode {
-    pub fn normalize_mirrored(&self) -> Keycode {
+    pub fn normalize_mirrored(self) -> Keycode {
         use Keycode::*;
 
         macro_rules! normalize {
             ($($variant:ident => $normal:ident),* $(,)?) => {
                 match self {
                     $($variant => $normal,)*
-                    _ => *self,
+                    _ => self,
                 }
             };
         }
@@ -109,6 +109,11 @@ impl Keycode {
             RAlt => LAlt,
             RWin => LWin,
         )
+    }
+
+    pub fn modifier(&self) -> bool {
+        use Keycode::*;
+        matches!(self.normalize_mirrored(), LControl | LShift | LAlt | LWin)
     }
 }
 
@@ -166,6 +171,21 @@ impl KeyState {
     pub fn just_released(&self) -> bool {
         use KeyState::*;
         matches!(self, Upstroke)
+    }
+
+    pub fn edge(&self) -> bool {
+        use KeyState::*;
+        matches!(self, Upstroke | Downstroke)
+    }
+
+    pub fn next(&self) -> KeyState {
+        use KeyState::*;
+        match self {
+            Upstroke => Released,
+            Released => Released,
+            Downstroke => Held,
+            Held => Held,
+        }
     }
 }
 
@@ -257,21 +277,19 @@ impl InputHandler {
     }
 
     pub fn combo_just_pressed(&self, combo: &Combination) -> bool {
-        combo.keys.iter().all(|combo| self.is_down(*combo))
-            && combo.keys.iter().any(|combo| self.just_pressed(*combo))
+        combo
+            .keys
+            .iter()
+            .filter(|key| !key.modifier())
+            .any(|key| self.just_pressed(*key))
+            && combo.keys.iter().all(|key| self.is_down(*key))
     }
 
-    pub(super) fn upstrokes(&mut self) {
-        self.keys.values_mut().for_each(|value| {
-            if matches!(value, KeyState::Upstroke) {
-                *value = KeyState::Released;
-            }
-        });
-
-        self.buttons.values_mut().for_each(|value| {
-            if matches!(value, KeyState::Upstroke) {
-                *value = KeyState::Released;
-            }
-        });
+    pub(super) fn pump_key_state(&mut self) {
+        self.keys
+            .values_mut()
+            .chain(self.buttons.values_mut())
+            .filter(|state| state.edge())
+            .for_each(|value| *value = value.next());
     }
 }
