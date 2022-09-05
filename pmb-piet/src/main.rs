@@ -44,29 +44,23 @@ mod backend {
             pos
         }
 
-        fn ndc_to_stroke(
-            &self,
-            _width: u32,
-            _height: u32,
-            zoom: f32,
-            ndc: Self::Ndc,
-        ) -> StrokePoint {
+        fn ndc_to_stroke(&self, width: u32, height: u32, zoom: f32, ndc: Self::Ndc) -> StrokePoint {
             StrokePoint {
-                x: (2. * ndc.x) / zoom,
-                y: -((2. * ndc.y) / zoom),
+                x: (2. * (ndc.x - width as f32 / 2.)) / zoom,
+                y: -((2. * (ndc.y - height as f32 / 2.)) / zoom),
             }
         }
 
         fn stroke_to_ndc(
             &self,
-            _width: u32,
-            _height: u32,
+            width: u32,
+            height: u32,
             zoom: f32,
             point: StrokePoint,
         ) -> Self::Ndc {
             PixelPos {
-                x: point.x * zoom / 2.,
-                y: -point.y * zoom / 2.,
+                x: (point.x * zoom / 2.) + width as f32 / 2.,
+                y: (-point.y * zoom / 2.) + height as f32 / 2.,
             }
         }
     }
