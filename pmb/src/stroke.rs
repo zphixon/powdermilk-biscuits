@@ -41,6 +41,12 @@ impl pmb_tess::Point for StrokeElement {
     }
 }
 
+impl std::fmt::Display for StrokeElement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:.02},{:.02},{:.02}", self.x, self.y, self.pressure)
+    }
+}
+
 #[rustfmt::skip]
 #[derive(derive_disk::Disk)]
 pub struct Stroke<S>
