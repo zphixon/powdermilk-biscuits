@@ -789,7 +789,7 @@ impl<C: CoordinateSystem> Ui<C> {
                             return Ok(());
                         },
 
-                        _ => return Ok(()),
+                        _ => Sketch::default(),
                     },
 
                     UpgradeType::Incompatible => {
