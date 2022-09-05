@@ -541,41 +541,37 @@ fn main() {
                     gl.clear(glow::COLOR_BUFFER_BIT);
                 }
 
-                sketch
-                    .strokes
-                    .iter()
-                    .filter(|stroke| stroke.visible && !stroke.erased)
-                    .for_each(|stroke| unsafe {
-                        gl.uniform_3_f32(
-                            Some(&strokes_color),
-                            stroke.color()[0] as f32 / 255.0,
-                            stroke.color()[1] as f32 / 255.0,
-                            stroke.color()[2] as f32 / 255.0,
-                        );
+                sketch.visible_strokes().for_each(|stroke| unsafe {
+                    gl.uniform_3_f32(
+                        Some(&strokes_color),
+                        stroke.color()[0] as f32 / 255.0,
+                        stroke.color()[1] as f32 / 255.0,
+                        stroke.color()[2] as f32 / 255.0,
+                    );
 
-                        if stroke.draw_tesselated {
-                            let LyonStrokeBackend {
-                                mesh_vao,
-                                indices_len,
-                                ..
-                            } = stroke.backend().unwrap();
-                            gl.bind_vertex_array(Some(*mesh_vao));
-                            gl.draw_elements(
-                                glow::TRIANGLES,
-                                *indices_len,
-                                glow::UNSIGNED_SHORT, // simple_builder uses u16 for the index type
-                                0,
-                            );
-                        } else {
-                            let LyonStrokeBackend {
-                                line_vao,
-                                points_len,
-                                ..
-                            } = stroke.backend().unwrap();
-                            gl.bind_vertex_array(Some(*line_vao));
-                            gl.draw_arrays(glow::LINE_STRIP, 0, *points_len);
-                        }
-                    });
+                    if stroke.draw_tesselated {
+                        let LyonStrokeBackend {
+                            mesh_vao,
+                            indices_len,
+                            ..
+                        } = stroke.backend().unwrap();
+                        gl.bind_vertex_array(Some(*mesh_vao));
+                        gl.draw_elements(
+                            glow::TRIANGLES,
+                            *indices_len,
+                            glow::UNSIGNED_SHORT, // simple_builder uses u16 for the index type
+                            0,
+                        );
+                    } else {
+                        let LyonStrokeBackend {
+                            line_vao,
+                            points_len,
+                            ..
+                        } = stroke.backend().unwrap();
+                        gl.bind_vertex_array(Some(*line_vao));
+                        gl.draw_arrays(glow::LINE_STRIP, 0, *points_len);
+                    }
+                });
 
                 context.swap_buffers().unwrap();
             }

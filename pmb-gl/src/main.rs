@@ -412,11 +412,7 @@ fn main() {
                         });
                     });
 
-                for stroke in sketch.strokes.iter() {
-                    if !stroke.visible || stroke.points().is_empty() || stroke.erased() {
-                        continue;
-                    }
-
+                for stroke in sketch.visible_strokes() {
                     if stroke.draw_tesselated {
                         let GlStrokeBackend {
                             mesh_vao,

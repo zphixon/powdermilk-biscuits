@@ -311,6 +311,12 @@ impl<S: StrokeBackend> Sketch<S> {
     pub fn clear_strokes(&mut self) {
         self.strokes.clear();
     }
+
+    pub fn visible_strokes(&self) -> impl Iterator<Item = &Stroke<S>> {
+        self.strokes
+            .iter()
+            .filter(|stroke| stroke.visible && !stroke.erased)
+    }
 }
 
 #[derive(Debug, Clone, Copy)]

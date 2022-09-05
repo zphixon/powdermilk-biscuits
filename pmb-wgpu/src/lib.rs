@@ -381,15 +381,10 @@ impl StrokeRenderer {
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &self.view_bind_group, &[]);
 
-        for stroke in sketch.strokes.iter() {
-            if !stroke.visible
-                || !should_draw(stroke)
-                || stroke.erased()
-                || stroke.points().is_empty()
-            {
-                continue;
-            }
-
+        for stroke in sketch
+            .visible_strokes()
+            .filter(|stroke| should_draw(stroke))
+        {
             pass.set_push_constants(
                 ShaderStages::VERTEX,
                 0,

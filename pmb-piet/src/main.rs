@@ -393,11 +393,7 @@ fn main() {
                     // ctx.transform(Affine::translate(Point { x: sketch.origin.x, y: sketch.origin.y }));
                     // put bitmap target on stroke
 
-                    for stroke in sketch.strokes.iter() {
-                        if !stroke.visible || stroke.erased {
-                            continue;
-                        }
-
+                    for stroke in sketch.visible_strokes() {
                         for pair in stroke.points.windows(2) {
                             if let [a, b] = pair {
                                 let start = coords.pos_to_pixel(

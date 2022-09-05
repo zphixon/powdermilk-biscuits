@@ -380,11 +380,7 @@ fn main() {
                 // canvas.set_transform(1., 0., 0., 1., sketch.origin.x, sketch.origin.y);
                 // canvas.get_image on stroke backend
 
-                for stroke in sketch.strokes.iter() {
-                    if !stroke.visible || stroke.erased {
-                        continue;
-                    }
-
+                for stroke in sketch.visible_strokes() {
                     let mut paint = Paint::color(Color {
                         r: stroke.color[0] as f32 / 255.,
                         g: stroke.color[1] as f32 / 255.,
