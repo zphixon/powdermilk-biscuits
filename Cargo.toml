@@ -7,6 +7,7 @@ members = [
     'pmb-wgpu',
     'pmb-piet',
     'pmb-femtovg',
+    'pmb-lyon',
     'derive-disk',
     'derive-evc',
 ]

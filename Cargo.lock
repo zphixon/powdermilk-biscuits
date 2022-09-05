@@ -540,6 +540,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "euclid"
+version = "0.22.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b52c2ef4a78da0ba68fbe1fd920627411096d2ac478f7f4c9f3a54ba6705bade"
+dependencies = [
+ "bytemuck",
+ "num-traits",
+]
+
+[[package]]
 name = "expat-sys"
 version = "2.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -589,6 +599,15 @@ checksum = "f82b0f4c27ad9f8bfd1f3208d882da2b09c301bc1c828fd3a00d0216d2fbbff6"
 dependencies = [
  "crc32fast",
  "miniz_oxide",
+]
+
+[[package]]
+name = "float_next_after"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4fc612c5837986b7104a87a0df74a5460931f1c5274be12f8d0f40aa2f30d632"
+dependencies = [
+ "num-traits",
 ]
 
 [[package]]
@@ -1204,6 +1223,51 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e999beba7b6e8345721bd280141ed958096a2e4abdf74f67ff4ce49b4b54e47a"
 
 [[package]]
+name = "lyon"
+version = "1.0.0"
+source = "git+https://github.com/zphixon/lyon?branch=new-euclid#7c6c4328b947d4fc8b94c6d668f8622d217ae16b"
+dependencies = [
+ "lyon_algorithms",
+ "lyon_tessellation",
+]
+
+[[package]]
+name = "lyon_algorithms"
+version = "1.0.1"
+source = "git+https://github.com/zphixon/lyon?branch=new-euclid#7c6c4328b947d4fc8b94c6d668f8622d217ae16b"
+dependencies = [
+ "lyon_path",
+]
+
+[[package]]
+name = "lyon_geom"
+version = "1.0.1"
+source = "git+https://github.com/zphixon/lyon?branch=new-euclid#7c6c4328b947d4fc8b94c6d668f8622d217ae16b"
+dependencies = [
+ "arrayvec 0.7.2",
+ "euclid",
+ "num-traits",
+]
+
+[[package]]
+name = "lyon_path"
+version = "1.0.1"
+source = "git+https://github.com/zphixon/lyon?branch=new-euclid#7c6c4328b947d4fc8b94c6d668f8622d217ae16b"
+dependencies = [
+ "lyon_geom",
+]
+
+[[package]]
+name = "lyon_tessellation"
+version = "1.0.3"
+source = "git+https://github.com/zphixon/lyon?branch=new-euclid#7c6c4328b947d4fc8b94c6d668f8622d217ae16b"
+dependencies = [
+ "float_next_after",
+ "lyon_path",
+ "thiserror",
+]
+
+[[package]]
 name = "malloc_buf"
 version = "0.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1750,6 +1814,21 @@ dependencies = [
  "glutin",
  "image",
  "log",
+ "powdermilk-biscuits",
+]
+
+[[package]]
+name = "pmb-lyon"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "env_logger",
+ "glam",
+ "glow",
+ "glutin",
+ "log",
+ "lyon",
+ "pmb-gl",
  "powdermilk-biscuits",
 ]
 

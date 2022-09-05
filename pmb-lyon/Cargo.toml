@@ -1,0 +1,27 @@
+[package]
+name = 'pmb-lyon'
+version = '0.1.0'
+edition = '2021'
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+env_logger = '0.9.0'
+log = '*'
+pmb-gl = { path = '../pmb-gl' }
+powdermilk-biscuits = { path = '../pmb' }
+lyon = { git = 'https://github.com/zphixon/lyon', branch = 'new-euclid' }
+glow = '0.11.2'
+glam = '0.21.2'
+bytemuck = '1.12.1'
+
+[target.'cfg(windows)'.dependencies.glutin]
+git = 'https://github.com/zphixon/glutin'
+branch = 'my-winit'
+default-features = false
+
+[target.'cfg(unix)'.dependencies.glutin]
+git = 'https://github.com/zphixon/glutin'
+branch = 'my-winit'
+default-features = false
+features = ['x11']
