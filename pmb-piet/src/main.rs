@@ -395,6 +395,9 @@ fn main() {
 
                 {
                     let mut ctx = target.render_context();
+                    // TODO
+                    // ctx.transform(Affine::translate(Point { x: sketch.origin.x, y: sketch.origin.y }));
+                    // put bitmap target on stroke
 
                     for stroke in sketch.strokes.iter() {
                         if !stroke.visible || stroke.erased {
