@@ -17,6 +17,8 @@ use powdermilk_biscuits::{
 };
 
 fn main() {
+    env_logger::init();
+
     let ev = EventLoop::new();
     let builder = WindowBuilder::new().with_position(glutin::dpi::LogicalPosition {
         x: 1920. / 2. - 800. / 2.,
