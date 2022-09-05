@@ -15,71 +15,14 @@ use lyon::{
     },
     path::{LineCap, LineJoin, Path},
 };
-use pmb_gl::{GlCoords, GlStrokeBackend};
-use powdermilk_biscuits::stroke::{Stroke, StrokeElement};
+use pmb_gl::GlCoords;
 use powdermilk_biscuits::{
     event::{ElementState, Event},
     ui::Ui,
-    Config, Device, Sketch, Tool,
+    Config,
+    Device,
+    Sketch, //Tool,
 };
-
-use crate::backend::LyonStrokeBackend;
-
-#[allow(dead_code)]
-#[rustfmt::skip]
-const BIGPOINTS: &[StrokeElement] = &[
-    StrokeElement { x: -3.3346415, y: 4.1671815, pressure: 0.01 },
-    StrokeElement { x: -3.4107695, y: 4.1671815, pressure: 0.02 },
-    StrokeElement { x: -3.4799757, y: 4.161991, pressure: 0.03 },
-    StrokeElement { x: -3.5543728, y: 4.148496, pressure: 0.04 },
-    StrokeElement { x: -3.6253088, y: 4.1246195, pressure: 0.05 },
-    StrokeElement { x: -3.739501, y: 4.0696, pressure: 0.06 },
-    StrokeElement { x: -3.813898, y: 4.018734, pressure: 0.07 },
-    StrokeElement { x: -3.8709936, y: 3.9689047, pressure: 0.08 },
-    StrokeElement { x: -3.9073267, y: 3.9138858, pressure: 0.09 },
-    StrokeElement { x: -3.9678822, y: 3.8007324, pressure: 0.10 },
-    StrokeElement { x: -3.9990263, y: 3.7031515, pressure: 0.11 },
-    StrokeElement { x: -4.016327, y: 3.6180267, pressure: 0.12 },
-    StrokeElement { x: -4.0249777, y: 3.5391312, pressure: 0.13 },
-    StrokeElement { x: -4.0249777, y: 3.449855, pressure: 0.14 },
-    StrokeElement { x: -4.011136, y: 3.2806442, pressure: 0.15 },
-    StrokeElement { x: -3.9903746, y: 3.1197388, pressure: 0.16 },
-    StrokeElement { x: -3.9540405, y: 2.9754431, pressure: 0.17 },
-    StrokeElement { x: -3.9107876, y: 2.845681, pressure: 0.18 },
-    StrokeElement { x: -3.853691, y: 2.7346036, pressure: 0.19 },
-    StrokeElement { x: -3.8052464, y: 2.6608994, pressure: 0.20 },
-    StrokeElement { x: -3.7533426, y: 2.6079562, pressure: 0.21 },
-    StrokeElement { x: -3.7048979, y: 2.5685084, pressure: 0.22 },
-    StrokeElement { x: -3.6426115, y: 2.5373654, pressure: 0.23 },
-    StrokeElement { x: -3.582056, y: 2.5166037, pressure: 0.24 },
-    StrokeElement { x: -3.5197697, y: 2.4999933, pressure: 0.25 },
-    StrokeElement { x: -3.4574833, y: 2.4948027, pressure: 0.26 },
-    StrokeElement { x: -3.4142294, y: 2.4948027, pressure: 0.27 },
-    StrokeElement { x: -3.3796253, y: 2.505184, pressure: 0.28 },
-    StrokeElement { x: -3.3623235, y: 2.5238693, pressure: 0.29 },
-    StrokeElement { x: -3.353673, y: 2.547746, pressure: 0.30 },
-    StrokeElement { x: -3.3571339, y: 2.582003, pressure: 0.31 },
-    StrokeElement { x: -3.3830862, y: 2.6484418, pressure: 0.32 },
-    StrokeElement { x: -3.4713252, y: 2.8301096, pressure: 0.33 },
-    StrokeElement { x: -3.5768652, y: 3.006586, pressure: 0.34 },
-    StrokeElement { x: -3.6772146, y: 3.1882539, pressure: 0.35 },
-    StrokeElement { x: -3.7879457, y: 3.3730352, pressure: 0.36 },
-    StrokeElement { x: -3.888294, y: 3.5526266, pressure: 0.37 },
-    StrokeElement { x: -3.976533, y: 3.732218, pressure: 0.38 },
-    StrokeElement { x: -4.0301685, y: 3.8630183, pressure: 0.39 },
-    StrokeElement { x: -4.0699625, y: 3.9979713, pressure: 0.40 },
-    StrokeElement { x: -4.090724, y: 4.095553, pressure: 0.41 },
-    StrokeElement { x: -4.095914, y: 4.1775627, pressure: 0.42 },
-    StrokeElement { x: -4.087264, y: 4.237772, pressure: 0.43 },
-    StrokeElement { x: -4.0595818, y: 4.2990203, pressure: 0.44 },
-    StrokeElement { x: -3.9851847, y: 4.4069824, pressure: 0.45 },
-    StrokeElement { x: -3.8502314, y: 4.535707, pressure: 0.46 },
-    StrokeElement { x: -3.6910563, y: 4.643669, pressure: 0.47 },
-    StrokeElement { x: -3.511118, y: 4.7412505, pressure: 0.48 },
-    StrokeElement { x: -3.3830862, y: 4.7973084, pressure: 0.49 },
-    StrokeElement { x: -3.2515926, y: 4.855442, pressure: 0.50 },
-    StrokeElement { x: -3.120101, y: 4.910461, pressure: 0.51 },
-];
 
 mod backend {
     use glow::VertexArray;
@@ -196,39 +139,12 @@ fn main() {
         gl.vertex_attrib_pointer_f32(0, 2, glow::FLOAT, false, 2 * float_size as i32, 0);
     }
 
-    //let stroke = Stroke::<()>::with_points(
-    //    BIGPOINTS.iter().cloned().collect(),
-    //    powdermilk_biscuits::rand::random(),
-    //);
-
     let mut tesselator = StrokeTessellator::new();
     let options = StrokeOptions::default()
         .with_line_cap(LineCap::Round)
         .with_line_join(LineJoin::Round)
         .with_tolerance(0.001)
         .with_variable_line_width(0);
-
-    //use lyon::geom::point as point2d;
-    //let mut path = Path::builder_with_attributes(1);
-    //path.begin(
-    //    point2d(stroke.points[0].x, stroke.points[0].y),
-    //    &[stroke.points[0].pressure],
-    //);
-    //for point in stroke.points.iter() {
-    //    path.line_to(point2d(point.x, point.y), &[point.pressure]);
-    //}
-    //path.end(false);
-    //let path = path.build();
-
-    //let mut mesh = VertexBuffers::new();
-    //let mut builder = simple_builder(&mut mesh);
-    //tesselator
-    //    .tessellate_path(&path, &options, &mut builder)
-    //    .unwrap();
-
-    //println!("{:?}", mesh);
-
-    //return;
 
     let mut ui = {
         let PhysicalSize { width, height } = context.window().inner_size();
@@ -512,7 +428,7 @@ fn main() {
                             gl.enable_vertex_attrib_array(0);
                             gl.vertex_attrib_pointer_f32(0, 2, glow::FLOAT, false, f32_size * 3, 0);
 
-                            LyonStrokeBackend {
+                            backend::LyonStrokeBackend {
                                 dirty: false,
                                 mesh_vao,
                                 indices_len: mesh.indices.len() as i32,
@@ -550,7 +466,7 @@ fn main() {
                     );
 
                     if stroke.draw_tesselated {
-                        let LyonStrokeBackend {
+                        let backend::LyonStrokeBackend {
                             mesh_vao,
                             indices_len,
                             ..
@@ -563,7 +479,7 @@ fn main() {
                             0,
                         );
                     } else {
-                        let LyonStrokeBackend {
+                        let backend::LyonStrokeBackend {
                             line_vao,
                             points_len,
                             ..

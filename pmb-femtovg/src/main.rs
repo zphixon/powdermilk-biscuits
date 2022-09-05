@@ -1,9 +1,8 @@
 use femtovg::{renderer::OpenGl, Canvas, Color, LineCap, LineJoin, Paint, Path};
 use glutin::{
-    dpi::PhysicalSize,
     event::{
-        ElementState as GlutinElementState, Event as GlutinEvent, KeyboardInput, MouseScrollDelta,
-        Touch, TouchPhase, VirtualKeyCode, WindowEvent,
+        Event as GlutinEvent, KeyboardInput, MouseScrollDelta, Touch, TouchPhase, VirtualKeyCode,
+        WindowEvent,
     },
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
