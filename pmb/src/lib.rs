@@ -168,6 +168,7 @@ pub struct Config {
     pub debug_toggle_use_finger_for_pen: Combination,
     pub debug_clear_strokes: Combination,
     pub debug_print_strokes: Combination,
+    pub debug_dirty_all_strokes: Combination,
 }
 
 impl Default for Config {
@@ -212,6 +213,7 @@ impl Config {
             debug_toggle_use_finger_for_pen: Combination::INACTIVE,
             debug_clear_strokes: Combination::INACTIVE,
             debug_print_strokes: Combination::INACTIVE,
+            debug_dirty_all_strokes: Combination::INACTIVE,
         }
     }
 
@@ -223,6 +225,7 @@ impl Config {
             debug_toggle_use_finger_for_pen: F.into(),
             debug_clear_strokes: C.into(),
             debug_print_strokes: D.into(),
+            debug_dirty_all_strokes: LControl | D,
             ..Config::new()
         }
     }

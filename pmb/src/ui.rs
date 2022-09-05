@@ -579,7 +579,11 @@ impl<C: CoordinateSystem> Ui<C> {
             self.modified = true;
         }
 
-        if self.input.combo_just_pressed(&config.debug_print_strokes) {
+        if self.input.combo_just_pressed(&config.debug_print_strokes)
+            && !self
+                .input
+                .combo_just_pressed(&config.debug_dirty_all_strokes)
+        {
             for stroke in sketch.strokes.iter() {
                 println!("stroke");
                 for point in stroke.points().iter() {
@@ -689,6 +693,20 @@ impl<C: CoordinateSystem> Ui<C> {
         {
             config.stylus_may_be_inverted = !config.stylus_may_be_inverted;
             println!("stylus invertable? {}", config.stylus_may_be_inverted);
+        }
+
+        if self
+            .input
+            .combo_just_pressed(&config.debug_dirty_all_strokes)
+        {
+            log::info!("debug dirty all strokes");
+            sketch
+                .strokes
+                .iter_mut()
+                .flat_map(|stroke| stroke.backend_mut())
+                .for_each(|backend| backend.make_dirty());
+            self.update_visible_strokes(sketch);
+            sketch.update_stroke_primitive();
         }
 
         self.input.pump_key_state();
