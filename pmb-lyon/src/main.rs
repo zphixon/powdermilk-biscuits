@@ -358,31 +358,18 @@ fn main() {
                     .for_each(|stroke| {
                         log::debug!("replace stroke with {} points", stroke.points.len());
                         stroke.backend.replace(unsafe {
-                            use powdermilk_biscuits::CoordinateSystem;
-                            let brush_size_ndc = (GlCoords {})
-                                .stroke_to_ndc(
-                                    ui.width,
-                                    ui.height,
-                                    sketch.zoom,
-                                    powdermilk_biscuits::graphics::StrokePoint {
-                                        x: stroke.brush_size,
-                                        y: 0.,
-                                    },
-                                )
-                                .x;
-
                             use lyon::geom::point as point2d;
                             let mut path = Path::builder_with_attributes(1);
                             if let Some(first) = stroke.points.first() {
                                 path.begin(
                                     point2d(first.x, first.y),
-                                    &[first.pressure * brush_size_ndc * sketch.zoom],
+                                    &[first.pressure * stroke.brush_size * 2.],
                                 );
                             }
                             stroke.points.iter().skip(1).for_each(|point| {
                                 path.line_to(
                                     point2d(point.x, point.y),
-                                    &[point.pressure * brush_size_ndc * sketch.zoom],
+                                    &[point.pressure * stroke.brush_size * 2.],
                                 );
                             });
                             path.end(false);
