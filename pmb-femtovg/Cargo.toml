@@ -20,4 +20,4 @@ default-features = false
 git = 'https://github.com/zphixon/glutin'
 branch = 'my-winit'
 default-features = false
-features = ['x11']
+features = ['wayland', 'x11']
