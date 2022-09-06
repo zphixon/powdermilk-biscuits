@@ -621,7 +621,7 @@ impl Graphics {
             .unwrap();
 
         let limits = Limits {
-            max_push_constant_size: 128,
+            max_push_constant_size: adapter.limits().max_push_constant_size,
             ..Default::default()
         };
 
@@ -644,7 +644,16 @@ impl Graphics {
         let surface_format = if formats.contains(&TextureFormat::Rgba8Unorm) {
             TextureFormat::Rgba8Unorm
         } else {
-            surface.get_supported_formats(&adapter)[0]
+            formats[0]
+        };
+
+        let present_mode = if surface
+            .get_supported_modes(&adapter)
+            .contains(&PresentMode::Immediate)
+        {
+            PresentMode::Immediate
+        } else {
+            PresentMode::Fifo
         };
 
         let config = SurfaceConfiguration {
@@ -652,7 +661,7 @@ impl Graphics {
             format: surface_format,
             width: size.width,
             height: size.height,
-            present_mode: PresentMode::Immediate,
+            present_mode,
         };
 
         surface.configure(&device, &config);
