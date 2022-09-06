@@ -360,7 +360,7 @@ fn main() {
 
                 ui.prev_device = Device::Touch;
 
-                if cursor_visible && config.use_finger_for_pen {
+                if cursor_visible {
                     cursor_visible = false;
                     gc.window().set_cursor_visible(false);
                 }

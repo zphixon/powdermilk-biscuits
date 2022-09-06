@@ -57,8 +57,6 @@ pub enum UiState {
     PenErase,
     MouseDraw,
     MouseErase,
-    TouchDraw,
-    TouchErase,
     Gesture(u8),
     OpenDialog,
     SaveDialog,
@@ -467,38 +465,39 @@ impl<C: CoordinateSystem> Ui<C> {
 
             // TODO: touch input, pan & zoom
             (S::Ready, E::Touch(touch)) => {
-                if config.use_finger_for_pen {
-                    self.update_stylus_from_touch(config, sketch, touch);
-                    match self.active_tool {
-                        Tool::Pen => {
-                            self.start_stroke(sketch);
-                            S::TouchDraw
-                        }
-                        Tool::Eraser => S::TouchErase,
-                        Tool::Pan => S::Pan,
+                let tool = config.tool_for_gesture(1);
+                self.active_tool = tool;
+                match self.active_tool {
+                    Tool::Pen => {
+                        self.update_stylus_from_touch(config, sketch, touch);
+                        self.start_stroke(sketch);
                     }
-                } else {
-                    self.input.handle_mouse_move(touch.location);
-                    S::Gesture(1)
+                    _ => {
+                        // TODO
+                        self.input.handle_mouse_move(touch.location);
+                    }
                 }
+
+                S::Gesture(1)
             }
 
-            (S::TouchDraw, E::TouchMove(touch)) => {
-                self.update_stylus_from_touch(config, sketch, touch);
-                self.continue_stroke(sketch);
-                S::TouchDraw
+            (S::Gesture(i), E::Touch(touch)) => {
+                // TODO dedup, more movement tolerance for gesture state transition
+                let tool = config.tool_for_gesture(i + 1);
+                self.active_tool = tool;
+                match self.active_tool {
+                    Tool::Pen => {
+                        self.update_stylus_from_touch(config, sketch, touch);
+                        self.start_stroke(sketch);
+                    }
+                    _ => {
+                        // TODO
+                        self.input.handle_mouse_move(touch.location);
+                    }
+                }
+
+                S::Gesture(i + 1)
             }
-
-            (S::TouchDraw, E::Release(touch)) => {
-                self.update_stylus_from_touch(config, sketch, touch);
-                self.end_stroke(sketch);
-                S::Ready
-            }
-
-            (S::TouchDraw | S::TouchErase, E::Touch(_)) => S::Gesture(2),
-            (S::TouchErase, E::Release(_)) => S::Ready,
-
-            (S::Gesture(i), E::Touch(_)) => S::Gesture(i + 1),
 
             (S::Gesture(i), E::TouchMove(touch)) => {
                 let tool = config.tool_for_gesture(i);
@@ -542,6 +541,14 @@ impl<C: CoordinateSystem> Ui<C> {
             }
 
             (S::Gesture(i), E::Release(_)) => {
+                match self.active_tool {
+                    Tool::Pen => {
+                        self.end_stroke(sketch);
+                    }
+
+                    _ => {}
+                }
+
                 if i == 1 {
                     S::Ready
                 } else {
@@ -683,8 +690,12 @@ impl<C: CoordinateSystem> Ui<C> {
             .input
             .combo_just_pressed(&config.debug_toggle_use_finger_for_pen)
         {
-            config.use_finger_for_pen = !config.use_finger_for_pen;
-            println!("using finger for pen? {}", config.use_finger_for_pen);
+            if config.tool_for_gesture_1 != Tool::Pen {
+                config.tool_for_gesture_1 = Tool::Pen;
+            } else {
+                config.tool_for_gesture_1 = Tool::Pan;
+            }
+            println!("tool for gesture 1: {:?}", config.tool_for_gesture_1);
         }
 
         if self
