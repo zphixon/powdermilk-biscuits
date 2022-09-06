@@ -144,7 +144,6 @@ pub enum Device {
 #[derive(Debug)]
 pub struct Config {
     pub use_mouse_for_pen: bool,
-    pub use_finger_for_pen: bool,
     pub stylus_may_be_inverted: bool,
     pub primary_button: MouseButton,
     pub pan_button: MouseButton,
@@ -189,7 +188,6 @@ impl Config {
 
         Config {
             use_mouse_for_pen: false,
-            use_finger_for_pen: false,
             stylus_may_be_inverted: true,
             primary_button: MouseButton::Left,
             pan_button: MouseButton::Middle,
