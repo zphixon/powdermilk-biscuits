@@ -1,3 +1,9 @@
+use lyon::{
+    lyon_tessellation::{
+        geometry_builder::simple_builder, StrokeOptions, StrokeTessellator, VertexBuffers,
+    },
+    path::{LineCap, LineJoin, Path},
+};
 use powdermilk_biscuits::{
     event::{ElementState, Keycode, MouseButton, PenInfo, Touch, TouchPhase},
     graphics::{ColorExt, PixelPos, StrokePoint},
@@ -10,14 +16,14 @@ use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
     Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, BindingType, BlendState, Buffer, BufferAddress, BufferBindingType,
-    BufferSlice, BufferUsages, Color as WgpuColor, ColorTargetState, ColorWrites, CommandEncoder,
+    BufferUsages, Color as WgpuColor, ColorTargetState, ColorWrites, CommandEncoder,
     CommandEncoderDescriptor, Device, DeviceDescriptor, Face, Features, FragmentState, FrontFace,
-    Instance, Limits, LoadOp, MultisampleState, Operations, PipelineLayoutDescriptor, PolygonMode,
-    PowerPreference, PresentMode, PrimitiveState, PrimitiveTopology, PushConstantRange, Queue,
-    RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor,
-    RequestAdapterOptions, ShaderStages, Surface, SurfaceConfiguration, SurfaceError,
-    TextureFormat, TextureUsages, TextureView, TextureViewDescriptor, VertexAttribute,
-    VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
+    IndexFormat, Instance, Limits, LoadOp, MultisampleState, Operations, PipelineLayoutDescriptor,
+    PolygonMode, PowerPreference, PresentMode, PrimitiveState, PrimitiveTopology,
+    PushConstantRange, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline,
+    RenderPipelineDescriptor, RequestAdapterOptions, ShaderStages, Surface, SurfaceConfiguration,
+    SurfaceError, TextureFormat, TextureUsages, TextureView, TextureViewDescriptor,
+    VertexAttribute, VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
 };
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
@@ -90,7 +96,10 @@ pub fn view_matrix(
 #[derive(Debug)]
 pub struct WgpuStrokeBackend {
     pub points: Buffer,
+    pub points_len: usize,
     pub mesh: Buffer,
+    pub indices: Buffer,
+    pub num_indices: usize,
     pub dirty: bool,
 }
 
@@ -239,14 +248,18 @@ impl<T> EventExt for winit::event::Event<'_, T> {
 }
 
 struct StrokeRenderer {
-    pipeline: RenderPipeline,
+    triangle_pipeline: RenderPipeline,
+    line_pipeline: RenderPipeline,
     view_bind_group: BindGroup,
     view_uniform_buffer: Buffer,
 }
 
 impl StrokeRenderer {
-    fn new(device: &Device, topology: PrimitiveTopology, format: TextureFormat) -> Self {
-        let shader = device.create_shader_module(wgpu::include_wgsl!("shaders/stroke_line.wgsl"));
+    fn new(device: &Device, format: TextureFormat) -> Self {
+        let line_shader =
+            device.create_shader_module(wgpu::include_wgsl!("shaders/stroke_line.wgsl"));
+        let mesh_shader =
+            device.create_shader_module(wgpu::include_wgsl!("shaders/stroke_mesh.wgsl"));
 
         let view_bind_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("stroke bind layout"),
@@ -292,11 +305,50 @@ impl StrokeRenderer {
             write_mask: ColorWrites::ALL,
         })];
 
-        let pipeline_desc = RenderPipelineDescriptor {
-            label: Some("stroke pipeline"),
+        let triangle_pipeline_desc = RenderPipelineDescriptor {
+            label: Some("stroke mesh pipeline"),
             layout: Some(&pipeline_layout),
             vertex: VertexState {
-                module: &shader,
+                module: &mesh_shader,
+                entry_point: "vmain",
+                buffers: &[VertexBufferLayout {
+                    array_stride: (size_of::<f32>() * 2) as BufferAddress,
+                    attributes: &[VertexAttribute {
+                        offset: 0,
+                        shader_location: 0,
+                        format: VertexFormat::Float32x2,
+                    }],
+                    step_mode: VertexStepMode::Vertex,
+                }],
+            },
+            fragment: Some(FragmentState {
+                module: &mesh_shader,
+                entry_point: "fmain",
+                targets: &cts,
+            }),
+            primitive: PrimitiveState {
+                topology: PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: FrontFace::Ccw,
+                cull_mode: None,
+                polygon_mode: PolygonMode::Fill,
+                unclipped_depth: false,
+                conservative: false,
+            },
+            depth_stencil: None,
+            multisample: MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            multiview: None,
+        };
+
+        let line_pipeline_desc = RenderPipelineDescriptor {
+            label: Some("stroke line pipeline"),
+            layout: Some(&pipeline_layout),
+            vertex: VertexState {
+                module: &line_shader,
                 entry_point: "vmain",
                 buffers: &[VertexBufferLayout {
                     array_stride: (size_of::<f32>() * 3) as BufferAddress,
@@ -315,18 +367,13 @@ impl StrokeRenderer {
                     ],
                 }],
             },
-            fragment: Some(FragmentState {
-                module: &shader,
-                entry_point: "fmain",
-                targets: &cts,
-            }),
             primitive: PrimitiveState {
-                topology,
+                topology: PrimitiveTopology::LineStrip,
                 strip_index_format: None,
                 front_face: FrontFace::Ccw,
                 cull_mode: None,
-                polygon_mode: PolygonMode::Fill,
                 unclipped_depth: false,
+                polygon_mode: PolygonMode::Fill,
                 conservative: false,
             },
             depth_stencil: None,
@@ -335,13 +382,20 @@ impl StrokeRenderer {
                 mask: !0,
                 alpha_to_coverage_enabled: false,
             },
+            fragment: Some(FragmentState {
+                module: &line_shader,
+                entry_point: "fmain",
+                targets: &cts,
+            }),
             multiview: None,
         };
 
-        let pipeline = device.create_render_pipeline(&pipeline_desc);
+        let triangle_pipeline = device.create_render_pipeline(&triangle_pipeline_desc);
+        let line_pipeline = device.create_render_pipeline(&line_pipeline_desc);
 
         StrokeRenderer {
-            pipeline,
+            triangle_pipeline,
+            line_pipeline,
             view_bind_group,
             view_uniform_buffer,
         }
@@ -354,10 +408,6 @@ impl StrokeRenderer {
         encoder: &mut CommandEncoder,
         sketch: &Sketch<WgpuStrokeBackend>,
         size: Size,
-        load: LoadOp<WgpuColor>,
-        should_draw: fn(&WgpuStroke) -> bool,
-        data: fn(&WgpuStroke) -> BufferSlice,
-        len: fn(&WgpuStroke) -> u32,
     ) {
         let stroke_view = view_matrix(sketch.zoom, sketch.zoom, size, sketch.origin);
         queue.write_buffer(
@@ -369,31 +419,50 @@ impl StrokeRenderer {
         queue.submit(None);
 
         let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
-            label: Some("stroke render pass"),
+            label: None,
             color_attachments: &[Some(RenderPassColorAttachment {
                 view: frame,
                 resolve_target: None,
-                ops: Operations { load, store: true },
+                ops: Operations {
+                    load: LoadOp::Clear(WgpuColor::BLACK),
+                    store: true,
+                },
             })],
             depth_stencil_attachment: None,
         });
 
-        pass.set_pipeline(&self.pipeline);
-        pass.set_bind_group(0, &self.view_bind_group, &[]);
+        sketch.visible_strokes().for_each(|stroke| {
+            if stroke.draw_tesselated {
+                pass.set_pipeline(&self.triangle_pipeline);
+            } else {
+                pass.set_pipeline(&self.line_pipeline);
+            }
 
-        for stroke in sketch
-            .visible_strokes()
-            .filter(|stroke| should_draw(stroke))
-        {
+            pass.set_bind_group(0, &self.view_bind_group, &[]);
             pass.set_push_constants(
                 ShaderStages::VERTEX,
                 0,
                 bytemuck::cast_slice(&stroke.color().to_float()),
             );
 
-            pass.set_vertex_buffer(0, data(stroke));
-            pass.draw(0..len(stroke), 0..1);
-        }
+            if stroke.draw_tesselated {
+                let WgpuStrokeBackend {
+                    mesh,
+                    indices,
+                    num_indices,
+                    ..
+                } = stroke.backend().unwrap();
+                pass.set_vertex_buffer(0, mesh.slice(..));
+                pass.set_index_buffer(indices.slice(..), IndexFormat::Uint16);
+                pass.draw_indexed(0..(*num_indices as u32), 0, 0..1);
+            } else {
+                let WgpuStrokeBackend {
+                    points, points_len, ..
+                } = stroke.backend().unwrap();
+                pass.set_vertex_buffer(0, points.slice(..));
+                pass.draw(0..(*points_len as u32), 0..1);
+            }
+        });
     }
 }
 
@@ -598,9 +667,10 @@ pub struct Graphics {
     pub size: Size,
     pub aa: bool,
     smaa_target: smaa::SmaaTarget,
-    stroke_line_renderer: StrokeRenderer,
-    stroke_tess_renderer: StrokeRenderer,
+    stroke_renderer: StrokeRenderer,
     cursor_renderer: CursorRenderer,
+    tesselator: StrokeTessellator,
+    stroke_options: StrokeOptions,
 }
 
 impl Graphics {
@@ -678,16 +748,7 @@ impl Graphics {
 
         log::info!("done!");
         Graphics {
-            stroke_line_renderer: StrokeRenderer::new(
-                &device,
-                PrimitiveTopology::LineStrip,
-                surface_format,
-            ),
-            stroke_tess_renderer: StrokeRenderer::new(
-                &device,
-                PrimitiveTopology::TriangleStrip,
-                surface_format,
-            ),
+            stroke_renderer: StrokeRenderer::new(&device, surface_format),
             cursor_renderer: CursorRenderer::new(&device, surface_format),
 
             surface,
@@ -698,6 +759,12 @@ impl Graphics {
             size,
             aa: true,
             smaa_target,
+            tesselator: StrokeTessellator::new(),
+            stroke_options: StrokeOptions::default()
+                .with_line_cap(LineCap::Round)
+                .with_line_join(LineJoin::Round)
+                .with_tolerance(0.001)
+                .with_variable_line_width(0),
         }
     }
 
@@ -719,18 +786,51 @@ impl Graphics {
     }
 
     pub fn buffer_stroke(&mut self, stroke: &mut Stroke<WgpuStrokeBackend>) {
-        stroke.replace_backend_with(|points, mesh, _| WgpuStrokeBackend {
-            points: self.device.create_buffer_init(&BufferInitDescriptor {
-                label: Some("points"),
-                contents: points,
-                usage: BufferUsages::VERTEX,
-            }),
-            mesh: self.device.create_buffer_init(&BufferInitDescriptor {
-                label: Some("mesh"),
-                contents: mesh,
-                usage: BufferUsages::VERTEX,
-            }),
-            dirty: false,
+        stroke.backend.replace({
+            use lyon::geom::point as point2d;
+
+            let mut path = Path::builder_with_attributes(1);
+            if let Some(first) = stroke.points.first() {
+                path.begin(
+                    point2d(first.x, first.y),
+                    &[first.pressure * stroke.brush_size * 2.],
+                );
+            }
+            stroke.points.iter().skip(1).for_each(|point| {
+                path.line_to(
+                    point2d(point.x, point.y),
+                    &[point.pressure * stroke.brush_size * 2.],
+                );
+            });
+            path.end(false);
+            let path = path.build();
+            let mut mesh = VertexBuffers::new();
+            let mut builder = simple_builder(&mut mesh);
+
+            self.tesselator
+                .tessellate_path(&path, &self.stroke_options, &mut builder)
+                .unwrap();
+
+            WgpuStrokeBackend {
+                points: self.device.create_buffer_init(&BufferInitDescriptor {
+                    label: Some("points buffer"),
+                    contents: stroke.points_as_bytes(),
+                    usage: BufferUsages::VERTEX,
+                }),
+                points_len: stroke.points.len(),
+                mesh: self.device.create_buffer_init(&BufferInitDescriptor {
+                    label: Some("mesh buffer"),
+                    contents: bytemuck::cast_slice(&mesh.vertices),
+                    usage: BufferUsages::VERTEX,
+                }),
+                indices: self.device.create_buffer_init(&BufferInitDescriptor {
+                    label: Some("index buffer"),
+                    contents: bytemuck::cast_slice(&mesh.indices),
+                    usage: BufferUsages::INDEX,
+                }),
+                num_indices: mesh.indices.len(),
+                dirty: false,
+            }
         });
     }
 
@@ -759,28 +859,8 @@ impl Graphics {
                         label: Some("encoder"),
                     });
 
-                self.stroke_line_renderer.render(
-                    &self.queue,
-                    $frame,
-                    &mut encoder,
-                    sketch,
-                    size,
-                    LoadOp::Clear(WgpuColor::BLACK),
-                    |stroke| !stroke.draw_tesselated,
-                    |stroke| stroke.backend().unwrap().points.slice(..),
-                    |stroke| stroke.points.len() as u32,
-                );
-                self.stroke_tess_renderer.render(
-                    &self.queue,
-                    $frame,
-                    &mut encoder,
-                    sketch,
-                    size,
-                    LoadOp::Load,
-                    |stroke| stroke.draw_tesselated,
-                    |stroke| stroke.backend().unwrap().mesh.slice(..),
-                    |stroke| stroke.mesh.len() as u32,
-                );
+                self.stroke_renderer
+                    .render(&self.queue, $frame, &mut encoder, sketch, size);
 
                 if !cursor_visible {
                     self.cursor_renderer.render(

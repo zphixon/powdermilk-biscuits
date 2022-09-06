@@ -1860,6 +1860,7 @@ dependencies = [
  "futures",
  "glam",
  "log",
+ "lyon",
  "powdermilk-biscuits",
  "smaa",
  "wgpu",
