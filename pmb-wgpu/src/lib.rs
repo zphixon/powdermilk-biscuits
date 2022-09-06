@@ -360,7 +360,7 @@ impl StrokeRenderer {
                             format: VertexFormat::Float32x2,
                         },
                         VertexAttribute {
-                            offset: 0,
+                            offset: (size_of::<f32>() * 2) as u64,
                             shader_location: 1,
                             format: VertexFormat::Float32,
                         },
