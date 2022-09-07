@@ -77,7 +77,7 @@ impl Error for PmbError {
     fn cause(&self) -> Option<&dyn Error> {
         match &self.kind {
             ErrorKind::IoError(err) => Some(err),
-            ErrorKind::BincodeError(err) => Some(err.as_ref()),
+            ErrorKind::EncodeDecode(err) => Some(err.as_ref()),
             _ => None,
         }
     }
@@ -87,7 +87,7 @@ impl Error for PmbError {
 pub enum ErrorKind {
     MissingHeader,
     IoError(std::io::Error),
-    BincodeError(Box<dyn std::error::Error>),
+    EncodeDecode(Box<dyn std::error::Error>),
     VersionMismatch(Version),
     UnknownVersion(Version),
     IncompatibleVersion(Version),
@@ -101,13 +101,13 @@ impl From<std::io::Error> for PmbError {
 
 impl From<bincode::error::DecodeError> for PmbError {
     fn from(err: bincode::error::DecodeError) -> Self {
-        PmbError::new(ErrorKind::BincodeError(Box::new(err)))
+        PmbError::new(ErrorKind::EncodeDecode(Box::new(err)))
     }
 }
 
 impl From<bincode::error::EncodeError> for PmbError {
     fn from(err: bincode::error::EncodeError) -> Self {
-        PmbError::new(ErrorKind::BincodeError(Box::new(err)))
+        PmbError::new(ErrorKind::EncodeDecode(Box::new(err)))
     }
 }
 
@@ -116,7 +116,7 @@ impl Display for ErrorKind {
         match self {
             ErrorKind::MissingHeader => write!(f, "Missing PMB header"),
             ErrorKind::IoError(err) => write!(f, "{err}"),
-            ErrorKind::BincodeError(err) => write!(f, "{err}"),
+            ErrorKind::EncodeDecode(err) => write!(f, "{err}"),
             ErrorKind::VersionMismatch(version) => {
                 write!(f, "Expected version {}, got {version}", Version::CURRENT)
             }
