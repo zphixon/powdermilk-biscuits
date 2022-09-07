@@ -254,15 +254,11 @@ impl<S: StrokeBackend> Default for Sketch<S> {
 
 impl<S: StrokeBackend> Sketch<S> {
     pub fn new(strokes: Vec<Stroke<S>>) -> Self {
-        let mut this = Self {
+        Self {
             strokes,
             zoom: crate::DEFAULT_ZOOM,
             origin: StrokePoint::default(),
-        };
-
-        this.update_stroke_primitive();
-
-        this
+        }
     }
 
     pub fn empty() -> Self {
@@ -295,15 +291,18 @@ impl<S: StrokeBackend> Sketch<S> {
         }
     }
 
-    pub fn update_from(&mut self, other: Sketch<S>) {
+    pub fn update_from(&mut self, other: Sketch<S>, top_left: StrokePos, bottom_right: StrokePos) {
         self.strokes = other.strokes;
-        self.zoom = other.zoom;
-        self.origin = other.origin;
-
-        self.strokes.iter_mut().for_each(|stroke| {
-            stroke.generate_full_mesh();
-            stroke.update_bounding_box();
-        });
+        self.update_zoom(other.zoom, top_left, bottom_right);
+        self.move_origin(
+            Default::default(),
+            StrokePos {
+                x: other.origin.x, // kill me :)
+                y: other.origin.y,
+            },
+            top_left,
+            bottom_right,
+        );
     }
 
     pub fn clear_strokes(&mut self) {
@@ -314,6 +313,42 @@ impl<S: StrokeBackend> Sketch<S> {
         self.strokes
             .iter()
             .filter(|stroke| stroke.visible && !stroke.erased)
+    }
+
+    pub fn update_zoom(&mut self, next_zoom: f32, top_left: StrokePos, bottom_right: StrokePos) {
+        self.zoom = if next_zoom < crate::MIN_ZOOM {
+            crate::MIN_ZOOM
+        } else if next_zoom > crate::MAX_ZOOM {
+            crate::MAX_ZOOM
+        } else {
+            next_zoom
+        };
+
+        self.update_visible_strokes(top_left, bottom_right);
+        self.update_stroke_primitive();
+    }
+
+    pub fn move_origin(
+        &mut self,
+        prev: StrokePos,
+        next: StrokePos,
+        top_left: StrokePos,
+        bottom_right: StrokePos,
+    ) {
+        let dx = next.x - prev.x;
+        let dy = next.y - prev.y;
+        self.origin.x += dx;
+        self.origin.y += dy;
+        self.update_visible_strokes(top_left, bottom_right)
+    }
+
+    pub fn force_update(&mut self, top_left: StrokePos, bottom_right: StrokePos) {
+        self.strokes
+            .iter_mut()
+            .flat_map(|stroke| stroke.backend_mut())
+            .for_each(|backend| backend.make_dirty());
+        self.update_visible_strokes(top_left, bottom_right);
+        self.update_stroke_primitive();
     }
 }
 

@@ -107,7 +107,8 @@ impl<C: CoordinateSystem> Ui<C> {
     pub fn resize<S: StrokeBackend>(&mut self, width: u32, height: u32, sketch: &mut Sketch<S>) {
         self.width = width;
         self.height = height;
-        self.update_visible_strokes(sketch);
+        let (top_left, bottom_right) = self.screen_rect(sketch);
+        sketch.update_visible_strokes(top_left, bottom_right);
         sketch.update_stroke_primitive();
     }
 
@@ -213,7 +214,7 @@ impl<C: CoordinateSystem> Ui<C> {
         self.stylus.state = state;
     }
 
-    fn update_visible_strokes<S: StrokeBackend>(&self, sketch: &mut Sketch<S>) {
+    fn screen_rect<S: StrokeBackend>(&self, sketch: &Sketch<S>) -> (StrokePos, StrokePos) {
         let top_left = self.coords.pixel_to_pos(
             self.width,
             self.height,
@@ -233,20 +234,7 @@ impl<C: CoordinateSystem> Ui<C> {
             },
         );
 
-        sketch.update_visible_strokes(top_left, bottom_right);
-    }
-
-    fn move_origin<S: StrokeBackend>(
-        &mut self,
-        sketch: &mut Sketch<S>,
-        prev: StrokePos,
-        next: StrokePos,
-    ) {
-        let dx = next.x - prev.x;
-        let dy = next.y - prev.y;
-        sketch.origin.x += dx;
-        sketch.origin.y += dy;
-        self.update_visible_strokes(sketch);
+        (top_left, bottom_right)
     }
 
     fn increase_brush(&mut self, by: usize) {
@@ -272,6 +260,7 @@ impl<C: CoordinateSystem> Ui<C> {
         use Event as E;
         use UiState as S;
 
+        let (top_left, bottom_right) = self.screen_rect(sketch);
         self.state = match (self.state, event) {
             (S::Ready, E::IncreaseBrush(change)) => {
                 self.increase_brush(change);
@@ -285,20 +274,11 @@ impl<C: CoordinateSystem> Ui<C> {
 
             (S::Ready, E::ScrollZoom(change)) => {
                 let next_zoom = sketch.zoom + change;
-                sketch.zoom = if next_zoom < crate::MIN_ZOOM {
-                    crate::MIN_ZOOM
-                } else if next_zoom > crate::MAX_ZOOM {
-                    crate::MAX_ZOOM
-                } else {
-                    next_zoom
-                };
+                sketch.update_zoom(next_zoom, top_left, bottom_right);
 
                 if config.use_mouse_for_pen {
                     self.update_stylus_from_mouse(config, sketch, TouchPhase::Move);
                 }
-
-                sketch.update_stroke_primitive();
-                self.update_visible_strokes(sketch);
 
                 S::Ready
             }
@@ -336,7 +316,7 @@ impl<C: CoordinateSystem> Ui<C> {
                 let prev = crate::graphics::xform_point_to_pos(sketch.origin, self.stylus.point);
                 self.update_stylus_from_touch(config, sketch, touch);
                 let next = crate::graphics::xform_point_to_pos(sketch.origin, self.stylus.point);
-                self.move_origin(sketch, prev, next);
+                sketch.move_origin(prev, next, top_left, bottom_right);
                 S::Pan
             }
 
@@ -359,7 +339,7 @@ impl<C: CoordinateSystem> Ui<C> {
                     self.input.cursor_pos(),
                 );
 
-                self.move_origin(sketch, prev, next);
+                sketch.move_origin(prev, next, top_left, bottom_right);
 
                 if config.use_mouse_for_pen {
                     self.update_stylus_from_mouse(config, sketch, TouchPhase::Move);
@@ -379,9 +359,10 @@ impl<C: CoordinateSystem> Ui<C> {
                 let prev = self.stylus.pos;
                 self.update_stylus_from_touch(config, sketch, touch);
                 let next = self.stylus.pos;
-                sketch.zoom += prev.y - next.y;
-                sketch.update_stroke_primitive();
-                self.update_visible_strokes(sketch);
+
+                let next_zoom = sketch.zoom + (prev.y - next.y);
+                sketch.update_zoom(next_zoom, top_left, bottom_right);
+
                 S::PenZoom
             }
 
@@ -533,7 +514,7 @@ impl<C: CoordinateSystem> Ui<C> {
                             self.input.cursor_pos(),
                         );
 
-                        self.move_origin(sketch, prev, next);
+                        sketch.move_origin(prev, next, top_left, bottom_right);
                     }
                 }
 
@@ -570,6 +551,7 @@ impl<C: CoordinateSystem> Ui<C> {
         _height: u32,
     ) {
         log::debug!("handle key {key:?} {state:?}");
+        let (top_left, bottom_right) = self.screen_rect(sketch);
 
         self.input.handle_key(key, state);
 
@@ -627,15 +609,15 @@ impl<C: CoordinateSystem> Ui<C> {
         }
 
         if self.input.combo_just_pressed(&config.reset_view) {
-            sketch.zoom = crate::DEFAULT_ZOOM;
-            sketch.update_stroke_primitive();
-            self.move_origin(
-                sketch,
+            sketch.update_zoom(crate::DEFAULT_ZOOM, top_left, bottom_right);
+            sketch.move_origin(
                 StrokePos {
                     x: sketch.origin.x,
                     y: sketch.origin.y,
                 },
-                StrokePos { x: 0., y: 0. },
+                Default::default(),
+                top_left,
+                bottom_right,
             );
         }
 
@@ -711,13 +693,7 @@ impl<C: CoordinateSystem> Ui<C> {
             .combo_just_pressed(&config.debug_dirty_all_strokes)
         {
             log::info!("debug dirty all strokes");
-            sketch
-                .strokes
-                .iter_mut()
-                .flat_map(|stroke| stroke.backend_mut())
-                .for_each(|backend| backend.make_dirty());
-            self.update_visible_strokes(sketch);
-            sketch.update_stroke_primitive();
+            sketch.force_update(top_left, bottom_right);
         }
 
         self.input.pump_key_state();
@@ -793,7 +769,9 @@ impl<C: CoordinateSystem> Ui<C> {
                     {
                         rfd::MessageDialogResult::Yes => {
                             let state = migrate::from(version, &path)?;
-                            sketch.update_from(state);
+
+                            let (top_left, bottom_right) = self.screen_rect(&state);
+                            sketch.update_from(state,top_left, bottom_right);
                             self.modified = true;
                             self.path = None;
 
@@ -812,7 +790,9 @@ impl<C: CoordinateSystem> Ui<C> {
             err => err?,
         };
 
-        sketch.update_from(disk);
+        let (top_left, bottom_right) = self.screen_rect(&disk);
+        sketch.update_from(disk, top_left, bottom_right);
+
         self.modified = false;
         self.path = Some(path);
 
