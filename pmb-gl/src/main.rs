@@ -129,6 +129,7 @@ fn main() {
         } else {
             Sketch::default()
         };
+    ui.force_update(&mut sketch);
 
     let mut config = Config::default();
     let mut cursor_visible = true;
