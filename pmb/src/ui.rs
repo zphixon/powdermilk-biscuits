@@ -226,6 +226,7 @@ impl<C: CoordinateSystem> Ui<C> {
                         <= self.brush_size as f32
                 }) {
                     stroke.erase();
+                    self.modified = true;
                 }
             });
     }
