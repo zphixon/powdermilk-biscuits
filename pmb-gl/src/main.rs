@@ -147,20 +147,34 @@ fn main() {
 
         match event {
             GlutinEvent::WindowEvent {
+                event: WindowEvent::CloseRequested,
+                ..
+            } => {
+                if ui.modified {
+                    if powdermilk_biscuits::ui::ask_to_save_then_save(
+                        &mut ui,
+                        &sketch,
+                        "Would you like to save before exiting?",
+                    )
+                    .unwrap_or(false)
+                    {
+                        *flow = ControlFlow::Exit;
+                    }
+                } else {
+                    *flow = ControlFlow::Exit;
+                }
+            }
+            GlutinEvent::WindowEvent {
                 event:
                     WindowEvent::KeyboardInput {
                         input:
                             KeyboardInput {
-                                virtual_keycode: Some(VirtualKeyCode::Escape),
                                 state: GlutinElementState::Pressed,
+                                virtual_keycode: Some(VirtualKeyCode::Escape),
                                 ..
                             },
                         ..
                     },
-                ..
-            }
-            | GlutinEvent::WindowEvent {
-                event: WindowEvent::CloseRequested,
                 ..
             } => {
                 *flow = ControlFlow::Exit;
@@ -337,6 +351,16 @@ fn main() {
                 }
                 window.request_redraw();
             }
+
+            GlutinEvent::MainEventsCleared => match (ui.path.as_ref(), ui.modified) {
+                (Some(path), true) => {
+                    let title = format!("{} (modified)", path.display());
+                    window.set_title(title.as_str());
+                }
+                (Some(path), false) => window.set_title(&path.display().to_string()),
+                (None, true) => window.set_title(powdermilk_biscuits::TITLE_MODIFIED),
+                (None, false) => window.set_title(powdermilk_biscuits::TITLE_UNMODIFIED),
+            },
 
             GlutinEvent::RedrawRequested(_) => {
                 use std::mem::size_of;

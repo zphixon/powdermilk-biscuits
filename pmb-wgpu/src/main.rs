@@ -274,17 +274,6 @@ async fn run() {
                 window.request_redraw();
             }
 
-            WinitEvent::RedrawRequested(_) => {
-                match graphics.render(&mut sketch, &ui, size, cursor_visible) {
-                    Err(SurfaceError::Lost) => graphics.resize(graphics.size),
-                    Err(SurfaceError::OutOfMemory) => {
-                        ui::error("Out of memory!");
-                        *flow = ControlFlow::Exit;
-                    }
-                    _ => {}
-                }
-            }
-
             WinitEvent::MainEventsCleared => {
                 use powdermilk_biscuits::event::Keycode::*;
 
@@ -301,6 +290,17 @@ async fn run() {
                     (Some(path), false) => window.set_title(&path.display().to_string()),
                     (None, true) => window.set_title(powdermilk_biscuits::TITLE_MODIFIED),
                     (None, false) => window.set_title(powdermilk_biscuits::TITLE_UNMODIFIED),
+                }
+            }
+
+            WinitEvent::RedrawRequested(_) => {
+                match graphics.render(&mut sketch, &ui, size, cursor_visible) {
+                    Err(SurfaceError::Lost) => graphics.resize(graphics.size),
+                    Err(SurfaceError::OutOfMemory) => {
+                        ui::error("Out of memory!");
+                        *flow = ControlFlow::Exit;
+                    }
+                    _ => {}
                 }
             }
 
