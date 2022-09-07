@@ -18,19 +18,19 @@ pub struct GlCoords {}
 impl powdermilk_biscuits::CoordinateSystem for GlCoords {
     type Ndc = GlPos;
 
-    fn pixel_to_ndc(&self, width: u32, height: u32, pos: PixelPos) -> Self::Ndc {
+    fn pixel_to_ndc(width: u32, height: u32, pos: PixelPos) -> Self::Ndc {
         pixel_to_ndc(width, height, pos)
     }
 
-    fn ndc_to_pixel(&self, width: u32, height: u32, pos: Self::Ndc) -> PixelPos {
+    fn ndc_to_pixel(width: u32, height: u32, pos: Self::Ndc) -> PixelPos {
         ndc_to_pixel(width, height, pos)
     }
 
-    fn ndc_to_stroke(&self, width: u32, height: u32, zoom: f32, ndc: Self::Ndc) -> StrokePoint {
+    fn ndc_to_stroke(width: u32, height: u32, zoom: f32, ndc: Self::Ndc) -> StrokePoint {
         ndc_to_stroke(width, height, zoom, ndc)
     }
 
-    fn stroke_to_ndc(&self, width: u32, height: u32, zoom: f32, point: StrokePoint) -> Self::Ndc {
+    fn stroke_to_ndc(width: u32, height: u32, zoom: f32, point: StrokePoint) -> Self::Ndc {
         stroke_to_ndc(width, height, zoom, point)
     }
 }

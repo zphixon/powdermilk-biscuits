@@ -78,42 +78,40 @@ pub fn write<S: StrokeBackend>(
 pub trait CoordinateSystem: std::fmt::Debug + Default + Clone + Copy {
     type Ndc: std::fmt::Display + Clone + Copy;
 
-    fn pixel_to_ndc(&self, width: u32, height: u32, pos: PixelPos) -> Self::Ndc;
-    fn ndc_to_pixel(&self, width: u32, height: u32, pos: Self::Ndc) -> PixelPos;
+    fn pixel_to_ndc(width: u32, height: u32, pos: PixelPos) -> Self::Ndc;
+    fn ndc_to_pixel(width: u32, height: u32, pos: Self::Ndc) -> PixelPos;
 
-    fn ndc_to_stroke(&self, width: u32, height: u32, zoom: f32, ndc: Self::Ndc) -> StrokePoint;
-    fn stroke_to_ndc(&self, width: u32, height: u32, zoom: f32, point: StrokePoint) -> Self::Ndc;
+    fn ndc_to_stroke(width: u32, height: u32, zoom: f32, ndc: Self::Ndc) -> StrokePoint;
+    fn stroke_to_ndc(width: u32, height: u32, zoom: f32, point: StrokePoint) -> Self::Ndc;
 
-    fn pixel_to_stroke(&self, width: u32, height: u32, zoom: f32, pos: PixelPos) -> StrokePoint {
-        let ndc = self.pixel_to_ndc(width, height, pos);
-        self.ndc_to_stroke(width, height, zoom, ndc)
+    fn pixel_to_stroke(width: u32, height: u32, zoom: f32, pos: PixelPos) -> StrokePoint {
+        let ndc = Self::pixel_to_ndc(width, height, pos);
+        Self::ndc_to_stroke(width, height, zoom, ndc)
     }
 
-    fn stroke_to_pixel(&self, width: u32, height: u32, zoom: f32, pos: StrokePoint) -> PixelPos {
-        let ndc = self.stroke_to_ndc(width, height, zoom, pos);
-        self.ndc_to_pixel(width, height, ndc)
+    fn stroke_to_pixel(width: u32, height: u32, zoom: f32, pos: StrokePoint) -> PixelPos {
+        let ndc = Self::stroke_to_ndc(width, height, zoom, pos);
+        Self::ndc_to_pixel(width, height, ndc)
     }
 
     fn pixel_to_pos(
-        &self,
         width: u32,
         height: u32,
         zoom: f32,
         origin: StrokePoint,
         pos: PixelPos,
     ) -> StrokePos {
-        graphics::xform_point_to_pos(origin, self.pixel_to_stroke(width, height, zoom, pos))
+        graphics::xform_point_to_pos(origin, Self::pixel_to_stroke(width, height, zoom, pos))
     }
 
     fn pos_to_pixel(
-        &self,
         width: u32,
         height: u32,
         zoom: f32,
         origin: StrokePoint,
         pos: StrokePos,
     ) -> PixelPos {
-        self.stroke_to_pixel(
+        Self::stroke_to_pixel(
             width,
             height,
             zoom,
@@ -283,10 +281,9 @@ impl<S: StrokeBackend> Sketch<S> {
     }
 
     fn screen_rect<C: CoordinateSystem>(&self, width: u32, height: u32) -> (StrokePos, StrokePos) {
-        let top_left =
-            C::default().pixel_to_pos(width, height, self.zoom, self.origin, PixelPos::default());
+        let top_left = C::pixel_to_pos(width, height, self.zoom, self.origin, PixelPos::default());
 
-        let bottom_right = C::default().pixel_to_pos(
+        let bottom_right = C::pixel_to_pos(
             width,
             height,
             self.zoom,

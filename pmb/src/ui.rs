@@ -9,7 +9,10 @@ use lyon::{
     lyon_tessellation::{StrokeOptions, StrokeTessellator},
     path::{LineCap, LineJoin},
 };
-use std::path::{Path, PathBuf};
+use std::{
+    marker::PhantomData,
+    path::{Path, PathBuf},
+};
 
 const MSG: &str = r#"Significant internal changes have been made to Powdermilk Biscuits since you last opened this file. Although it has not been marked as significantly incompatible with the current version, you may still experience data loss by attempting to upgrade this file to the most recent version.
 
@@ -103,7 +106,8 @@ pub struct Ui<C: CoordinateSystem> {
     pub height: u32,
     pub tesselator: StrokeTessellator,
     pub stroke_options: StrokeOptions,
-    pub coords: C,
+
+    coords: PhantomData<C>,
 }
 
 impl<C: CoordinateSystem> Ui<C> {
@@ -125,7 +129,7 @@ impl<C: CoordinateSystem> Ui<C> {
                 .with_line_join(LineJoin::Round)
                 .with_tolerance(0.001)
                 .with_variable_line_width(0),
-            coords: C::default(),
+            coords: Default::default(),
         }
     }
 
@@ -220,9 +224,7 @@ impl<C: CoordinateSystem> Ui<C> {
         eraser: bool,
         pressure: f64,
     ) {
-        let point = self
-            .coords
-            .pixel_to_stroke(self.width, self.height, sketch.zoom, location);
+        let point = C::pixel_to_stroke(self.width, self.height, sketch.zoom, location);
         let pos = crate::graphics::xform_point_to_pos(sketch.origin, point);
 
         let state = match phase {
@@ -331,7 +333,7 @@ impl<C: CoordinateSystem> Ui<C> {
             }
 
             (S::Pan, E::MouseMove(location)) => {
-                let prev = self.coords.pixel_to_pos(
+                let prev = C::pixel_to_pos(
                     self.width,
                     self.height,
                     sketch.zoom,
@@ -341,7 +343,7 @@ impl<C: CoordinateSystem> Ui<C> {
 
                 self.input.handle_mouse_move(location);
 
-                let next = self.coords.pixel_to_pos(
+                let next = C::pixel_to_pos(
                     self.width,
                     self.height,
                     sketch.zoom,
@@ -506,7 +508,7 @@ impl<C: CoordinateSystem> Ui<C> {
                     }
 
                     Tool::Pan => {
-                        let prev = self.coords.pixel_to_pos(
+                        let prev = C::pixel_to_pos(
                             self.width,
                             self.height,
                             sketch.zoom,
@@ -516,7 +518,7 @@ impl<C: CoordinateSystem> Ui<C> {
 
                         self.input.handle_mouse_move(touch.location);
 
-                        let next = self.coords.pixel_to_pos(
+                        let next = C::pixel_to_pos(
                             self.width,
                             self.height,
                             sketch.zoom,

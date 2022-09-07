@@ -47,28 +47,28 @@ pub struct WgpuCoords;
 impl powdermilk_biscuits::CoordinateSystem for WgpuCoords {
     type Ndc = WgpuNdc;
 
-    fn pixel_to_ndc(&self, width: u32, height: u32, pos: PixelPos) -> Self::Ndc {
+    fn pixel_to_ndc(width: u32, height: u32, pos: PixelPos) -> Self::Ndc {
         WgpuNdc {
             x: (2. * pos.x) / width as f32 - 1.,
             y: -((2. * pos.y) / height as f32 - 1.),
         }
     }
 
-    fn ndc_to_pixel(&self, width: u32, height: u32, pos: Self::Ndc) -> PixelPos {
+    fn ndc_to_pixel(width: u32, height: u32, pos: Self::Ndc) -> PixelPos {
         PixelPos {
             x: (pos.x + 1.) * width as f32 / 2.,
             y: (-pos.y + 1.) * height as f32 / 2.,
         }
     }
 
-    fn ndc_to_stroke(&self, width: u32, height: u32, zoom: f32, ndc: Self::Ndc) -> StrokePoint {
+    fn ndc_to_stroke(width: u32, height: u32, zoom: f32, ndc: Self::Ndc) -> StrokePoint {
         StrokePoint {
             x: ndc.x * width as f32 / zoom,
             y: ndc.y * height as f32 / zoom,
         }
     }
 
-    fn stroke_to_ndc(&self, width: u32, height: u32, zoom: f32, point: StrokePoint) -> Self::Ndc {
+    fn stroke_to_ndc(width: u32, height: u32, zoom: f32, point: StrokePoint) -> Self::Ndc {
         stroke_to_ndc(width, height, zoom, point)
     }
 }
