@@ -22,12 +22,20 @@ use powdermilk_biscuits::{
 fn main() {
     env_logger::init();
 
-    let ev = EventLoop::new();
-    let builder = WindowBuilder::new().with_position(glutin::dpi::LogicalPosition {
-        x: 1920. / 2. - 800. / 2.,
-        y: 1080. + 1080. / 2. - 600. / 2.,
-    });
+    let mut config = Config::from_disk();
+    let mut builder = WindowBuilder::new()
+        .with_maximized(config.window_maximized)
+        .with_title(powdermilk_biscuits::TITLE_UNMODIFIED);
 
+    if let (Some(x), Some(y)) = (config.window_start_x, config.window_start_y) {
+        builder = builder.with_position(glutin::dpi::PhysicalPosition { x, y });
+    }
+
+    if let (Some(width), Some(height)) = (config.window_start_width, config.window_start_height) {
+        builder = builder.with_inner_size(glutin::dpi::PhysicalSize { width, height });
+    }
+
+    let ev = EventLoop::new();
     let context = unsafe {
         ContextBuilder::new()
             .with_vsync(true)
@@ -121,10 +129,8 @@ fn main() {
         gl.vertex_attrib_pointer_f32(0, 2, glow::FLOAT, false, 2 * float_size as i32, 0);
     };
 
-    let mut ui = {
-        let PhysicalSize { width, height } = context.window().inner_size();
-        Ui::<GlCoords>::new(width, height)
-    };
+    let PhysicalSize { width, height } = context.window().inner_size();
+    let mut ui = { Ui::<GlCoords>::new(width, height) };
     let mut sketch: Sketch<pmb_gl::GlStrokeBackend> =
         if let Some(filename) = std::env::args().nth(1) {
             Sketch::with_filename(&mut ui, std::path::PathBuf::from(filename))
@@ -133,9 +139,15 @@ fn main() {
         };
     ui.force_update(&mut sketch);
 
-    let mut config = Config::default();
     let mut cursor_visible = true;
     let mut size = context.window().inner_size();
+
+    if let Ok(pos) = context.window().outer_position() {
+        config.window_start_x.replace(pos.x);
+        config.window_start_y.replace(pos.y);
+    }
+    config.window_start_width.replace(width);
+    config.window_start_height.replace(height);
 
     ev.run(move |event, _, flow| {
         *flow = ControlFlow::Wait;
@@ -159,11 +171,14 @@ fn main() {
                     .unwrap_or(false)
                     {
                         *flow = ControlFlow::Exit;
+                        config.save();
                     }
                 } else {
                     *flow = ControlFlow::Exit;
+                    config.save();
                 }
             }
+
             GlutinEvent::WindowEvent {
                 event:
                     WindowEvent::KeyboardInput {
@@ -178,6 +193,7 @@ fn main() {
                 ..
             } => {
                 *flow = ControlFlow::Exit;
+                config.save();
             }
 
             GlutinEvent::WindowEvent {
@@ -340,6 +356,14 @@ fn main() {
             }
 
             GlutinEvent::WindowEvent {
+                event: WindowEvent::Moved(location),
+                ..
+            } => {
+                config.window_start_x.replace(location.x);
+                config.window_start_y.replace(location.y);
+            }
+
+            GlutinEvent::WindowEvent {
                 event: WindowEvent::Resized(new_size),
                 ..
             } => {
@@ -350,6 +374,8 @@ fn main() {
                     gl.viewport(0, 0, new_size.width as i32, new_size.height as i32);
                 }
                 window.request_redraw();
+                config.window_start_width.replace(new_size.width);
+                config.window_start_height.replace(new_size.height);
             }
 
             GlutinEvent::MainEventsCleared => match (ui.path.as_ref(), ui.modified) {

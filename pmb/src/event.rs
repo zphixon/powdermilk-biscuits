@@ -49,6 +49,7 @@ pub struct Touch {
     pub pen_info: Option<PenInfo>,
 }
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Combination {
     keys: Vec<Keycode>,
     repeatable: bool,
@@ -84,7 +85,7 @@ impl From<Keycode> for Combination {
     }
 }
 
-#[derive(Eq, Hash, PartialEq, Clone, Copy, Debug)]
+#[derive(Eq, Hash, PartialEq, Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
 #[rustfmt::skip]
 pub enum Keycode {
     Key1, Key2, Key3, Key4, Key5, Key6, Key7, Key8, Key9, Key0, A, B, C, D, E, F, G, H, I, J, K, L,
@@ -148,7 +149,7 @@ impl std::ops::BitOr<Keycode> for Combination {
     }
 }
 
-#[derive(Eq, Hash, PartialEq, Clone, Copy, Debug)]
+#[derive(Eq, Hash, PartialEq, Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
 pub enum MouseButton {
     Left,
     Middle,

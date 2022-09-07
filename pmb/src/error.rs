@@ -122,6 +122,12 @@ impl From<bincode::error::EncodeError> for PmbError {
     }
 }
 
+impl From<ron::error::SpannedError> for PmbError {
+    fn from(err: ron::error::SpannedError) -> Self {
+        PmbError::new(ErrorKind::EncodeDecode(Box::new(err)))
+    }
+}
+
 impl Display for ErrorKind {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {

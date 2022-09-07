@@ -7,7 +7,6 @@ use powdermilk_biscuits::{
 };
 use wgpu::SurfaceError;
 use winit::{
-    dpi::LogicalPosition,
     event::{
         ElementState as WinitElementState, Event as WinitEvent, KeyboardInput, MouseScrollDelta,
         Touch, TouchPhase, VirtualKeyCode, WindowEvent,
@@ -22,17 +21,22 @@ fn main() {
 }
 
 async fn run() {
-    let ev = EventLoop::new();
-    let window = WindowBuilder::new()
-        .with_position(LogicalPosition {
-            x: 1920. / 2. - 800. / 2.,
-            y: 1080. + 1080. / 2. - 600. / 2.,
-        })
-        .with_title(powdermilk_biscuits::TITLE_UNMODIFIED)
-        .build(&ev)
-        .unwrap();
+    let mut config = Config::from_disk();
+    let mut builder = WindowBuilder::new()
+        .with_maximized(config.window_maximized)
+        .with_title(powdermilk_biscuits::TITLE_UNMODIFIED);
 
-    let mut config = Config::default();
+    if let (Some(x), Some(y)) = (config.window_start_x, config.window_start_y) {
+        builder = builder.with_position(winit::dpi::PhysicalPosition { x, y });
+    }
+
+    if let (Some(width), Some(height)) = (config.window_start_width, config.window_start_height) {
+        builder = builder.with_inner_size(winit::dpi::PhysicalSize { width, height });
+    }
+
+    let ev = EventLoop::new();
+    let window = builder.build(&ev).unwrap();
+
     let mut ui = {
         let winit::dpi::PhysicalSize { width, height } = window.inner_size();
         Ui::<pmb_wgpu::WgpuCoords>::new(width, height)
@@ -78,9 +82,11 @@ async fn run() {
                     .unwrap_or(false)
                     {
                         *flow = ControlFlow::Exit;
+                        config.save();
                     }
                 } else {
                     *flow = ControlFlow::Exit;
+                    config.save();
                 }
             }
 
@@ -98,6 +104,7 @@ async fn run() {
                 ..
             } => {
                 *flow = ControlFlow::Exit;
+                config.save();
             }
 
             WinitEvent::WindowEvent {
@@ -260,6 +267,14 @@ async fn run() {
             }
 
             WinitEvent::WindowEvent {
+                event: WindowEvent::Moved(location),
+                ..
+            } => {
+                config.window_start_x.replace(location.x);
+                config.window_start_y.replace(location.y);
+            }
+
+            WinitEvent::WindowEvent {
                 event:
                     WindowEvent::Resized(new_size)
                     | WindowEvent::ScaleFactorChanged {
@@ -272,6 +287,8 @@ async fn run() {
                 ui.resize(new_size.width, new_size.height, &mut sketch);
                 graphics.resize(new_size);
                 window.request_redraw();
+                config.window_start_width.replace(new_size.width);
+                config.window_start_height.replace(new_size.height);
             }
 
             WinitEvent::MainEventsCleared => {

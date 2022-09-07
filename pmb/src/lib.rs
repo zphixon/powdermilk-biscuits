@@ -125,7 +125,7 @@ pub trait StrokeBackend: std::fmt::Debug {
     fn is_dirty(&self) -> bool;
 }
 
-#[derive(Default, PartialEq, Debug, Clone, Copy)]
+#[derive(Default, PartialEq, Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub enum Tool {
     #[default]
     Pen,
@@ -141,8 +141,7 @@ pub enum Device {
     Pen,
 }
 
-// TODO handle key combinations
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Config {
     pub use_mouse_for_pen: bool,
     pub stylus_may_be_inverted: bool,
@@ -163,12 +162,21 @@ pub struct Config {
     pub tool_for_gesture_3: Tool,
     pub tool_for_gesture_4: Tool,
 
+    pub window_start_x: Option<i32>,
+    pub window_start_y: Option<i32>,
+    pub window_start_width: Option<u32>,
+    pub window_start_height: Option<u32>,
+    pub window_maximized: bool,
+
     pub debug_toggle_stylus_invertability: Combination,
     pub debug_toggle_use_mouse_for_pen: Combination,
     pub debug_toggle_use_finger_for_pen: Combination,
     pub debug_clear_strokes: Combination,
     pub debug_print_strokes: Combination,
     pub debug_dirty_all_strokes: Combination,
+
+    #[serde(skip)]
+    pub had_error_parsing: bool,
 }
 
 impl Default for Config {
@@ -207,12 +215,27 @@ impl Config {
             tool_for_gesture_3: Tool::Pan,
             tool_for_gesture_4: Tool::Pan,
 
+            window_start_x: None,
+            window_start_y: None,
+            window_start_width: None,
+            window_start_height: None,
+            window_maximized: false,
+
             debug_toggle_stylus_invertability: Combination::INACTIVE,
             debug_toggle_use_mouse_for_pen: Combination::INACTIVE,
             debug_toggle_use_finger_for_pen: Combination::INACTIVE,
             debug_clear_strokes: Combination::INACTIVE,
             debug_print_strokes: Combination::INACTIVE,
             debug_dirty_all_strokes: Combination::INACTIVE,
+
+            had_error_parsing: false,
+        }
+    }
+
+    fn with_error(self) -> Config {
+        Config {
+            had_error_parsing: true,
+            ..self
         }
     }
 
@@ -226,6 +249,60 @@ impl Config {
             debug_print_strokes: D.into(),
             debug_dirty_all_strokes: LControl | D,
             ..Config::new()
+        }
+    }
+
+    // TODO registry/gsettings or something, this is dumb
+    pub fn from_disk() -> Config {
+        #[cfg(not(feature = "pmb-release"))]
+        let path = "config.ron";
+
+        let file = match std::fs::read_to_string(path) {
+            Ok(contents) => contents,
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+                return Config::default();
+            }
+            Err(err) => {
+                PmbError::from(err).display_with(String::from("Couldn't read config file"));
+                return Config::default().with_error();
+            }
+        };
+
+        match ron::from_str(&file) {
+            Ok(config) => config,
+            Err(err) => {
+                PmbError::from(err).display_with(String::from("Couldn't read config file"));
+                return Config::default().with_error();
+            }
+        }
+    }
+
+    pub fn save(&self) {
+        if self.had_error_parsing {
+            // don't overwrite broken configs
+            return;
+        }
+
+        #[cfg(not(feature = "pmb-release"))]
+        let path = "config.ron";
+
+        let contents = ron::ser::to_string_pretty(
+            self,
+            ron::ser::PrettyConfig::new()
+                .new_line(String::from("\n"))
+                .indentor(String::from("  "))
+                .compact_arrays(true),
+        )
+        .unwrap();
+
+        let contents =
+            format!("// this file generated automatically.\n// do not edit while pmb is running!!\n{contents}");
+
+        match std::fs::write(path, contents) {
+            Err(err) => {
+                PmbError::from(err).display_with(String::from("Couldn't read config file"));
+            }
+            _ => {}
         }
     }
 
