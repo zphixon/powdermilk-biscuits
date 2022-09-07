@@ -19,11 +19,10 @@ The build has visited the local mage and is no longer cursed. Just `git clone` a
   - Undo system
   - Layers?
   - Customization
-- Finger gestures
+- Good finger gestures
 - Stroke rendering revamp
   - Infinite scroll, chunks
   - Correct handling of color space (wgpu impl)
-- Fully commit to [lyon for tesselation](https://github.com/nical/lyon) and either WGPU or OpenGL for rendering
-- Re-implement open/save
+- Fully commit to either WGPU or OpenGL for rendering
 - Config system
   - Maybe more sophisticated device handling
