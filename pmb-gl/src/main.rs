@@ -402,8 +402,6 @@ fn main() {
                                 glow::STATIC_DRAW,
                             );
 
-                            // TODO might need to bind the ebo?
-
                             GlStrokeBackend {
                                 line_vao,
                                 line_len: stroke.points.len() as i32,
@@ -414,39 +412,29 @@ fn main() {
                         });
                     });
 
-                for stroke in sketch.visible_strokes() {
+                sketch.visible_strokes().for_each(|stroke| unsafe {
+                    gl.uniform_3_f32(
+                        Some(&strokes_color),
+                        stroke.color()[0] as f32 / 255.0,
+                        stroke.color()[1] as f32 / 255.0,
+                        stroke.color()[2] as f32 / 255.0,
+                    );
+                    gl.uniform_1_f32(Some(&strokes_brush_size), stroke.brush_size());
+
                     if stroke.draw_tesselated {
                         let GlStrokeBackend {
                             mesh_vao, mesh_len, ..
                         } = stroke.backend().unwrap();
-                        unsafe {
-                            gl.bind_vertex_array(Some(*mesh_vao));
-                            gl.uniform_3_f32(
-                                Some(&strokes_color),
-                                stroke.color()[0] as f32 / 255.0,
-                                stroke.color()[1] as f32 / 255.0,
-                                stroke.color()[2] as f32 / 255.0,
-                            );
-                            gl.uniform_1_f32(Some(&strokes_brush_size), stroke.brush_size());
-                            gl.draw_elements(glow::TRIANGLES, *mesh_len, glow::UNSIGNED_SHORT, 0);
-                        }
+                        gl.bind_vertex_array(Some(*mesh_vao));
+                        gl.draw_elements(glow::TRIANGLES, *mesh_len, glow::UNSIGNED_SHORT, 0);
                     } else {
                         let GlStrokeBackend {
                             line_vao, line_len, ..
                         } = stroke.backend().unwrap();
-                        unsafe {
-                            gl.bind_vertex_array(Some(*line_vao));
-                            gl.uniform_3_f32(
-                                Some(&strokes_color),
-                                stroke.color()[0] as f32 / 255.0,
-                                stroke.color()[1] as f32 / 255.0,
-                                stroke.color()[2] as f32 / 255.0,
-                            );
-                            gl.uniform_1_f32(Some(&strokes_brush_size), stroke.brush_size());
-                            gl.draw_arrays(glow::LINE_STRIP, 0, *line_len);
-                        }
+                        gl.bind_vertex_array(Some(*line_vao));
+                        gl.draw_arrays(glow::LINE_STRIP, 0, *line_len);
                     }
-                }
+                });
 
                 if !cursor_visible {
                     unsafe {
