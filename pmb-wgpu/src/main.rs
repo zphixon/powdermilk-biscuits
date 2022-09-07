@@ -1,3 +1,5 @@
+#![cfg_attr(all(windows, feature = "pmb-release"), windows_subsystem = "windows")]
+
 use powdermilk_biscuits::{
     event::{ElementState, Event},
     ui::{self, Ui},
