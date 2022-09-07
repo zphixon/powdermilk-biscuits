@@ -42,6 +42,8 @@ async fn run() {
             Sketch::default()
         };
 
+    ui.force_update(&mut sketch);
+
     let mut graphics = pmb_wgpu::Graphics::new(&window).await;
     graphics.buffer_all_strokes(&mut sketch);
 

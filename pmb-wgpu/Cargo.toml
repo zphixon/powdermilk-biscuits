@@ -10,10 +10,8 @@ log = '*'
 glam = { version = '0.21.2', features = ['bytemuck'] }
 wgpu = '0.13.1'
 futures = '0.3.21'
-bytemuck = '1.11.0'
 powdermilk-biscuits = { path = '../pmb' }
 smaa = '0.7.0'
-lyon = { git = 'https://github.com/zphixon/lyon', branch = 'new-euclid' }
 
 [target.'cfg(windows)'.dependencies.winit]
 git = 'https://github.com/zphixon/winit'

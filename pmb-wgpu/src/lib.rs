@@ -5,8 +5,10 @@ use lyon::{
     path::{LineCap, LineJoin, Path},
 };
 use powdermilk_biscuits::{
+    bytemuck,
     event::{ElementState, Keycode, MouseButton, PenInfo, Touch, TouchPhase},
     graphics::{ColorExt, PixelPos, StrokePoint},
+    lyon,
     stroke::Stroke,
     ui::Ui,
     Sketch, Tool,
@@ -814,7 +816,7 @@ impl Graphics {
             WgpuStrokeBackend {
                 points: self.device.create_buffer_init(&BufferInitDescriptor {
                     label: Some("points buffer"),
-                    contents: stroke.points_as_bytes(),
+                    contents: bytemuck::cast_slice(&stroke.points),
                     usage: BufferUsages::VERTEX,
                 }),
                 points_len: stroke.points.len(),

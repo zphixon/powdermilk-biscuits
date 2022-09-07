@@ -2,8 +2,15 @@ use crate::{
     graphics::{Color, ColorExt, StrokePos},
     StrokeBackend,
 };
+use lyon::{
+    lyon_tessellation::{
+        geometry_builder::simple_builder, StrokeOptions, StrokeTessellator, VertexBuffers,
+    },
+    math::Point,
+    path::Path,
+};
 
-#[derive(Default, Debug, Clone, Copy, derive_disk::Disk)]
+#[derive(Default, Debug, Clone, Copy, derive_disk::Disk, bytemuck::Zeroable, bytemuck::Pod)]
 #[repr(C)]
 pub struct StrokeElement {
     pub x: f32,
@@ -23,29 +30,13 @@ impl From<&StrokeElement> for StrokePos {
     }
 }
 
-impl pmb_tess::Point for StrokeElement {
-    fn new(x: f32, y: f32) -> Self {
-        StrokeElement {
-            x,
-            y,
-            pressure: -1.,
-        }
-    }
-
-    fn x(&self) -> f32 {
-        self.x
-    }
-
-    fn y(&self) -> f32 {
-        self.y
-    }
-}
-
 impl std::fmt::Display for StrokeElement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:.02},{:.02},{:.02}", self.x, self.y, self.pressure)
     }
 }
+
+pub type Mesh = VertexBuffers<Point, u16>;
 
 #[rustfmt::skip]
 #[derive(derive_disk::Disk)]
@@ -62,7 +53,7 @@ where
     #[disk_skip] pub bottom_right: StrokePos,
     #[disk_skip] pub top_left: StrokePos,
     #[disk_skip] pub draw_tesselated: bool,
-    #[disk_skip] pub mesh: Vec<StrokeElement>,
+    #[disk_skip] pub mesh: Mesh,
     #[disk_skip] pub backend: Option<S>,
     #[disk_skip] pub done: bool,
 }
@@ -81,7 +72,7 @@ where
             bottom_right: StrokePos::default(),
             top_left: StrokePos::default(),
             draw_tesselated: true,
-            mesh: Vec::new(),
+            mesh: Mesh::new(),
             backend: None,
             done: false,
         }
@@ -105,40 +96,11 @@ where
     S: StrokeBackend,
 {
     pub fn with_points(points: Vec<StrokeElement>, color: Color) -> Self {
-        let mut this = Self {
+        Self {
             points,
             color,
             backend: None,
             ..Default::default()
-        };
-        this.update_bounding_box();
-        this.generate_full_mesh();
-        this
-    }
-
-    pub fn points_as_bytes(&self) -> &[u8] {
-        unsafe {
-            let points_flat = std::slice::from_raw_parts(
-                self.points().as_ptr() as *const f32,
-                self.points().len() * 3,
-            );
-
-            std::slice::from_raw_parts(
-                points_flat.as_ptr() as *const u8,
-                points_flat.len() * std::mem::size_of::<f32>(),
-            )
-        }
-    }
-
-    pub fn mesh_as_bytes(&self) -> &[u8] {
-        unsafe {
-            let mesh_flat =
-                std::slice::from_raw_parts(self.mesh.as_ptr() as *const f32, self.mesh.len() * 3);
-
-            std::slice::from_raw_parts(
-                mesh_flat.as_ptr() as *const u8,
-                mesh_flat.len() * std::mem::size_of::<f32>(),
-            )
         }
     }
 
@@ -184,18 +146,6 @@ where
         self.backend.as_mut()
     }
 
-    pub fn replace_backend_with<F>(&mut self, mut with: F)
-    where
-        F: FnMut(&[u8], &[u8], usize) -> S,
-    {
-        let backend = with(
-            self.points_as_bytes(),
-            self.mesh_as_bytes(),
-            self.mesh.len(),
-        );
-        self.backend = Some(backend);
-    }
-
     pub fn is_dirty(&self) -> bool {
         self.backend().is_none() || self.backend().unwrap().is_dirty()
     }
@@ -206,7 +156,7 @@ where
         let mut right = f32::NEG_INFINITY;
         let mut left = f32::INFINITY;
 
-        for point in self.mesh.iter() {
+        for point in self.mesh.vertices.iter() {
             if point.x < left {
                 left = point.x;
             }
@@ -251,7 +201,12 @@ where
             && top >= screen_bottom;
     }
 
-    pub fn add_point(&mut self, stylus: &crate::Stylus) {
+    pub fn add_point(
+        &mut self,
+        stylus: &crate::Stylus,
+        tesselator: &mut StrokeTessellator,
+        options: &StrokeOptions,
+    ) {
         let x = stylus.pos.x;
         let y = stylus.pos.y;
 
@@ -261,8 +216,8 @@ where
             pressure: stylus.pressure,
         });
 
-        if self.points.len() >= 4 {
-            self.generate_partial_mesh();
+        if self.points.len() >= 2 {
+            self.rebuild_mesh(tesselator, options);
         }
 
         if self.points.len() == 1 {
@@ -275,64 +230,29 @@ where
         }
     }
 
-    fn generate_partial_mesh(&mut self) {
-        use pmb_tess::Hermite;
-        let subset = &self.points[self.points.len() - 4..];
-
-        self.mesh.pop();
-        self.mesh.pop();
-        self.mesh.extend(
-            subset
-                .flat_ribs(4, self.brush_size())
-                .into_iter()
-                .zip(subset.iter())
-                .map(|(mut rib, stroke)| {
-                    rib.pressure = stroke.pressure;
-
-                    if rib.x > self.bottom_right.x {
-                        self.bottom_right.x = rib.x;
-                    }
-
-                    if rib.x < self.top_left.x {
-                        self.top_left.x = rib.x;
-                    }
-
-                    if rib.y > self.top_left.y {
-                        self.top_left.y = rib.y;
-                    }
-
-                    if rib.y < self.bottom_right.y {
-                        self.bottom_right.y = rib.y;
-                    }
-
-                    rib
-                }),
-        );
-    }
-
-    pub fn generate_full_mesh(&mut self) {
-        use pmb_tess::Hermite;
-
-        if self.points.is_empty() {
-            return;
+    pub fn rebuild_mesh(&mut self, tesselator: &mut StrokeTessellator, options: &StrokeOptions) {
+        use lyon::geom::point as point2d;
+        let mut path = Path::builder_with_attributes(1);
+        if let Some(first) = self.points.first() {
+            path.begin(
+                point2d(first.x, first.y),
+                &[first.pressure * self.brush_size * 2.],
+            );
         }
+        self.points.iter().skip(1).for_each(|point| {
+            path.line_to(
+                point2d(point.x, point.y),
+                &[point.pressure * self.brush_size * 2.],
+            );
+        });
+        path.end(false);
+        let path = path.build();
+        let mut mesh = VertexBuffers::new();
+        let mut builder = simple_builder(&mut mesh);
 
-        while self.points.len() < 4 {
-            self.points.push(*self.points.last().unwrap());
-        }
-
-        let mut mesh = self
-            .points
-            .flat_ribs((self.points.len() + 3) * 2, self.brush_size())
-            .into_iter()
-            .collect::<Vec<_>>();
-
-        mesh.chunks_mut(2)
-            .zip(self.points().iter())
-            .for_each(|(rib, point)| {
-                rib.iter_mut()
-                    .for_each(|rib_point| rib_point.pressure = point.pressure)
-            });
+        tesselator
+            .tessellate_path(&path, options, &mut builder)
+            .unwrap();
 
         self.mesh = mesh;
         self.update_bounding_box();

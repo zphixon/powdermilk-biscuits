@@ -5,6 +5,8 @@ pub mod migrate;
 pub mod stroke;
 pub mod ui;
 
+pub extern crate bytemuck;
+pub extern crate lyon;
 pub extern crate rand;
 
 use crate::{
@@ -16,6 +18,7 @@ use crate::{
 };
 use bincode::config::standard;
 use event::Combination;
+use lyon::lyon_tessellation::{StrokeOptions, StrokeTessellator};
 use std::io::{Read, Write};
 
 pub const TITLE_UNMODIFIED: &str = "hi! <3";
@@ -279,7 +282,26 @@ impl<S: StrokeBackend> Sketch<S> {
         this
     }
 
-    pub fn update_visible_strokes(&mut self, top_left: StrokePos, bottom_right: StrokePos) {
+    fn screen_rect<C: CoordinateSystem>(&self, width: u32, height: u32) -> (StrokePos, StrokePos) {
+        let top_left =
+            C::default().pixel_to_pos(width, height, self.zoom, self.origin, PixelPos::default());
+
+        let bottom_right = C::default().pixel_to_pos(
+            width,
+            height,
+            self.zoom,
+            self.origin,
+            PixelPos {
+                x: width as f32,
+                y: height as f32,
+            },
+        );
+
+        (top_left, bottom_right)
+    }
+
+    pub fn update_visible_strokes<C: CoordinateSystem>(&mut self, width: u32, height: u32) {
+        let (top_left, bottom_right) = self.screen_rect::<C>(width, height);
         for stroke in self.strokes.iter_mut() {
             stroke.update_visible(top_left, bottom_right);
         }
@@ -291,18 +313,26 @@ impl<S: StrokeBackend> Sketch<S> {
         }
     }
 
-    pub fn update_from(&mut self, other: Sketch<S>, top_left: StrokePos, bottom_right: StrokePos) {
+    pub fn update_from<C: CoordinateSystem>(
+        &mut self,
+        width: u32,
+        height: u32,
+        tessellator: &mut StrokeTessellator,
+        options: &StrokeOptions,
+        other: Sketch<S>,
+    ) {
         self.strokes = other.strokes;
-        self.update_zoom(other.zoom, top_left, bottom_right);
-        self.move_origin(
+        self.update_zoom::<C>(width, height, other.zoom);
+        self.move_origin::<C>(
+            width,
+            height,
             Default::default(),
             StrokePos {
                 x: other.origin.x, // kill me :)
                 y: other.origin.y,
             },
-            top_left,
-            bottom_right,
         );
+        self.force_update::<C>(width, height, tessellator, options);
     }
 
     pub fn clear_strokes(&mut self) {
@@ -315,7 +345,7 @@ impl<S: StrokeBackend> Sketch<S> {
             .filter(|stroke| stroke.visible && !stroke.erased)
     }
 
-    pub fn update_zoom(&mut self, next_zoom: f32, top_left: StrokePos, bottom_right: StrokePos) {
+    pub fn update_zoom<C: CoordinateSystem>(&mut self, width: u32, height: u32, next_zoom: f32) {
         self.zoom = if next_zoom < crate::MIN_ZOOM {
             crate::MIN_ZOOM
         } else if next_zoom > crate::MAX_ZOOM {
@@ -324,30 +354,39 @@ impl<S: StrokeBackend> Sketch<S> {
             next_zoom
         };
 
-        self.update_visible_strokes(top_left, bottom_right);
+        self.update_visible_strokes::<C>(width, height);
         self.update_stroke_primitive();
     }
 
-    pub fn move_origin(
+    pub fn move_origin<C: CoordinateSystem>(
         &mut self,
+        width: u32,
+        height: u32,
         prev: StrokePos,
         next: StrokePos,
-        top_left: StrokePos,
-        bottom_right: StrokePos,
     ) {
         let dx = next.x - prev.x;
         let dy = next.y - prev.y;
         self.origin.x += dx;
         self.origin.y += dy;
-        self.update_visible_strokes(top_left, bottom_right)
+        self.update_visible_strokes::<C>(width, height);
     }
 
-    pub fn force_update(&mut self, top_left: StrokePos, bottom_right: StrokePos) {
+    pub fn force_update<C: CoordinateSystem>(
+        &mut self,
+        width: u32,
+        height: u32,
+        tessellator: &mut StrokeTessellator,
+        options: &StrokeOptions,
+    ) {
         self.strokes
             .iter_mut()
-            .flat_map(|stroke| stroke.backend_mut())
+            .flat_map(|stroke| {
+                stroke.rebuild_mesh(tessellator, options);
+                stroke.backend_mut()
+            })
             .for_each(|backend| backend.make_dirty());
-        self.update_visible_strokes(top_left, bottom_right);
+        self.update_visible_strokes::<C>(width, height);
         self.update_stroke_primitive();
     }
 }
@@ -395,7 +434,7 @@ impl Stylus {
 fn benchmark<S: StrokeBackend>() -> Vec<Stroke<S>> {
     use rand::Rng;
     let mut rng = rand::thread_rng();
-    let mut strokes = (-100..=100)
+    let strokes = (-100..=100)
         .map(|x| {
             (-100..=100)
                 .map(|y| {
@@ -414,10 +453,6 @@ fn benchmark<S: StrokeBackend>() -> Vec<Stroke<S>> {
         })
         .flatten()
         .collect::<Vec<_>>();
-
-    for stroke in strokes.iter_mut() {
-        stroke.generate_full_mesh();
-    }
 
     strokes
 }

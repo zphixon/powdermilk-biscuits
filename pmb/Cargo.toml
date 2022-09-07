@@ -10,9 +10,9 @@ pmb-release = []
 [dependencies]
 log = '0.4.17'
 rand = '0.8.5'
-derive-evc = { path = '../derive-evc' }
 derive-disk = { path = '../derive-disk' }
 bincode = '2.0.0-rc.1'
 flate2 = '1.0.24'
 rfd = { git = 'https://github.com/zphixon/rfd', branch = 'yes-no-cancel' }
-pmb-tess = { path = '../pmb-tess' }
+bytemuck = { version = '*', features = ['derive'] }
+lyon = { git = 'https://github.com/zphixon/lyon', branch = 'new-euclid' }

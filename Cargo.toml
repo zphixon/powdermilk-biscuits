@@ -2,14 +2,9 @@
 resolver = '2'
 members = [
     'pmb',
-    'pmb-tess',
     'pmb-gl',
     'pmb-wgpu',
-    'pmb-piet',
-    'pmb-femtovg',
-    'pmb-lyon',
     'derive-disk',
-    'derive-evc',
 ]
 
 [profile.dev]
