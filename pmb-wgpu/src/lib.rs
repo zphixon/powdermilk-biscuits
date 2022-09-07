@@ -1,14 +1,7 @@
-use lyon::{
-    lyon_tessellation::{
-        geometry_builder::simple_builder, StrokeOptions, StrokeTessellator, VertexBuffers,
-    },
-    path::{LineCap, LineJoin, Path},
-};
 use powdermilk_biscuits::{
     bytemuck,
     event::{ElementState, Keycode, MouseButton, PenInfo, Touch, TouchPhase},
     graphics::{ColorExt, PixelPos, StrokePoint},
-    lyon,
     stroke::Stroke,
     ui::Ui,
     Sketch, Tool,
@@ -671,8 +664,6 @@ pub struct Graphics {
     smaa_target: smaa::SmaaTarget,
     stroke_renderer: StrokeRenderer,
     cursor_renderer: CursorRenderer,
-    tesselator: StrokeTessellator,
-    stroke_options: StrokeOptions,
 }
 
 impl Graphics {
@@ -761,12 +752,6 @@ impl Graphics {
             size,
             aa: true,
             smaa_target,
-            tesselator: StrokeTessellator::new(),
-            stroke_options: StrokeOptions::default()
-                .with_line_cap(LineCap::Round)
-                .with_line_join(LineJoin::Round)
-                .with_tolerance(0.001)
-                .with_variable_line_width(0),
         }
     }
 
@@ -789,30 +774,6 @@ impl Graphics {
 
     pub fn buffer_stroke(&mut self, stroke: &mut Stroke<WgpuStrokeBackend>) {
         stroke.backend.replace({
-            use lyon::geom::point as point2d;
-
-            let mut path = Path::builder_with_attributes(1);
-            if let Some(first) = stroke.points.first() {
-                path.begin(
-                    point2d(first.x, first.y),
-                    &[first.pressure * stroke.brush_size * 2.],
-                );
-            }
-            stroke.points.iter().skip(1).for_each(|point| {
-                path.line_to(
-                    point2d(point.x, point.y),
-                    &[point.pressure * stroke.brush_size * 2.],
-                );
-            });
-            path.end(false);
-            let path = path.build();
-            let mut mesh = VertexBuffers::new();
-            let mut builder = simple_builder(&mut mesh);
-
-            self.tesselator
-                .tessellate_path(&path, &self.stroke_options, &mut builder)
-                .unwrap();
-
             WgpuStrokeBackend {
                 points: self.device.create_buffer_init(&BufferInitDescriptor {
                     label: Some("points buffer"),
@@ -822,15 +783,15 @@ impl Graphics {
                 points_len: stroke.points.len(),
                 mesh: self.device.create_buffer_init(&BufferInitDescriptor {
                     label: Some("mesh buffer"),
-                    contents: bytemuck::cast_slice(&mesh.vertices),
+                    contents: bytemuck::cast_slice(&stroke.mesh.vertices),
                     usage: BufferUsages::VERTEX,
                 }),
                 indices: self.device.create_buffer_init(&BufferInitDescriptor {
                     label: Some("index buffer"),
-                    contents: bytemuck::cast_slice(&mesh.indices),
+                    contents: bytemuck::cast_slice(&stroke.mesh.indices),
                     usage: BufferUsages::INDEX,
                 }),
-                num_indices: mesh.indices.len(),
+                num_indices: stroke.mesh.indices.len(),
                 dirty: false,
             }
         });
