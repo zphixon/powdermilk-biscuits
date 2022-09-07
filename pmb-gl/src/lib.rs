@@ -38,9 +38,8 @@ impl powdermilk_biscuits::CoordinateSystem for GlCoords {
 #[derive(Debug)]
 pub struct GlStrokeBackend {
     pub line_vao: glow::VertexArray,
-    pub points: glow::Buffer,
+    pub line_len: i32,
     pub mesh_vao: glow::VertexArray,
-    pub mesh: glow::Buffer,
     pub mesh_len: i32,
     pub dirty: bool,
 }
