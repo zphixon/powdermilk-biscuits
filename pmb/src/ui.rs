@@ -167,6 +167,69 @@ impl<C: CoordinateSystem> Ui<C> {
         stroke.finish();
     }
 
+    fn erase_strokes<S: StrokeBackend>(&mut self, sketch: &mut Sketch<S>) {
+        let stylus_pos_pix = C::pos_to_pixel(
+            self.width,
+            self.height,
+            sketch.zoom,
+            sketch.origin,
+            self.stylus.pos,
+        );
+
+        let top_left_cursor = C::pixel_to_pos(
+            self.width,
+            self.height,
+            sketch.zoom,
+            sketch.origin,
+            PixelPos {
+                x: stylus_pos_pix.x - self.brush_size as f32 / 2.,
+                y: stylus_pos_pix.y - self.brush_size as f32 / 2.,
+            },
+        );
+
+        let bottom_right_cursor = C::pixel_to_pos(
+            self.width,
+            self.height,
+            sketch.zoom,
+            sketch.origin,
+            PixelPos {
+                x: stylus_pos_pix.x + self.brush_size as f32 / 2.,
+                y: stylus_pos_pix.y + self.brush_size as f32 / 2.,
+            },
+        );
+
+        sketch
+            .strokes
+            .iter_mut()
+            .filter(|stroke| {
+                stroke.visible
+                    && !stroke.erased
+                    && stroke.aabb(top_left_cursor, bottom_right_cursor)
+            })
+            .for_each(|stroke| {
+                // TODO lyon_path::builder::Flattened?
+                if stroke.mesh.vertices.iter().any(|point| {
+                    let point_pix = C::pos_to_pixel(
+                        self.width,
+                        self.height,
+                        sketch.zoom,
+                        sketch.origin,
+                        StrokePos {
+                            x: point.x,
+                            y: point.y,
+                        },
+                    );
+
+                    ((stylus_pos_pix.x - point_pix.x).powi(2)
+                        + (stylus_pos_pix.y - point_pix.y).powi(2))
+                    .sqrt()
+                        <= self.brush_size as f32
+                }) {
+                    stroke.erase();
+                }
+            });
+    }
+
     fn update_stylus_from_mouse<S: StrokeBackend>(
         &mut self,
         config: &Config,
@@ -410,6 +473,7 @@ impl<C: CoordinateSystem> Ui<C> {
 
             (S::PenErase, E::PenMove(touch)) => {
                 self.update_stylus_from_touch(config, sketch, touch);
+                self.erase_strokes(sketch);
                 S::PenErase
             }
 
@@ -446,6 +510,7 @@ impl<C: CoordinateSystem> Ui<C> {
             (S::MouseErase, E::MouseMove(location)) => {
                 self.input.handle_mouse_move(location);
                 self.update_stylus_from_mouse(config, sketch, TouchPhase::Move);
+                self.erase_strokes(sketch);
                 S::MouseErase
             }
 

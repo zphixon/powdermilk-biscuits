@@ -182,23 +182,27 @@ where
         };
     }
 
-    pub fn update_visible(&mut self, top_left: StrokePos, bottom_right: StrokePos) {
+    pub fn aabb(&self, top_left: StrokePos, bottom_right: StrokePos) -> bool {
         let screen_top_left = top_left;
         let screen_bottom_right = bottom_right;
 
-        let left = self.top_left.x;
-        let right = self.bottom_right.x;
-        let top = self.top_left.y;
-        let bottom = self.bottom_right.y;
-        let screen_left = screen_top_left.x;
-        let screen_right = screen_bottom_right.x;
-        let screen_top = screen_top_left.y;
-        let screen_bottom = screen_bottom_right.y;
+        let this_left = self.top_left.x;
+        let this_right = self.bottom_right.x;
+        let this_top = self.top_left.y;
+        let this_bottom = self.bottom_right.y;
+        let other_left = screen_top_left.x;
+        let other_right = screen_bottom_right.x;
+        let other_top = screen_top_left.y;
+        let other_bottom = screen_bottom_right.y;
 
-        self.visible = left <= screen_right
-            && right >= screen_left
-            && bottom <= screen_top
-            && top >= screen_bottom;
+        this_left <= other_right
+            && this_right >= other_left
+            && this_bottom <= other_top
+            && this_top >= other_bottom
+    }
+
+    pub fn update_visible(&mut self, top_left: StrokePos, bottom_right: StrokePos) {
+        self.visible = self.aabb(top_left, bottom_right);
     }
 
     pub fn add_point(
