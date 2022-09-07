@@ -6,33 +6,35 @@ use std::{
 
 pub trait PmbErrorExt {
     fn display(self);
+    fn display_with(self, header: String);
     fn problem(self, why: String) -> Self;
 }
 
 impl<T> PmbErrorExt for Result<T, PmbError> {
     fn display(self) {
-        match &self {
+        match self {
             Err(err) => {
-                let msg = err
-                    .why
-                    .iter()
-                    .fold(String::new(), |acc, why| format!("{why} {acc}"));
-                log::error!("{msg}");
-                crate::ui::error(&msg);
+                err.display();
             }
             _ => {}
         }
     }
 
-    fn problem(mut self, why: String) -> Self {
-        match self.as_mut().err().as_mut() {
-            Some(err) => {
-                err.why.push(why);
+    fn display_with(self, header: String) {
+        match self {
+            Err(err) => {
+                err.display_with(header);
             }
             _ => {}
         }
+    }
 
-        self
+    fn problem(self, why: String) -> Self {
+        if matches!(self, Err(_)) {
+            Err(self.err().unwrap().problem(why))
+        } else {
+            self
+        }
     }
 }
 
@@ -44,6 +46,15 @@ impl PmbErrorExt for PmbError {
             .rev()
             .fold(String::new(), |acc, why| format!("{why} {acc}"));
         crate::ui::error(&msg);
+    }
+
+    fn display_with(self, header: String) {
+        let msg = self
+            .why
+            .iter()
+            .rev()
+            .fold(String::new(), |acc, why| format!("{why} {acc}"));
+        crate::ui::error(&format!("{header}\n\n{msg}"));
     }
 
     fn problem(mut self, why: String) -> Self {
