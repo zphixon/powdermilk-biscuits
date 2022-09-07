@@ -50,23 +50,23 @@ pub fn circle_points(radius: f32, num_points: usize) -> Vec<f32> {
     points
 }
 
-#[derive(Default, Debug, Clone, Copy)]
-pub struct PixelPos {
-    pub x: f32,
-    pub y: f32,
+macro_rules! coordinate_types {
+    ($($Coord:ident),*) => {$(
+        #[derive(Default, Debug, Clone, Copy, derive_disk::Disk)]
+        pub struct $Coord {
+            pub x: f32,
+            pub y: f32,
+        }
+
+        impl Display for $Coord {
+            fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{:.02},{:.02}", self.x, self.y)
+            }
+        }
+    )*};
 }
 
-#[derive(Default, Debug, Clone, Copy, derive_disk::Disk)]
-pub struct StrokePoint {
-    pub x: f32,
-    pub y: f32,
-}
-
-#[derive(Default, Debug, Clone, Copy)]
-pub struct StrokePos {
-    pub x: f32,
-    pub y: f32,
-}
+coordinate_types!(PixelPos, StrokePoint, StrokePos);
 
 pub fn xform_point_to_pos(origin: StrokePoint, stroke: StrokePoint) -> StrokePos {
     let x = stroke.x - origin.x;
@@ -78,22 +78,4 @@ pub fn xform_pos_to_point(origin: StrokePoint, stroke: StrokePos) -> StrokePoint
     let x = stroke.x + origin.x;
     let y = stroke.y + origin.y;
     StrokePoint { x, y }
-}
-
-impl Display for PixelPos {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:.02},{:.02}", self.x, self.y)
-    }
-}
-
-impl Display for StrokePoint {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:.02},{:.02}", self.x, self.y)
-    }
-}
-
-impl Display for StrokePos {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:.02},{:.02}", self.x, self.y)
-    }
 }
