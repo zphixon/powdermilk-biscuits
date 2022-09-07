@@ -7,6 +7,20 @@ use crate::{
 };
 use std::path::{Path, PathBuf};
 
+const MSG: &str = r#"Significant internal changes have been made to Powdermilk Biscuits since you last opened this file. Although it has not been marked as significantly incompatible with the current version, you may still experience data loss by attempting to upgrade this file to the most recent version.
+
+No changes will be made to the file as is, and you will be prompted to save the file in a new location instead of overwriting it.
+
+Proceed?"#;
+
+fn prompt_migrate() -> rfd::MessageDialogResult {
+    rfd::MessageDialog::new()
+        .set_title("Migrate version")
+        .set_buttons(rfd::MessageButtons::YesNo)
+        .set_description(MSG)
+        .show()
+}
+
 pub fn error(text: &str) -> rfd::MessageDialogResult {
     rfd::MessageDialog::new()
         .set_title("Error")
@@ -113,6 +127,7 @@ impl<C: CoordinateSystem> Ui<C> {
     }
 
     fn start_stroke<S: StrokeBackend>(&mut self, sketch: &mut Sketch<S>) {
+        self.modified = true;
         let stroke_brush_size = self.brush_size as f32 / sketch.zoom;
         sketch
             .strokes
@@ -601,11 +616,9 @@ impl<C: CoordinateSystem> Ui<C> {
         }
 
         if self.input.combo_just_pressed(&config.save) {
-            println!("save");
-            // TODO
-            //self.save_file()
-            //    .problem(format!("Could not save file"))
-            //    .display();
+            save_file(self, sketch)
+                .problem(format!("Could not save file"))
+                .display();
         }
 
         if self.input.combo_just_pressed(&config.reset_view) {
@@ -622,23 +635,17 @@ impl<C: CoordinateSystem> Ui<C> {
         }
 
         if self.input.combo_just_pressed(&config.open) {
-            println!("open");
-            // TODO
-            //self.read_file(Option::<&str>::None)
-            //    .problem(format!("Could not open file"))
-            //    .display();
+            read_file(self, None::<&str>, sketch)
+                .problem(format!("Could not open file"))
+                .display();
         }
 
         if self.input.combo_just_pressed(&config.zoom_out) {
-            println!("zoom out");
-            // TODO
-            //sketch.change_zoom(-4.25, width, height);
+            sketch.update_zoom(sketch.zoom - 4.25, top_left, bottom_right);
         }
 
         if self.input.combo_just_pressed(&config.zoom_in) {
-            println!("zoom in");
-            // TODO
-            //self.change_zoom(4.25, width, height);
+            sketch.update_zoom(sketch.zoom + 4.25, top_left, bottom_right);
         }
 
         if self.input.just_pressed(config.pen_zoom) && self.prev_device == crate::Device::Pen {
@@ -698,149 +705,161 @@ impl<C: CoordinateSystem> Ui<C> {
 
         self.input.pump_key_state();
     }
+}
 
-    pub fn read_file<S: StrokeBackend>(
-        &mut self,
-        path: Option<impl AsRef<std::path::Path>>,
-        sketch: &mut Sketch<S>,
-    ) -> Result<(), PmbError> {
-        use crate::{
-            migrate,
-            migrate::{UpgradeType, Version},
-        };
+pub fn read_file<S: StrokeBackend, C: CoordinateSystem>(
+    ui: &mut Ui<C>,
+    path: Option<impl AsRef<std::path::Path>>,
+    sketch: &mut Sketch<S>,
+) -> Result<(), PmbError> {
+    use crate::{
+        migrate,
+        migrate::{UpgradeType, Version},
+    };
 
-        // if we are modified
-        if self.modified {
-            // ask to save first
-            if !self
-                .ask_to_save_then_save(
-                    sketch,
-                    "Would you like to save before opening another file?",
-                )
-                .problem(String::from("Could not save file"))?
-            {
-                return Ok(());
-            }
-        }
-
-        // if we were passed a path, use that, otherwise ask for one
-        log::info!("finding where to read from");
-        let path = match path
-            .map(|path| path.as_ref().to_path_buf())
-            .or_else(open_dialog)
+    // if we are modified
+    if ui.modified {
+        // ask to save first
+        if !ask_to_save_then_save(
+            ui,
+            sketch,
+            "Would you like to save before opening another file?",
+        )
+        .problem(String::from("Could not save file"))?
         {
-            Some(path) => path,
-            None => {
-                return Ok(());
-            }
-        };
-
-        // open the new file
-        let file = match std::fs::File::open(&path) {
-            Ok(file) => file,
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                log::info!("using a new file");
-                // if it doesn't exist don't try to read it
-                self.path = Some(path);
-                self.modified = true;
-                return Ok(());
-            }
-            Err(err) => Err(PmbError::from(err))?,
-        };
-
-        // read the new file
-        let disk: Sketch<S> = match crate::read(file).problem(format!("{}", path.display())) {
-            Ok(disk) => disk,
-
-            Err(PmbError {
-                kind: ErrorKind::VersionMismatch(version),
-                ..
-            }) => {
-                log::warn!("version mismatch, got {version} want {}", Version::CURRENT);
-
-                match Version::upgrade_type(version) {
-                    UpgradeType::Smooth => migrate::from(version, &path)?,
-
-                    UpgradeType::Rocky => match rfd::MessageDialog::new()
-                        .set_title("Migrate version")
-                        .set_buttons(rfd::MessageButtons::YesNo)
-                        .set_description("Significant internal changes have been made to Powdermilk Biscuits since you last opened this file. Although it has not been marked as significantly incompatible with the current version, you may still experience data loss by attempting to upgrade this file to the most recent version.\n\nNo changes will be made to the file as is, and you will be prompted to save the file in a new location instead of overwriting it.\n\nProceed?")
-                        .show()
-                    {
-                        rfd::MessageDialogResult::Yes => {
-                            let state = migrate::from(version, &path)?;
-
-                            let (top_left, bottom_right) = self.screen_rect(&state);
-                            sketch.update_from(state,top_left, bottom_right);
-                            self.modified = true;
-                            self.path = None;
-
-                            return Ok(());
-                        },
-
-                        _ => Sketch::default(),
-                    },
-
-                    UpgradeType::Incompatible => {
-                        return Err(PmbError::new(ErrorKind::IncompatibleVersion(version)));
-                    }
-                }
-            }
-
-            err => err?,
-        };
-
-        let (top_left, bottom_right) = self.screen_rect(&disk);
-        sketch.update_from(disk, top_left, bottom_right);
-
-        self.modified = false;
-        self.path = Some(path);
-
-        log::info!(
-            "success, read from {}",
-            self.path.as_ref().unwrap().display()
-        );
-
-        Ok(())
-    }
-
-    pub fn ask_to_save_then_save<S: StrokeBackend>(
-        &mut self,
-        sketch: &Sketch<S>,
-        why: &str,
-    ) -> Result<bool, PmbError> {
-        log::info!("asking to save {why:?}");
-        match (ask_to_save(why), self.path.as_ref()) {
-            // if they say yes and the file we're editing has a path
-            (rfd::MessageDialogResult::Yes, Some(path)) => {
-                log::info!("writing as {}", path.display());
-                crate::write(path, sketch).problem(format!("{}", path.display()))?;
-                self.modified = false;
-                Ok(true)
-            }
-
-            // they say yes and the file doesn't have a path yet
-            (rfd::MessageDialogResult::Yes, None) => {
-                log::info!("asking where to save");
-                // ask where to save it
-                match save_dialog("Save unnamed file", None) {
-                    Some(new_filename) => {
-                        log::info!("writing as {}", new_filename.display());
-                        // try write to disk
-                        crate::write(&new_filename, sketch)
-                            .problem(format!("{}", new_filename.display()))?;
-                        self.modified = false;
-                        Ok(true)
-                    }
-
-                    None => Ok(false),
-                }
-            }
-
-            // they say no, don't write changes
-            (rfd::MessageDialogResult::No, _) => Ok(true),
-
-            _ => Ok(false),
+            return Ok(());
         }
     }
+
+    // if we were passed a path, use that, otherwise ask for one
+    log::info!("finding where to read from");
+    let path = match path
+        .map(|path| path.as_ref().to_path_buf())
+        .or_else(open_dialog)
+    {
+        Some(path) => path,
+        None => {
+            return Ok(());
+        }
+    };
+
+    // open the new file
+    let file = match std::fs::File::open(&path) {
+        Ok(file) => file,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            log::info!("using a new file");
+            // if it doesn't exist don't try to read it
+            ui.path = Some(path);
+            ui.modified = true;
+            return Ok(());
+        }
+        Err(err) => Err(PmbError::from(err))?,
+    };
+
+    // read the new file
+    let disk: Sketch<S> = match crate::read(file).problem(format!("{}", path.display())) {
+        Ok(disk) => disk,
+
+        Err(PmbError {
+            kind: ErrorKind::VersionMismatch(version),
+            ..
+        }) => {
+            log::warn!("version mismatch, got {version} want {}", Version::CURRENT);
+
+            match Version::upgrade_type(version) {
+                UpgradeType::Smooth => migrate::from(version, &path)?,
+
+                UpgradeType::Rocky => match prompt_migrate() {
+                    rfd::MessageDialogResult::Yes => {
+                        let disk = migrate::from(version, &path)?;
+
+                        let (top_left, bottom_right) = ui.screen_rect(&disk);
+                        sketch.update_from(disk, top_left, bottom_right);
+
+                        ui.modified = true;
+                        // set to none so the user is prompted to save  elsewhere
+                        ui.path = None;
+
+                        return Ok(());
+                    }
+
+                    _ => Sketch::default(),
+                },
+
+                UpgradeType::Incompatible => {
+                    return Err(PmbError::new(ErrorKind::IncompatibleVersion(version)));
+                }
+            }
+        }
+
+        err => err?,
+    };
+
+    let (top_left, bottom_right) = ui.screen_rect(&disk);
+    sketch.update_from(disk, top_left, bottom_right);
+
+    ui.modified = false;
+    ui.path = Some(path);
+
+    log::info!("success, read from {}", ui.path.as_ref().unwrap().display());
+
+    Ok(())
+}
+
+pub fn ask_to_save_then_save<S: StrokeBackend, C: CoordinateSystem>(
+    ui: &mut Ui<C>,
+    sketch: &Sketch<S>,
+    why: &str,
+) -> Result<bool, PmbError> {
+    log::info!("asking to save {why:?}");
+    match (ask_to_save(why), ui.path.as_ref()) {
+        // if they say yes and the file we're editing has a path
+        (rfd::MessageDialogResult::Yes, Some(path)) => {
+            log::info!("writing as {}", path.display());
+            crate::write(path, sketch).problem(format!("{}", path.display()))?;
+            ui.modified = false;
+            Ok(true)
+        }
+
+        // they say yes and the file doesn't have a path yet
+        (rfd::MessageDialogResult::Yes, None) => {
+            log::info!("asking where to save");
+            // ask where to save it
+            match save_dialog("Save unnamed file", None) {
+                Some(new_filename) => {
+                    log::info!("writing as {}", new_filename.display());
+                    // try write to disk
+                    crate::write(&new_filename, sketch)
+                        .problem(format!("{}", new_filename.display()))?;
+                    ui.modified = false;
+                    Ok(true)
+                }
+
+                None => Ok(false),
+            }
+        }
+
+        // they say no, don't write changes
+        (rfd::MessageDialogResult::No, _) => Ok(true),
+
+        _ => Ok(false),
+    }
+}
+
+fn save_file<C: CoordinateSystem, S: StrokeBackend>(
+    ui: &mut Ui<C>,
+    sketch: &Sketch<S>,
+) -> Result<(), PmbError> {
+    if let Some(path) = ui.path.as_ref() {
+        crate::write(path, sketch).problem(format!("{}", path.display()))?;
+        ui.modified = false;
+    } else if let Some(path) = save_dialog("Save unnamed file", None) {
+        let problem = format!("{}", path.display());
+        ui.path = Some(path);
+        crate::write(ui.path.as_ref().unwrap(), sketch).problem(problem)?;
+        ui.modified = false;
+    }
+
+    log::info!("saved file as {}", ui.path.as_ref().unwrap().display());
+    Ok(())
 }

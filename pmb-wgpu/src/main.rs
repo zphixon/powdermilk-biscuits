@@ -66,9 +66,12 @@ async fn run() {
                 ..
             } => {
                 if ui.modified {
-                    if ui
-                        .ask_to_save_then_save(&sketch, "Would you like to save before exiting?")
-                        .unwrap_or(false)
+                    if powdermilk_biscuits::ui::ask_to_save_then_save(
+                        &mut ui,
+                        &sketch,
+                        "Would you like to save before exiting?",
+                    )
+                    .unwrap_or(false)
                     {
                         *flow = ControlFlow::Exit;
                     }

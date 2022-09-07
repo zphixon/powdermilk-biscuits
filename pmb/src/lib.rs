@@ -272,7 +272,7 @@ impl<S: StrokeBackend> Sketch<S> {
         log::info!("create State from {}", path.as_ref().display());
 
         let mut this = Sketch::new(grid());
-        ui.read_file(Some(path), &mut this)
+        ui::read_file(ui, Some(path), &mut this)
             .problem(String::from("Could not open file"))
             .display();
 
