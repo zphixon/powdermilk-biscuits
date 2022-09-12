@@ -30,7 +30,6 @@ derive_pmb_loop::pmb_loop!(
     mouse_button_translation: glutin_to_pmb_mouse_button,
     key_state_translation: glutin_to_pmb_key_state,
     touch_translation: glutin_to_pmb_touch,
-
     window: {context.window()},
 
     bindings:
@@ -61,8 +60,7 @@ derive_pmb_loop::pmb_loop!(
         pen_cursor_pen_down = no_init
 
         cursor_vao = no_init
-        cursor_buffer = no_init
-    ;
+        cursor_buffer = no_init;
 
     graphics_setup:
         _nada = {unsafe {
@@ -127,8 +125,7 @@ derive_pmb_loop::pmb_loop!(
             gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, bytes, glow::STATIC_DRAW);
             gl.enable_vertex_attrib_array(0);
             gl.vertex_attrib_pointer_f32(0, 2, glow::FLOAT, false, 2 * float_size as i32, 0);
-        }}
-    ;
+        }};
 
     resize: {
         size = new_size;

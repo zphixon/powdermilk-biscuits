@@ -27,17 +27,20 @@ derive_pmb_loop::pmb_loop!(
     mouse_button_translation: winit_to_pmb_mouse_button,
     key_state_translation: winit_to_pmb_key_state,
     touch_translation: winit_to_pmb_touch,
+    window: {&window},
+
     bindings:
         window = {
             builder.build(&ev).unwrap()
         };
+
     graphics_setup:
         graphics = mut {
             let mut graphics = futures::executor::block_on(pmb_wgpu::Graphics::new(&window));
             graphics.buffer_all_strokes(&mut sketch);
             graphics
         };
-    window: {&window},
+
     resize: {
         size = new_size;
         ui.resize(new_size.width, new_size.height, &mut sketch);
@@ -45,6 +48,7 @@ derive_pmb_loop::pmb_loop!(
         window.request_redraw();
         config.resize_window(new_size.width, new_size.height);
     },
+
     render: {
         match graphics.render(&mut sketch, &ui, size, cursor_visible) {
             Err(SurfaceError::Lost) => graphics.resize(graphics.size),
