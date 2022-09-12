@@ -315,6 +315,16 @@ impl Config {
             _ => Tool::Pan,
         }
     }
+
+    pub fn resize_window(&mut self, width: u32, height: u32) {
+        self.window_start_width.replace(width);
+        self.window_start_height.replace(height);
+    }
+
+    pub fn move_window(&mut self, x: i32, y: i32) {
+        self.window_start_x.replace(x);
+        self.window_start_y.replace(y);
+    }
 }
 
 #[derive(derive_disk::Disk)]

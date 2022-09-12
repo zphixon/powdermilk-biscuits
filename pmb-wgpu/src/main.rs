@@ -56,6 +56,11 @@ async fn run() {
     let mut size = window.inner_size();
     let mut cursor_visible = true;
 
+    if let Ok(pos) = window.outer_position() {
+        config.move_window(pos.x, pos.y);
+    }
+    config.resize_window(size.width, size.height);
+
     ev.run(move |event, _, flow| {
         *flow = ControlFlow::Wait;
 
@@ -270,8 +275,7 @@ async fn run() {
                 event: WindowEvent::Moved(location),
                 ..
             } => {
-                config.window_start_x.replace(location.x);
-                config.window_start_y.replace(location.y);
+                config.move_window(location.x, location.y);
             }
 
             WinitEvent::WindowEvent {
@@ -287,8 +291,7 @@ async fn run() {
                 ui.resize(new_size.width, new_size.height, &mut sketch);
                 graphics.resize(new_size);
                 window.request_redraw();
-                config.window_start_width.replace(new_size.width);
-                config.window_start_height.replace(new_size.height);
+                config.resize_window(new_size.width, new_size.height);
             }
 
             WinitEvent::MainEventsCleared => {

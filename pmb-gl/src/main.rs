@@ -143,11 +143,9 @@ fn main() {
     let mut size = context.window().inner_size();
 
     if let Ok(pos) = context.window().outer_position() {
-        config.window_start_x.replace(pos.x);
-        config.window_start_y.replace(pos.y);
+        config.move_window(pos.x, pos.y);
     }
-    config.window_start_width.replace(width);
-    config.window_start_height.replace(height);
+    config.resize_window(width, height);
 
     ev.run(move |event, _, flow| {
         *flow = ControlFlow::Wait;
@@ -359,8 +357,7 @@ fn main() {
                 event: WindowEvent::Moved(location),
                 ..
             } => {
-                config.window_start_x.replace(location.x);
-                config.window_start_y.replace(location.y);
+                config.move_window(location.x, location.y);
             }
 
             GlutinEvent::WindowEvent {
@@ -374,8 +371,7 @@ fn main() {
                     gl.viewport(0, 0, new_size.width as i32, new_size.height as i32);
                 }
                 window.request_redraw();
-                config.window_start_width.replace(new_size.width);
-                config.window_start_height.replace(new_size.height);
+                config.resize_window(new_size.width, new_size.height);
             }
 
             GlutinEvent::MainEventsCleared => match (ui.path.as_ref(), ui.modified) {
