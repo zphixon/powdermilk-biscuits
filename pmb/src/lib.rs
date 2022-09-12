@@ -252,12 +252,14 @@ impl Config {
         }
     }
 
+    #[cfg(not(feature = "pmb-release"))]
+    fn path() -> &'static str {
+        concat!(env!("CARGO_MANIFEST_DIR"), "/../config.ron")
+    }
+
     // TODO registry/gsettings or something, this is dumb
     pub fn from_disk() -> Config {
-        #[cfg(not(feature = "pmb-release"))]
-        let path = "config.ron";
-
-        let file = match std::fs::read_to_string(path) {
+        let file = match std::fs::read_to_string(Self::path()) {
             Ok(contents) => contents,
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
                 return Config::default();
@@ -283,9 +285,6 @@ impl Config {
             return;
         }
 
-        #[cfg(not(feature = "pmb-release"))]
-        let path = "config.ron";
-
         let contents = ron::ser::to_string_pretty(
             self,
             ron::ser::PrettyConfig::new()
@@ -298,7 +297,7 @@ impl Config {
         let contents =
             format!("// this file generated automatically.\n// do not edit while pmb is running!!\n{contents}");
 
-        match std::fs::write(path, contents) {
+        match std::fs::write(Self::path(), contents) {
             Err(err) => {
                 PmbError::from(err).display_with(String::from("Couldn't read config file"));
             }
