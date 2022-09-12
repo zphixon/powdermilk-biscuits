@@ -15,6 +15,7 @@ glam = { version = '0.21.2', features = ['bytemuck'] }
 wgpu = '0.13.1'
 futures = '0.3.21'
 powdermilk-biscuits = { path = '../pmb' }
+derive-pmb-loop = { path = '../derive-pmb-loop' }
 smaa = '0.7.0'
 
 [target.'cfg(windows)'.dependencies.winit]
