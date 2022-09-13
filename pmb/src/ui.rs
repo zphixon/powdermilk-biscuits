@@ -819,7 +819,7 @@ pub fn read_file<S: StrokeBackend, C: CoordinateSystem>(
     };
 
     // read the new file
-    let disk: Sketch<S> = match crate::read(file).problem(format!("{}", path.display())) {
+    let disk: Sketch<S> = match migrate::read(file).problem(format!("{}", path.display())) {
         Ok(disk) => disk,
 
         Err(PmbError {
@@ -883,12 +883,14 @@ pub fn ask_to_save_then_save<S: StrokeBackend, C: CoordinateSystem>(
     sketch: &Sketch<S>,
     why: &str,
 ) -> Result<bool, PmbError> {
+    use crate::migrate;
+
     log::info!("asking to save {why:?}");
     match (ask_to_save(why), ui.path.as_ref()) {
         // if they say yes and the file we're editing has a path
         (rfd::MessageDialogResult::Yes, Some(path)) => {
             log::info!("writing as {}", path.display());
-            crate::write(path, sketch).problem(format!("{}", path.display()))?;
+            migrate::write(path, sketch).problem(format!("{}", path.display()))?;
             ui.modified = false;
             Ok(true)
         }
@@ -901,7 +903,7 @@ pub fn ask_to_save_then_save<S: StrokeBackend, C: CoordinateSystem>(
                 Some(new_filename) => {
                     log::info!("writing as {}", new_filename.display());
                     // try write to disk
-                    crate::write(&new_filename, sketch)
+                    migrate::write(&new_filename, sketch)
                         .problem(format!("{}", new_filename.display()))?;
                     ui.modified = false;
                     Ok(true)
@@ -922,13 +924,15 @@ fn save_file<C: CoordinateSystem, S: StrokeBackend>(
     ui: &mut Ui<C>,
     sketch: &Sketch<S>,
 ) -> Result<(), PmbError> {
+    use crate::migrate;
+
     if let Some(path) = ui.path.as_ref() {
-        crate::write(path, sketch).problem(format!("{}", path.display()))?;
+        migrate::write(path, sketch).problem(format!("{}", path.display()))?;
         ui.modified = false;
     } else if let Some(path) = save_dialog("Save unnamed file", None) {
         let problem = format!("{}", path.display());
         ui.path = Some(path);
-        crate::write(ui.path.as_ref().unwrap(), sketch).problem(problem)?;
+        migrate::write(ui.path.as_ref().unwrap(), sketch).problem(problem)?;
         ui.modified = false;
     }
 

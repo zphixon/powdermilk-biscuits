@@ -10,16 +10,13 @@ pub extern crate lyon;
 pub extern crate rand;
 
 use crate::{
-    error::{ErrorKind, PmbError, PmbErrorExt},
+    error::{PmbError, PmbErrorExt},
     event::{Keycode, MouseButton},
     graphics::{Color, ColorExt, PixelPos, StrokePoint, StrokePos},
-    migrate::Version,
     stroke::{Stroke, StrokeElement},
 };
-use bincode::config::standard;
 use event::Combination;
 use lyon::lyon_tessellation::{StrokeOptions, StrokeTessellator};
-use std::io::{Read, Write};
 
 pub const TITLE_UNMODIFIED: &str = "hi! <3";
 pub const TITLE_MODIFIED: &str = "hi! <3 (modified)";
@@ -33,47 +30,6 @@ pub const DEFAULT_BRUSH: usize = 1;
 pub const MAX_BRUSH: usize = 20;
 pub const MIN_BRUSH: usize = 1;
 pub const BRUSH_DELTA: usize = 1;
-
-pub fn read<S: StrokeBackend>(mut reader: impl Read) -> Result<Sketch<S>, PmbError> {
-    let mut magic = [0; 3];
-    reader.read_exact(&mut magic)?;
-
-    if magic != PMB_MAGIC {
-        return Err(PmbError::new(ErrorKind::MissingHeader));
-    }
-
-    let mut version_bytes = [0; std::mem::size_of::<u64>()];
-    reader.read_exact(&mut version_bytes)?;
-    let version = migrate::Version(u64::from_le_bytes(version_bytes));
-
-    log::debug!("got version {}", version);
-    if version != Version::CURRENT {
-        return Err(PmbError::new(ErrorKind::VersionMismatch(version)));
-    }
-
-    log::debug!("inflating");
-    let mut deflate_reader = flate2::read::DeflateDecoder::new(reader);
-    Ok(bincode::decode_from_std_read(
-        &mut deflate_reader,
-        standard(),
-    )?)
-}
-
-pub fn write<S: StrokeBackend>(
-    path: impl AsRef<std::path::Path>,
-    state: &Sketch<S>,
-) -> Result<(), PmbError> {
-    log::debug!("truncating {} and deflating", path.as_ref().display());
-
-    let mut file = std::fs::File::create(&path)?;
-    file.write_all(&PMB_MAGIC)?;
-    file.write_all(&u64::to_le_bytes(Version::CURRENT.0))?;
-
-    let mut deflate_writer = flate2::write::DeflateEncoder::new(file, flate2::Compression::fast());
-    bincode::encode_into_std_write(state, &mut deflate_writer, standard())?;
-
-    Ok(())
-}
 
 pub trait CoordinateSystem: std::fmt::Debug + Default + Clone + Copy {
     type Ndc: std::fmt::Display + Clone + Copy;
