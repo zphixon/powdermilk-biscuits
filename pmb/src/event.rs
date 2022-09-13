@@ -298,6 +298,11 @@ impl InputHandler {
             .any(|key| self.just_pressed(*key))
             || combo.repeatable)
             && combo.keys.iter().all(|key| self.is_down(*key))
+            && self
+                .keys
+                .iter()
+                .filter(|(key, _)| !combo.keys.contains(key))
+                .all(|(key, _)| !self.is_down(*key))
     }
 
     pub(super) fn pump_key_state(&mut self) {
