@@ -49,13 +49,13 @@ where
     pub brush_size: f32,
     pub erased: bool,
 
-    #[disk_skip] pub visible: bool,
-    #[disk_skip] pub bottom_right: StrokePos,
-    #[disk_skip] pub top_left: StrokePos,
-    #[disk_skip] pub draw_tesselated: bool,
-    #[disk_skip] pub mesh: Mesh,
-    #[disk_skip] pub backend: Option<S>,
-    #[disk_skip] pub done: bool,
+    #[skip] pub visible: bool,
+    #[skip] pub bottom_right: StrokePos,
+    #[skip] pub top_left: StrokePos,
+    #[skip] pub draw_tesselated: bool,
+    #[skip] pub mesh: Mesh,
+    #[skip] pub backend: Option<S>,
+    #[skip] pub done: bool,
 }
 
 impl<S> Default for Stroke<S>

@@ -4,8 +4,8 @@
 //! but I wanted to be able to do `bincode::encode()/decode()` directly on [State] and friends, so
 //! now you (most likely future me) have (has) to live with this for the moment. Anyway. For the
 //! most part, changes can be made to types which are written to disk as long as they have a
-//! `#[disk_skip]` attribute. If you ever want to make a change involving a field without
-//! `#[disk_skip]`, you need to do these things:
+//! `#[skip]` attribute. If you ever want to make a change involving a field without
+//! `#[skip]`, you need to do these things:
 //!
 //! - Increment [Version::CURRENT]
 //! - Add a new module named v\[old\] where \[old\] is the previous version
