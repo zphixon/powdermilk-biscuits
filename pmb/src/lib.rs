@@ -17,6 +17,7 @@ use crate::{
 };
 use event::Combination;
 use lyon::lyon_tessellation::{StrokeOptions, StrokeTessellator};
+use slotmap::{DefaultKey, SlotMap};
 
 pub const TITLE_UNMODIFIED: &str = "hi! <3";
 pub const TITLE_MODIFIED: &str = "hi! <3 (modified)";
@@ -284,9 +285,19 @@ impl Config {
 
 #[derive(derive_disk::Disk)]
 pub struct Sketch<S: StrokeBackend> {
-    pub strokes: Vec<Stroke<S>>,
+    #[custom_codec(to_vec, map_from_vec)]
+    pub strokes: SlotMap<DefaultKey, Stroke<S>>,
     pub zoom: f32,
     pub origin: StrokePoint,
+}
+
+pub fn map_from_vec<S: StrokeBackend>(strokes: Vec<Stroke<S>>) -> SlotMap<DefaultKey, Stroke<S>> {
+    strokes
+        .into_iter()
+        .fold(SlotMap::default(), |mut map, stroke| {
+            map.insert(stroke);
+            map
+        })
 }
 
 impl<S: StrokeBackend> Default for Sketch<S> {
@@ -298,7 +309,7 @@ impl<S: StrokeBackend> Default for Sketch<S> {
 impl<S: StrokeBackend> Sketch<S> {
     pub fn new(strokes: Vec<Stroke<S>>) -> Self {
         Self {
-            strokes,
+            strokes: map_from_vec(strokes),
             zoom: crate::DEFAULT_ZOOM,
             origin: StrokePoint::default(),
         }
@@ -322,6 +333,19 @@ impl<S: StrokeBackend> Sketch<S> {
         this
     }
 
+    fn to_vec(&self) -> Vec<Stroke<S>> {
+        self.strokes
+            .values()
+            .map(|stroke| Stroke {
+                points: stroke.points.clone(),
+                color: stroke.color,
+                brush_size: stroke.brush_size,
+                erased: stroke.erased,
+                ..Default::default()
+            })
+            .collect()
+    }
+
     fn screen_rect<C: CoordinateSystem>(&self, width: u32, height: u32) -> (StrokePos, StrokePos) {
         let top_left = C::pixel_to_pos(width, height, self.zoom, self.origin, PixelPos::default());
 
@@ -341,13 +365,13 @@ impl<S: StrokeBackend> Sketch<S> {
 
     pub fn update_visible_strokes<C: CoordinateSystem>(&mut self, width: u32, height: u32) {
         let (top_left, bottom_right) = self.screen_rect::<C>(width, height);
-        for stroke in self.strokes.iter_mut() {
+        for stroke in self.strokes.values_mut() {
             stroke.update_visible(top_left, bottom_right);
         }
     }
 
     fn update_stroke_primitive(&mut self) {
-        for stroke in self.strokes.iter_mut() {
+        for stroke in self.strokes.values_mut() {
             stroke.draw_tesselated = stroke.brush_size * self.zoom > 1.0;
         }
     }
@@ -380,7 +404,7 @@ impl<S: StrokeBackend> Sketch<S> {
 
     pub fn visible_strokes(&self) -> impl Iterator<Item = &Stroke<S>> {
         self.strokes
-            .iter()
+            .values()
             .filter(|stroke| stroke.visible && !stroke.erased)
     }
 
@@ -419,7 +443,7 @@ impl<S: StrokeBackend> Sketch<S> {
         options: &StrokeOptions,
     ) {
         self.strokes
-            .iter_mut()
+            .values_mut()
             .flat_map(|stroke| {
                 stroke.rebuild_mesh(tessellator, options);
                 stroke.backend_mut()

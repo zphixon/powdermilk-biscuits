@@ -154,7 +154,7 @@ derive_pmb_loop::pmb_loop!(
 
         sketch
             .strokes
-            .iter_mut()
+            .values_mut()
             .filter(|stroke| stroke.is_dirty())
             .for_each(|stroke| {
                 log::debug!("replace stroke with {} points", stroke.points.len());

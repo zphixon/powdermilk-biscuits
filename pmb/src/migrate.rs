@@ -21,6 +21,7 @@ use crate::{
     error::{ErrorKind, PmbError},
     Sketch, StrokeBackend,
 };
+use bincode::config::standard;
 use std::{
     fmt::{Display, Formatter, Result as FmtResult},
     io::{Read, Write},
@@ -86,7 +87,7 @@ impl Display for Version {
 }
 
 impl Version {
-    pub const CURRENT: Self = Version(5);
+    pub const CURRENT: Self = Version(6);
 
     pub fn upgrade_type(from: Self) -> UpgradeType {
         use UpgradeType::*;
@@ -96,6 +97,7 @@ impl Version {
         }
 
         match from {
+            Version(5) => Smooth,
             Version(4) => Rocky,
             Version(3) => Smooth,
             Version(2) => Smooth,
@@ -122,30 +124,63 @@ where
     match version {
         version if version == Version::CURRENT => unreachable!(),
 
+        Version(5) => {
+            let v5: v5::SketchV5 = v5::read(file)?.into();
+
+            let state = Sketch {
+                strokes: crate::map_from_vec(
+                    v5.strokes
+                        .into_iter()
+                        .map(|v5| Stroke {
+                            points: {
+                                v5.points
+                                    .iter()
+                                    .map(|point| StrokeElement {
+                                        x: point.x,
+                                        y: point.y,
+                                        pressure: point.pressure,
+                                    })
+                                    .collect()
+                            },
+                            color: v5.color,
+                            brush_size: v5.brush_size,
+                            erased: v5.erased,
+                            ..Default::default()
+                        })
+                        .collect(),
+                ),
+                zoom: v5.zoom,
+                ..Default::default()
+            };
+
+            return Ok(state);
+        }
+
         Version(4) => {
             let v4: v4::StateV4 = v4::read(file)?.into();
 
             let state = Sketch {
-                strokes: v4
-                    .strokes
-                    .into_iter()
-                    .map(|v4| Stroke {
-                        points: {
-                            v4.points
-                                .iter()
-                                .map(|point| StrokeElement {
-                                    x: point.x,
-                                    y: point.y,
-                                    pressure: point.pressure,
-                                })
-                                .collect()
-                        },
-                        color: v4.color,
-                        brush_size: v4.brush_size,
-                        erased: v4.erased,
-                        ..Default::default()
-                    })
-                    .collect(),
+                strokes: crate::map_from_vec(
+                    v4.strokes
+                        .into_iter()
+                        .map(|v4| Stroke {
+                            points: {
+                                v4.points
+                                    .iter()
+                                    .map(|point| StrokeElement {
+                                        x: point.x,
+                                        y: point.y,
+                                        pressure: point.pressure,
+                                    })
+                                    .collect()
+                            },
+                            color: v4.color,
+                            brush_size: v4.brush_size,
+                            erased: v4.erased,
+                            ..Default::default()
+                        })
+                        .collect(),
+                ),
                 zoom: v4.zoom,
                 ..Default::default()
             };
@@ -157,27 +192,28 @@ where
             let v3: v3::StateV3 = v3::read(file)?.into();
 
             let state = Sketch {
-                strokes: v3
-                    .strokes
-                    .into_iter()
-                    .map(|v3| Stroke {
-                        points: {
-                            v3.points
-                                .iter()
-                                .zip(v3.pressure.iter())
-                                .map(|(point, &pressure)| StrokeElement {
-                                    x: point.x,
-                                    y: point.y,
-                                    pressure,
-                                })
-                                .collect()
-                        },
-                        color: v3.color,
-                        brush_size: v3.brush_size,
-                        erased: v3.erased,
-                        ..Default::default()
-                    })
-                    .collect(),
+                strokes: crate::map_from_vec(
+                    v3.strokes
+                        .into_iter()
+                        .map(|v3| Stroke {
+                            points: {
+                                v3.points
+                                    .iter()
+                                    .zip(v3.pressure.iter())
+                                    .map(|(point, &pressure)| StrokeElement {
+                                        x: point.x,
+                                        y: point.y,
+                                        pressure,
+                                    })
+                                    .collect()
+                            },
+                            color: v3.color,
+                            brush_size: v3.brush_size,
+                            erased: v3.erased,
+                            ..Default::default()
+                        })
+                        .collect(),
+                ),
                 zoom: v3.zoom,
                 ..Default::default()
             };
@@ -189,25 +225,26 @@ where
             let v2: v2::StateV2 = v2::read(file)?.into();
 
             let state = Sketch {
-                strokes: v2
-                    .strokes
-                    .into_iter()
-                    .map(|v2| Stroke {
-                        points: v2
-                            .points
-                            .iter()
-                            .map(|v2| StrokeElement {
-                                x: v2.x,
-                                y: v2.y,
-                                pressure: v2.pressure,
-                            })
-                            .collect(),
-                        color: v2.color,
-                        brush_size: v2.brush_size,
-                        erased: v2.erased,
-                        ..Default::default()
-                    })
-                    .collect(),
+                strokes: crate::map_from_vec(
+                    v2.strokes
+                        .into_iter()
+                        .map(|v2| Stroke {
+                            points: v2
+                                .points
+                                .iter()
+                                .map(|v2| StrokeElement {
+                                    x: v2.x,
+                                    y: v2.y,
+                                    pressure: v2.pressure,
+                                })
+                                .collect(),
+                            color: v2.color,
+                            brush_size: v2.brush_size,
+                            erased: v2.erased,
+                            ..Default::default()
+                        })
+                        .collect(),
+                ),
                 zoom: v2.zoom,
                 ..Default::default()
             };
@@ -219,25 +256,26 @@ where
             let v1: v1::StateV1 = v1::read(file)?.into();
 
             let state = Sketch {
-                strokes: v1
-                    .strokes
-                    .into_iter()
-                    .map(|v1| Stroke {
-                        points: v1
-                            .points
-                            .iter()
-                            .map(|v1| StrokeElement {
-                                x: v1.x,
-                                y: v1.y,
-                                pressure: v1.pressure,
-                            })
-                            .collect(),
-                        color: v1.color,
-                        brush_size: v1.brush_size,
-                        erased: v1.erased,
-                        ..Default::default()
-                    })
-                    .collect(),
+                strokes: crate::map_from_vec(
+                    v1.strokes
+                        .into_iter()
+                        .map(|v1| Stroke {
+                            points: v1
+                                .points
+                                .iter()
+                                .map(|v1| StrokeElement {
+                                    x: v1.x,
+                                    y: v1.y,
+                                    pressure: v1.pressure,
+                                })
+                                .collect(),
+                            color: v1.color,
+                            brush_size: v1.brush_size,
+                            erased: v1.erased,
+                            ..Default::default()
+                        })
+                        .collect(),
+                ),
                 zoom: v1.zoom,
                 ..Default::default()
             };
@@ -249,9 +287,65 @@ where
     }
 }
 
+mod v5 {
+    use super::*;
+
+    #[derive(bincode::Decode)]
+    pub struct StrokeElementV5 {
+        pub x: f32,
+        pub y: f32,
+        pub pressure: f32,
+    }
+
+    #[derive(bincode::Decode)]
+    pub struct SketchV5 {
+        pub strokes: Vec<StrokeV5>,
+        pub zoom: f32,
+        pub origin: StrokePointV5,
+    }
+
+    #[derive(bincode::Decode)]
+    pub struct StrokePointV5 {
+        pub x: f32,
+        pub y: f32,
+    }
+
+    #[derive(bincode::Decode)]
+    pub struct StrokeV5 {
+        pub points: Vec<StrokeElementV5>,
+        pub color: [u8; 3],
+        pub brush_size: f32,
+        pub erased: bool,
+    }
+
+    pub fn read(mut reader: impl Read) -> Result<SketchV5, PmbError> {
+        let mut magic = [0; 3];
+        reader.read_exact(&mut magic)?;
+
+        if magic != crate::PMB_MAGIC {
+            return Err(PmbError::new(ErrorKind::MissingHeader));
+        }
+
+        let mut version_bytes = [0; std::mem::size_of::<u64>()];
+        reader.read_exact(&mut version_bytes)?;
+        let version = Version(u64::from_le_bytes(version_bytes));
+
+        log::debug!("got version {}", version);
+        if version != Version(5) {
+            return Err(PmbError::new(ErrorKind::VersionMismatch(version)));
+        }
+
+        log::debug!("inflating");
+        let mut deflate_reader = flate2::read::DeflateDecoder::new(reader);
+        Ok(bincode::decode_from_std_read(
+            &mut deflate_reader,
+            bincode::config::standard(),
+        )?)
+    }
+}
+
 mod v4 {
     use super::*;
-    use bincode::config::standard;
 
     #[derive(bincode::Decode)]
     pub struct StrokeElementV4 {

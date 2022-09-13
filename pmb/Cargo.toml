@@ -18,3 +18,4 @@ bytemuck = { version = '*', features = ['derive'] }
 lyon = { git = 'https://github.com/zphixon/lyon', branch = 'new-euclid' }
 serde = { version = '1.0.144', features = ['derive'] }
 ron = '0.8.0'
+slotmap = '1.0.6'

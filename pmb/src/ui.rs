@@ -9,6 +9,7 @@ use lyon::{
     lyon_tessellation::{StrokeOptions, StrokeTessellator},
     path::{LineCap, LineJoin},
 };
+use slotmap::DefaultKey;
 use std::{
     marker::PhantomData,
     path::{Path, PathBuf},
@@ -66,6 +67,11 @@ pub fn open_dialog() -> Option<PathBuf> {
         .pick_file()
 }
 
+pub enum Action {
+    DrawStroke(DefaultKey),
+    EraseStroke(DefaultKey),
+}
+
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub enum UiState {
     #[default]
@@ -101,6 +107,7 @@ pub struct Ui<C: CoordinateSystem> {
     pub stylus: Stylus,
     pub brush_size: usize,
     pub active_tool: Tool,
+    pub undo_stack: Vec<Action>,
 
     pub width: u32,
     pub height: u32,
@@ -117,6 +124,7 @@ impl<C: CoordinateSystem> Ui<C> {
             stylus: Stylus::default(),
             prev_device: Device::Mouse,
             active_tool: Tool::Pen,
+            undo_stack: Vec::new(),
             brush_size: crate::DEFAULT_BRUSH,
             modified: false,
             path: None,
@@ -152,19 +160,28 @@ impl<C: CoordinateSystem> Ui<C> {
     fn start_stroke<S: StrokeBackend>(&mut self, sketch: &mut Sketch<S>) {
         self.modified = true;
         let stroke_brush_size = self.brush_size as f32 / sketch.zoom;
-        sketch
+        let key = sketch
             .strokes
-            .push(Stroke::new(rand::random(), stroke_brush_size, true));
+            .insert(Stroke::new(rand::random(), stroke_brush_size, true));
+        self.undo_stack.push(Action::DrawStroke(key));
     }
 
     fn continue_stroke<S: StrokeBackend>(&mut self, sketch: &mut Sketch<S>) {
-        let stroke = sketch.strokes.last_mut().unwrap();
-        stroke.add_point(&self.stylus, &mut self.tesselator, &self.stroke_options);
+        if let Action::DrawStroke(key) = self.undo_stack.last().expect("empty undo stack") {
+            let stroke = sketch.strokes.get_mut(*key).unwrap();
+            stroke.add_point(&self.stylus, &mut self.tesselator, &self.stroke_options);
+        } else {
+            panic!("last action not draw stroke in continue stroke");
+        }
     }
 
     fn end_stroke<S: StrokeBackend>(&mut self, sketch: &mut Sketch<S>) {
-        let stroke = sketch.strokes.last_mut().unwrap();
-        stroke.finish();
+        if let Action::DrawStroke(key) = self.undo_stack.last().expect("empty undo stack") {
+            let stroke = sketch.strokes.get_mut(*key).unwrap();
+            stroke.finish();
+        } else {
+            panic!("last action not draw stroke in end stroke");
+        }
     }
 
     fn erase_strokes<S: StrokeBackend>(&mut self, sketch: &mut Sketch<S>) {
@@ -201,12 +218,12 @@ impl<C: CoordinateSystem> Ui<C> {
         sketch
             .strokes
             .iter_mut()
-            .filter(|stroke| {
+            .filter(|(_, stroke)| {
                 stroke.visible
                     && !stroke.erased
                     && stroke.aabb(top_left_cursor, bottom_right_cursor)
             })
-            .for_each(|stroke| {
+            .for_each(|(key, stroke)| {
                 // TODO lyon_path::builder::Flattened?
                 if stroke.mesh.vertices.iter().any(|point| {
                     let point_pix = C::pos_to_pixel(
@@ -226,6 +243,7 @@ impl<C: CoordinateSystem> Ui<C> {
                         <= self.brush_size as f32
                 }) {
                     stroke.erase();
+                    self.undo_stack.push(Action::EraseStroke(key));
                     self.modified = true;
                 }
             });
@@ -650,7 +668,7 @@ impl<C: CoordinateSystem> Ui<C> {
                 .input
                 .combo_just_pressed(&config.debug_dirty_all_strokes)
         {
-            for stroke in sketch.strokes.iter() {
+            for stroke in sketch.strokes.values() {
                 println!("stroke");
                 for point in stroke.points().iter() {
                     println!("{},{},{}", point.x, point.y, point.pressure);

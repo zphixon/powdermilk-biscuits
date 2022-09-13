@@ -798,7 +798,7 @@ impl Graphics {
     }
 
     pub fn buffer_all_strokes(&mut self, sketch: &mut Sketch<WgpuStrokeBackend>) {
-        for stroke in sketch.strokes.iter_mut() {
+        for stroke in sketch.strokes.values_mut() {
             if stroke.is_dirty() {
                 self.buffer_stroke(stroke);
             }

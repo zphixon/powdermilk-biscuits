@@ -1648,6 +1648,7 @@ dependencies = [
  "rfd",
  "ron",
  "serde",
+ "slotmap",
 ]
 
 [[package]]
