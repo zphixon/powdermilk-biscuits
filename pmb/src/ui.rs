@@ -567,6 +567,11 @@ impl<C: CoordinateSystem> Ui<C> {
             (S::Ready, E::StartZoom) => S::PreZoom,
             (S::PreZoom, E::EndZoom) => S::Ready,
 
+            (S::PreZoom, E::PenMove(touch)) => {
+                self.update_stylus_from_touch(config, sketch, touch);
+                S::PreZoom
+            }
+
             (S::PenZoom, E::PenMove(touch)) => {
                 let prev = self.stylus.pos;
                 self.update_stylus_from_touch(config, sketch, touch);
