@@ -471,7 +471,7 @@ struct CursorRenderer {
 
 impl CursorRenderer {
     fn new(device: &Device, format: TextureFormat) -> Self {
-        let cursor_points = powdermilk_biscuits::graphics::circle_points(1., NUM_SEGMENTS);
+        let cursor_points = powdermilk_biscuits::graphics::cursor_geometry(1., NUM_SEGMENTS);
 
         let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("cursor points"),
@@ -572,7 +572,7 @@ impl CursorRenderer {
                 targets: &cts,
             }),
             primitive: PrimitiveState {
-                topology: PrimitiveTopology::LineStrip,
+                topology: PrimitiveTopology::LineList,
                 strip_index_format: None,
                 front_face: FrontFace::Ccw,
                 cull_mode: Some(Face::Back),
@@ -647,7 +647,7 @@ impl CursorRenderer {
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &self.bind_group, &[]);
         pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        pass.draw(0..(NUM_SEGMENTS + 1) as u32, 0..1);
+        pass.draw(0..(NUM_SEGMENTS * 2) as u32, 0..1);
     }
 }
 

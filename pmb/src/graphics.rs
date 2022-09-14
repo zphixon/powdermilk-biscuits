@@ -30,6 +30,29 @@ impl ColorExt for Color {
     }
 }
 
+/// disjoint set of lines. for use with gl_LINES or PrimitiveTopology::LineList
+pub fn cursor_geometry(radius: f32, num_points: usize) -> Vec<f32> {
+    let mut points = Vec::with_capacity(num_points + 2);
+
+    let dtheta = std::f32::consts::TAU / (num_points as f32);
+    let mut theta: f32 = 0.;
+
+    for _ in 0..=(num_points * 2) {
+        let (sin, cos) = theta.sin_cos();
+        points.push(cos * radius);
+        points.push(sin * radius);
+
+        let (sin, cos) = (theta + dtheta).sin_cos();
+        points.push(cos * radius);
+        points.push(sin * radius);
+
+        theta += dtheta;
+    }
+
+    points
+}
+
+/// continuous set of points on a circle
 pub fn circle_points(radius: f32, num_points: usize) -> Vec<f32> {
     let mut points = Vec::with_capacity(num_points + 2);
 

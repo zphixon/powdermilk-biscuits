@@ -118,7 +118,7 @@ derive_pmb_loop::pmb_loop!(
             gl.bind_buffer(glow::ARRAY_BUFFER, Some(cursor_buffer));
 
             let float_size = std::mem::size_of::<f32>();
-            let circle = powdermilk_biscuits::graphics::circle_points(1., 50);
+            let circle = powdermilk_biscuits::graphics::cursor_geometry(1., 50);
             let bytes =
                 std::slice::from_raw_parts(circle.as_ptr() as *const u8, circle.len() * float_size);
 
@@ -270,7 +270,7 @@ derive_pmb_loop::pmb_loop!(
                     &view.to_cols_array(),
                 );
 
-                gl.draw_arrays(glow::LINE_LOOP, 0, 50);
+                gl.draw_arrays(glow::LINES, 0, 50 * 2);
             }
         }
 
