@@ -136,6 +136,7 @@ where
 
     pub fn erase(&mut self) {
         self.erased = true;
+        self.visible = false;
     }
 
     pub fn backend(&self) -> Option<&S> {
