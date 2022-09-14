@@ -26,3 +26,5 @@ The build has visited the local mage and is no longer cursed. Just `git clone` a
 - Fully commit to either WGPU or OpenGL for rendering
 - Config system
   - Maybe more sophisticated device handling
+- Better architecture
+  - multithreaded or actors
