@@ -213,7 +213,7 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             ev.run(move |event, _, flow| {
                 *flow = ControlFlow::Wait;
 
-                log::trace!("{:?}", event);
+                log::trace!("{:?} {:?}", ui.state, event);
 
                 match event {
                     #event_enum_name::WindowEvent {
