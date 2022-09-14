@@ -20,7 +20,11 @@
   ),
   undo: (
     keys: [LControl, Z],
-    repeatable: false,
+    repeatable: true,
+  ),
+  redo: (
+    keys: [LControl, LShift, Z],
+    repeatable: true,
   ),
   save: (
     keys: [LControl, S],

@@ -67,9 +67,100 @@ pub fn open_dialog() -> Option<PathBuf> {
         .pick_file()
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Action {
     DrawStroke(DefaultKey),
     EraseStroke(DefaultKey),
+}
+
+#[derive(Debug)]
+pub struct UndoStack {
+    buffer: Vec<Action>,
+    cursor: usize,
+}
+
+impl UndoStack {
+    fn new() -> Self {
+        UndoStack {
+            buffer: Vec::new(),
+            cursor: 0,
+        }
+    }
+
+    fn last(&self) -> Option<Action> {
+        if self.cursor == 0 {
+            return None;
+        }
+
+        self.buffer.get(self.cursor - 1).copied()
+    }
+
+    fn push(&mut self, action: Action) {
+        if self.cursor == self.buffer.len() {
+            // [a, b, c, d]
+            //           ^
+            //           c=4
+            // [a, b, c, d, e]
+            self.buffer.push(action);
+            log::debug!("push buffer");
+        } else if 1 <= self.cursor && self.cursor < self.buffer.len() {
+            // [a, b, c, d]
+            //        ^
+            //        c=3
+            // [a, b, e]
+            let _old = self.buffer.split_off(self.cursor - 1);
+            self.buffer.push(action);
+            log::debug!("split off");
+        } else {
+            self.buffer = vec![action];
+        }
+
+        self.cursor = self.buffer.len();
+    }
+
+    fn undo(&mut self) -> Option<Action> {
+        let last = self.last();
+        if self.cursor > 0 {
+            self.cursor -= 1;
+        }
+        last
+    }
+
+    fn redo(&mut self) -> Option<Action> {
+        if self.cursor < self.buffer.len() {
+            // less equal?
+            self.cursor += 1;
+            self.last()
+        } else {
+            None
+        }
+    }
+}
+
+#[test]
+fn undo_stack() {
+    let mut sm = slotmap::SlotMap::new();
+    let mut stack = UndoStack::new();
+
+    let a1 = sm.insert(());
+    stack.push(Action::DrawStroke(a1));
+    assert_eq!(stack.last(), Some(Action::DrawStroke(a1)));
+
+    let a2 = sm.insert(());
+    stack.push(Action::DrawStroke(a2));
+    assert_eq!(stack.last(), Some(Action::DrawStroke(a2)));
+
+    let to_be_undone = stack.undo();
+    assert_eq!(to_be_undone, Some(Action::DrawStroke(a2)));
+    assert_eq!(stack.last(), Some(Action::DrawStroke(a1)));
+
+    let to_be_undone = stack.undo();
+    assert_eq!(to_be_undone, Some(Action::DrawStroke(a1)));
+    assert_eq!(stack.last(), None);
+
+    let to_be_redone = stack.redo();
+    assert_eq!(to_be_redone, Some(Action::DrawStroke(a1)));
+    assert_eq!(stack.last(), Some(Action::DrawStroke(a1)));
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
@@ -107,7 +198,7 @@ pub struct Ui<C: CoordinateSystem> {
     pub stylus: Stylus,
     pub brush_size: usize,
     pub active_tool: Tool,
-    pub undo_stack: Vec<Action>,
+    pub undo_stack: UndoStack,
 
     pub width: u32,
     pub height: u32,
@@ -124,7 +215,7 @@ impl<C: CoordinateSystem> Ui<C> {
             stylus: Stylus::default(),
             prev_device: Device::Mouse,
             active_tool: Tool::Pen,
-            undo_stack: Vec::new(),
+            undo_stack: UndoStack::new(),
             brush_size: crate::DEFAULT_BRUSH,
             modified: false,
             path: None,
@@ -168,7 +259,7 @@ impl<C: CoordinateSystem> Ui<C> {
 
     fn continue_stroke<S: StrokeBackend>(&mut self, sketch: &mut Sketch<S>) {
         if let Action::DrawStroke(key) = self.undo_stack.last().expect("empty undo stack") {
-            let stroke = sketch.strokes.get_mut(*key).unwrap();
+            let stroke = sketch.strokes.get_mut(key).unwrap();
             stroke.add_point(&self.stylus, &mut self.tesselator, &self.stroke_options);
         } else {
             panic!("last action not draw stroke in continue stroke");
@@ -177,7 +268,7 @@ impl<C: CoordinateSystem> Ui<C> {
 
     fn end_stroke<S: StrokeBackend>(&mut self, sketch: &mut Sketch<S>) {
         if let Action::DrawStroke(key) = self.undo_stack.last().expect("empty undo stack") {
-            let stroke = sketch.strokes.get_mut(*key).unwrap();
+            let stroke = sketch.strokes.get_mut(key).unwrap();
             stroke.finish();
         } else {
             panic!("last action not draw stroke in end stroke");
@@ -687,12 +778,29 @@ impl<C: CoordinateSystem> Ui<C> {
             println!("brush={}", self.brush_size);
             println!("zoom={:.02}", sketch.zoom);
             println!("origin={}", sketch.origin);
+            println!("undo_stack={:?}", self.undo_stack);
         }
 
         if self.input.combo_just_pressed(&config.undo) {
-            println!("undo");
-            // TODO
-            //self.undo_stroke();
+            match self.undo_stack.undo() {
+                Some(Action::DrawStroke(stroke)) => sketch.strokes[stroke].erase(),
+                Some(Action::EraseStroke(stroke)) => {
+                    sketch.strokes[stroke].erased = false;
+                    sketch.update_visible_strokes::<C>(_width, _height);
+                }
+                None => {}
+            }
+        }
+
+        if self.input.combo_just_pressed(&config.redo) {
+            match self.undo_stack.redo() {
+                Some(Action::DrawStroke(stroke)) => {
+                    sketch.strokes[stroke].erased = false;
+                    sketch.update_visible_strokes::<C>(_width, _height);
+                }
+                Some(Action::EraseStroke(stroke)) => sketch.strokes[stroke].erase(),
+                None => {}
+            }
         }
 
         if self.input.combo_just_pressed(&config.save) {
