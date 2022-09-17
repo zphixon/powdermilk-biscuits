@@ -477,6 +477,8 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
                     _ => {}
                 }
+
+                log::trace!("{:?}", flow);
             });
         }
     }.into()

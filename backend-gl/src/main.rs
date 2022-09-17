@@ -142,7 +142,6 @@ derive_loop::pmb_loop!(
                 let response = egui_glow.on_event(&event);
                 if response.repaint {
                     context.window().request_redraw();
-                    log::trace!("poll");
                     flow.set_poll();
                 }
 
@@ -162,14 +161,10 @@ derive_loop::pmb_loop!(
         });
 
         if redraw_after.is_zero() {
-            log::trace!("poll");
             flow.set_poll();
             context.window().request_redraw();
         } else if let Some(after) = std::time::Instant::now().checked_add(redraw_after) {
-            log::trace!("wait until {:?}", after);
             flow.set_wait_until(after);
-        } else {
-            log::trace!("wait");
         }
     },
 
