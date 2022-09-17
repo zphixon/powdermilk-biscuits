@@ -820,7 +820,6 @@ impl Graphics {
         egui_tris: &[egui::ClippedPrimitive],
         egui_textures: &egui::TexturesDelta,
         egui_painter: &mut egui_wgpu::Renderer,
-        clear_color: [f32; 3],
     ) -> Result<(), SurfaceError> {
         self.buffer_all_strokes(sketch);
 
@@ -838,7 +837,7 @@ impl Graphics {
                     &mut encoder,
                     sketch,
                     size,
-                    clear_color,
+                    ui.clear_color,
                 );
 
                 if !cursor_visible {

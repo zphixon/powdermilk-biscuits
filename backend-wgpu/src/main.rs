@@ -32,8 +32,7 @@ derive_loop::pmb_loop!(
     bindings:
         window = { builder.build(&ev).unwrap() }
         egui_winit = mut { egui_winit::State::new(&ev) }
-        egui_ctx = mut { egui::Context::default() }
-        clear_color = mut { [0., 0., 0.] };
+        egui_ctx = mut { egui::Context::default() };
 
     graphics_setup:
         graphics = mut {
@@ -72,13 +71,7 @@ derive_loop::pmb_loop!(
     },
 
     render: {
-        let egui_data = egui_ctx.run(egui_winit.take_egui_input(&window), |ctx| {
-            egui::SidePanel::left("side panel").show(ctx, |ui| {
-                ui.heading("Real Hot Item");
-                ui.color_edit_button_rgb(&mut clear_color);
-            });
-        });
-
+        let egui_data = egui_ctx.run(egui_winit.take_egui_input(&window), derive_loop::egui!());
         let egui_tris = egui_ctx.tessellate(egui_data.shapes);
 
         match graphics.render(
@@ -89,7 +82,6 @@ derive_loop::pmb_loop!(
             &egui_tris,
             &egui_data.textures_delta,
             &mut egui_painter,
-            clear_color,
         ) {
             Err(SurfaceError::Lost) => graphics.resize(graphics.size),
             Err(SurfaceError::OutOfMemory) => {

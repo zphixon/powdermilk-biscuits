@@ -15,10 +15,10 @@ The build has visited the local mage and is no longer cursed. Just `git clone` a
 
 ## Todo:
 
-- Any sort of GUI
-  - Undo system
+- Gui
   - Layers?
-  - Customization
+  - Modify all the ui state stuff
+  - Fix bug with mouse visibility
 - Good finger gestures
 - Stroke rendering revamp
   - Infinite scroll, chunks

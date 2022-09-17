@@ -231,6 +231,7 @@ pub struct Ui<C: CoordinateSystem> {
     pub height: u32,
     pub tesselator: StrokeTessellator,
     pub stroke_options: StrokeOptions,
+    pub clear_color: [f32; 3],
 
     coords: PhantomData<C>,
 }
@@ -255,6 +256,7 @@ impl<C: CoordinateSystem> Ui<C> {
                 .with_line_join(LineJoin::Round)
                 .with_tolerance(0.001)
                 .with_variable_line_width(0),
+            clear_color: [0., 0., 0.],
             coords: Default::default(),
         }
     }

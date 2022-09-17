@@ -53,8 +53,6 @@ derive_loop::pmb_loop!(
             egui_glow::EguiGlow::new(&ev, Arc::clone(&gl), None)
         }
 
-        clear_color = mut { [0., 0., 0.] }
-
         strokes_program = no_init
         pen_cursor_program = no_init
 
@@ -153,12 +151,7 @@ derive_loop::pmb_loop!(
             _ => {}
         }
 
-        let redraw_after = egui_glow.run(context.window(), |ctx| {
-            egui::SidePanel::left("side panel").show(ctx, |ui| {
-                ui.heading("Real Hot Item");
-                ui.color_edit_button_rgb(&mut clear_color);
-            });
-        });
+        let redraw_after = egui_glow.run(context.window(), derive_loop::egui!());
 
         if redraw_after.is_zero() {
             flow.set_poll();
@@ -190,7 +183,7 @@ derive_loop::pmb_loop!(
                 false,
                 &view.to_cols_array(),
             );
-            gl.clear_color(clear_color[0], clear_color[1], clear_color[2], 1.);
+            gl.clear_color(ui.clear_color[0], ui.clear_color[1], ui.clear_color[2], 1.);
             gl.clear(glow::COLOR_BUFFER_BIT);
         }
 
