@@ -173,6 +173,23 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     quote::quote! {
         fn #loop_name() {
+            if cfg!(unix) {
+                let var = std::env::var("WINIT_UNIX_BACKEND");
+                match var.as_ref().map(|s| s.as_str()) {
+                    Ok("x11") => {}
+                    Ok("wayland") => {
+                        let msg = "WINIT_UNIX_BACKEND=wayland is not recommended. Due to a bug in winit power consumption will suffer.";
+                        log::warn!("{}", msg);
+                        eprintln!("{}", msg);
+                    }
+                    _ => {
+                        let msg  = "Environment variable WINIT_UNIX_BACKEND=x11 is not set. If you're using Wayland power consumption may suffer.";
+                        log::warn!("{}", msg);
+                        eprintln!("{}", msg);
+                    }
+                }
+            }
+
             let mut config = Config::from_disk();
             let mut builder = WindowBuilder::new()
                 .with_maximized(config.window_maximized)
