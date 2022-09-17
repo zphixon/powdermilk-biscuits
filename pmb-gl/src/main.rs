@@ -64,6 +64,8 @@ derive_pmb_loop::pmb_loop!(
 
     graphics_setup:
         _nada = {unsafe {
+            gl.enable(glow::SRGB8_ALPHA8);
+            gl.enable(glow::FRAMEBUFFER_SRGB);
             gl.enable(glow::MULTISAMPLE);
             gl.enable(glow::VERTEX_PROGRAM_POINT_SIZE);
             gl.enable(glow::DEBUG_OUTPUT);

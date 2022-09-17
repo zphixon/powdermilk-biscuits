@@ -704,8 +704,8 @@ impl Graphics {
         log::debug!("setting up pipeline stuff");
         let formats = surface.get_supported_formats(&adapter);
 
-        let surface_format = if formats.contains(&TextureFormat::Rgba8Unorm) {
-            TextureFormat::Rgba8Unorm
+        let surface_format = if formats.contains(&TextureFormat::Rgba8UnormSrgb) {
+            TextureFormat::Rgba8UnormSrgb
         } else {
             formats[0]
         };
