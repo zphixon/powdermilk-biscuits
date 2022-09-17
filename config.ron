@@ -1,7 +1,7 @@
 // this file generated automatically.
 // do not edit while pmb is running!!
 (
-  use_mouse_for_pen: false,
+  use_mouse_for_pen: true,
   stylus_may_be_inverted: true,
   primary_button: Left,
   pan_button: Middle,
@@ -50,10 +50,10 @@
   tool_for_gesture_2: Pan,
   tool_for_gesture_3: Pan,
   tool_for_gesture_4: Pan,
-  window_start_x: Some(264),
-  window_start_y: Some(1320),
-  window_start_width: Some(1340),
-  window_start_height: Some(600),
+  window_start_x: Some(214),
+  window_start_y: Some(245),
+  window_start_width: Some(1367),
+  window_start_height: Some(504),
   window_maximized: false,
   debug_toggle_stylus_invertability: (
     keys: [I],

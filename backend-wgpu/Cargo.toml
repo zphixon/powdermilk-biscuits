@@ -17,6 +17,7 @@ futures = '0.3.21'
 powdermilk-biscuits = { path = '../pmb' }
 derive-loop = { path = '../derive-loop' }
 smaa = '0.7.0'
+egui-wgpu = { path = '../egui-wgpu' }
 
 [target.'cfg(windows)'.dependencies.winit]
 git = 'https://github.com/zphixon/winit'
