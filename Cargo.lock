@@ -643,7 +643,7 @@ checksum = "9ea835d29036a4087793836fa931b08837ad5e957da9e23886b29586fb9b6650"
 [[package]]
 name = "egui"
 version = "0.19.0"
-source = "git+https://github.com/zphixon/egui?branch=unadulterated#f5ffa39601ef3811c30edeb23d679362be99cb23"
+source = "git+https://github.com/zphixon/egui?branch=unadulterated#2ea76a75491ecf6c783fec72c492b601eefbb1c1"
 dependencies = [
  "ahash 0.8.0",
  "epaint",
@@ -654,7 +654,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.19.0"
-source = "git+https://github.com/zphixon/egui?branch=unadulterated#f5ffa39601ef3811c30edeb23d679362be99cb23"
+source = "git+https://github.com/zphixon/egui?branch=unadulterated#2ea76a75491ecf6c783fec72c492b601eefbb1c1"
 dependencies = [
  "bytemuck",
  "document-features",
@@ -667,7 +667,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.19.0"
-source = "git+https://github.com/zphixon/egui?branch=unadulterated#f5ffa39601ef3811c30edeb23d679362be99cb23"
+source = "git+https://github.com/zphixon/egui?branch=unadulterated#2ea76a75491ecf6c783fec72c492b601eefbb1c1"
 dependencies = [
  "arboard",
  "egui",
@@ -681,7 +681,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.19.0"
-source = "git+https://github.com/zphixon/egui?branch=unadulterated#f5ffa39601ef3811c30edeb23d679362be99cb23"
+source = "git+https://github.com/zphixon/egui?branch=unadulterated#2ea76a75491ecf6c783fec72c492b601eefbb1c1"
 dependencies = [
  "bytemuck",
  "egui",
@@ -696,7 +696,7 @@ dependencies = [
 [[package]]
 name = "emath"
 version = "0.19.0"
-source = "git+https://github.com/zphixon/egui?branch=unadulterated#f5ffa39601ef3811c30edeb23d679362be99cb23"
+source = "git+https://github.com/zphixon/egui?branch=unadulterated#2ea76a75491ecf6c783fec72c492b601eefbb1c1"
 dependencies = [
  "bytemuck",
 ]
@@ -717,7 +717,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.19.0"
-source = "git+https://github.com/zphixon/egui?branch=unadulterated#f5ffa39601ef3811c30edeb23d679362be99cb23"
+source = "git+https://github.com/zphixon/egui?branch=unadulterated#2ea76a75491ecf6c783fec72c492b601eefbb1c1"
 dependencies = [
  "ab_glyph",
  "ahash 0.8.0",
@@ -1004,7 +1004,7 @@ dependencies = [
 [[package]]
 name = "glutin"
 version = "0.28.0"
-source = "git+https://github.com/zphixon/glutin?branch=my-winit#4a78efa6d5018282206f849c0ce81a893fe74dac"
+source = "git+https://github.com/zphixon/glutin?branch=my-winit#8c71a8eb1dcaee924c3f8a0d7702c5c5fcc09f21"
 dependencies = [
  "cgl",
  "cocoa",
@@ -1029,7 +1029,7 @@ dependencies = [
 [[package]]
 name = "glutin_egl_sys"
 version = "0.1.5"
-source = "git+https://github.com/zphixon/glutin?branch=my-winit#4a78efa6d5018282206f849c0ce81a893fe74dac"
+source = "git+https://github.com/zphixon/glutin?branch=my-winit#8c71a8eb1dcaee924c3f8a0d7702c5c5fcc09f21"
 dependencies = [
  "gl_generator",
  "winapi",
@@ -1038,7 +1038,7 @@ dependencies = [
 [[package]]
 name = "glutin_gles2_sys"
 version = "0.1.5"
-source = "git+https://github.com/zphixon/glutin?branch=my-winit#4a78efa6d5018282206f849c0ce81a893fe74dac"
+source = "git+https://github.com/zphixon/glutin?branch=my-winit#8c71a8eb1dcaee924c3f8a0d7702c5c5fcc09f21"
 dependencies = [
  "gl_generator",
  "objc",
@@ -1047,7 +1047,7 @@ dependencies = [
 [[package]]
 name = "glutin_glx_sys"
 version = "0.1.7"
-source = "git+https://github.com/zphixon/glutin?branch=my-winit#4a78efa6d5018282206f849c0ce81a893fe74dac"
+source = "git+https://github.com/zphixon/glutin?branch=my-winit#8c71a8eb1dcaee924c3f8a0d7702c5c5fcc09f21"
 dependencies = [
  "gl_generator",
  "x11-dl",
@@ -1056,7 +1056,7 @@ dependencies = [
 [[package]]
 name = "glutin_wgl_sys"
 version = "0.1.5"
-source = "git+https://github.com/zphixon/glutin?branch=my-winit#4a78efa6d5018282206f849c0ce81a893fe74dac"
+source = "git+https://github.com/zphixon/glutin?branch=my-winit#8c71a8eb1dcaee924c3f8a0d7702c5c5fcc09f21"
 dependencies = [
  "gl_generator",
 ]
