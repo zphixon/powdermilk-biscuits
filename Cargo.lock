@@ -643,7 +643,7 @@ checksum = "9ea835d29036a4087793836fa931b08837ad5e957da9e23886b29586fb9b6650"
 [[package]]
 name = "egui"
 version = "0.19.0"
-source = "git+https://github.com/zphixon/egui?branch=my-winit#2dc30b97af8e021ce496bbc1b072e80e4a447fc0"
+source = "git+https://github.com/zphixon/egui?branch=unadulterated#f5ffa39601ef3811c30edeb23d679362be99cb23"
 dependencies = [
  "ahash 0.8.0",
  "epaint",
@@ -654,22 +654,20 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.19.0"
-source = "git+https://github.com/zphixon/egui?branch=my-winit#2dc30b97af8e021ce496bbc1b072e80e4a447fc0"
+source = "git+https://github.com/zphixon/egui?branch=unadulterated#f5ffa39601ef3811c30edeb23d679362be99cb23"
 dependencies = [
  "bytemuck",
  "document-features",
  "egui",
- "pollster",
  "tracing",
  "type-map",
  "wgpu",
- "winit",
 ]
 
 [[package]]
 name = "egui-winit"
 version = "0.19.0"
-source = "git+https://github.com/zphixon/egui?branch=my-winit#2dc30b97af8e021ce496bbc1b072e80e4a447fc0"
+source = "git+https://github.com/zphixon/egui?branch=unadulterated#f5ffa39601ef3811c30edeb23d679362be99cb23"
 dependencies = [
  "arboard",
  "egui",
@@ -683,7 +681,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.19.0"
-source = "git+https://github.com/zphixon/egui?branch=my-winit#2dc30b97af8e021ce496bbc1b072e80e4a447fc0"
+source = "git+https://github.com/zphixon/egui?branch=unadulterated#f5ffa39601ef3811c30edeb23d679362be99cb23"
 dependencies = [
  "bytemuck",
  "egui",
@@ -698,7 +696,7 @@ dependencies = [
 [[package]]
 name = "emath"
 version = "0.19.0"
-source = "git+https://github.com/zphixon/egui?branch=my-winit#2dc30b97af8e021ce496bbc1b072e80e4a447fc0"
+source = "git+https://github.com/zphixon/egui?branch=unadulterated#f5ffa39601ef3811c30edeb23d679362be99cb23"
 dependencies = [
  "bytemuck",
 ]
@@ -719,7 +717,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.19.0"
-source = "git+https://github.com/zphixon/egui?branch=my-winit#2dc30b97af8e021ce496bbc1b072e80e4a447fc0"
+source = "git+https://github.com/zphixon/egui?branch=unadulterated#f5ffa39601ef3811c30edeb23d679362be99cb23"
 dependencies = [
  "ab_glyph",
  "ahash 0.8.0",
@@ -1823,12 +1821,6 @@ dependencies = [
  "flate2",
  "miniz_oxide",
 ]
-
-[[package]]
-name = "pollster"
-version = "0.2.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5da3b0203fd7ee5720aa0b5e790b591aa5d3f41c3ed2c34a3a393382198af2f7"
 
 [[package]]
 name = "powdermilk-biscuits"

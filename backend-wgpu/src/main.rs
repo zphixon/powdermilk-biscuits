@@ -42,9 +42,7 @@ derive_loop::pmb_loop!(
             graphics
         }
         egui_painter = mut {
-            let mut painter = egui_wgpu::winit::Painter::new();
-            painter.set_window(&graphics.device, graphics.surface_format);
-            painter
+            egui_wgpu::Renderer::new(&graphics.device, graphics.surface_format, 1, 0)
         };
 
     per_event: {

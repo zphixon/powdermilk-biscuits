@@ -21,17 +21,17 @@ smaa = '0.7.0'
 
 [dependencies.egui]
 git = 'https://github.com/zphixon/egui'
-branch = 'my-winit'
+branch = 'unadulterated'
 package = 'egui'
 
 [dependencies.egui-winit]
 git = 'https://github.com/zphixon/egui'
-branch = 'my-winit'
+branch = 'unadulterated'
 package = 'egui-winit'
 
 [dependencies.egui-wgpu]
 git = 'https://github.com/zphixon/egui'
-branch = 'my-winit'
+branch = 'unadulterated'
 package = 'egui-wgpu'
 features = ['document-features']
 

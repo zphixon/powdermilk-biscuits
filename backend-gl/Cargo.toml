@@ -19,13 +19,13 @@ derive-loop = { path = '../derive-loop' }
 
 [dependencies.egui_glow]
 git = 'https://github.com/zphixon/egui'
-branch = 'my-winit'
+branch = 'unadulterated'
 package = 'egui_glow'
 features = [ 'winit' ]
 
 [dependencies.egui]
 git = 'https://github.com/zphixon/egui'
-branch = 'my-winit'
+branch = 'unadulterated'
 package = 'egui'
 
 [target.'cfg(windows)'.dependencies.glutin]

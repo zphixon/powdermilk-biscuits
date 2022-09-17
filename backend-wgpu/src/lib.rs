@@ -819,7 +819,7 @@ impl Graphics {
         cursor_visible: bool,
         egui_tris: &[egui::ClippedPrimitive],
         egui_textures: &egui::TexturesDelta,
-        egui_painter: &mut egui_wgpu::winit::Painter,
+        egui_painter: &mut egui_wgpu::Renderer,
         clear_color: [f32; 3],
     ) -> Result<(), SurfaceError> {
         self.buffer_all_strokes(sketch);
@@ -841,18 +841,6 @@ impl Graphics {
                     clear_color,
                 );
 
-                egui_painter.paint_and_update_textures(
-                    1.,
-                    egui_tris,
-                    egui_textures,
-                    &self.device,
-                    &mut encoder,
-                    &self.queue,
-                    size.width,
-                    size.height,
-                    $frame,
-                );
-
                 if !cursor_visible {
                     self.cursor_renderer.render(
                         &self.queue,
@@ -862,6 +850,19 @@ impl Graphics {
                         sketch.zoom,
                         size,
                     );
+                }
+
+                for (id, image) in &egui_textures.set {
+                    egui_painter.update_texture(&self.device, &self.queue, *id, image);
+                }
+                let sd = egui_wgpu::renderer::ScreenDescriptor {
+                    size_in_pixels: [size.width, size.height],
+                    pixels_per_point: 1.,
+                };
+                egui_painter.update_buffers(&self.device, &self.queue, egui_tris, &sd);
+                egui_painter.render(&mut encoder, $frame, egui_tris, &sd, None);
+                for id in &egui_textures.free {
+                    egui_painter.free_texture(id);
                 }
 
                 self.queue.submit(Some(encoder.finish()));
