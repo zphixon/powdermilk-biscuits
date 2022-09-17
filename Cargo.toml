@@ -4,7 +4,6 @@ members = [
     'pmb',
     'backend-gl',
     'backend-wgpu',
-    'egui-wgpu',
     'derive-loop',
     'derive-disk',
 ]
