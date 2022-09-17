@@ -17,6 +17,7 @@ use powdermilk_biscuits::{
     ui::Ui,
     Config, Device, Sketch, Tool,
 };
+use std::sync::Arc;
 
 derive_pmb_loop::pmb_loop!(
     loop_name: pmb_loop,
@@ -44,9 +45,15 @@ derive_pmb_loop::pmb_loop!(
                 .unwrap()
         }}
 
-        gl = { unsafe {
+        gl = { Arc::new(unsafe {
             Context::from_loader_function(|name| context.get_proc_address(name) as *const _)
-        }}
+        })}
+
+        egui_glow = mut {
+            egui_glow::EguiGlow::new(&ev, Arc::clone(&gl))
+        }
+
+        clear_color = mut { [0., 0., 0.] }
 
         strokes_program = no_init
         pen_cursor_program = no_init
@@ -129,6 +136,39 @@ derive_pmb_loop::pmb_loop!(
             gl.vertex_attrib_pointer_f32(0, 2, glow::FLOAT, false, 2 * float_size as i32, 0);
         }};
 
+    per_event: {
+        match &event {
+            GlutinEvent::WindowEvent { event, .. } => {
+                let response = egui_glow.on_event(&event);
+                if response.repaint {
+                    context.window().request_redraw();
+                    flow.set_poll();
+                }
+                if response.consumed {
+                    return;
+                }
+            }
+
+            _ => {}
+        }
+
+        let redraw_after = egui_glow.run(context.window(), |ctx| {
+            egui::SidePanel::left("side panel").show(ctx, |ui| {
+                ui.heading("Real Hot Item");
+                ui.color_edit_button_rgb(&mut clear_color);
+            });
+        });
+
+        if redraw_after.is_zero() {
+            flow.set_poll();
+            context.window().request_redraw();
+        } else if let Some(after) = std::time::Instant::now().checked_add(redraw_after) {
+            flow.set_wait_until(after);
+        } else {
+            flow.set_wait();
+        }
+    },
+
     resize: {
         size = new_size;
         ui.resize(new_size.width, new_size.height, &mut sketch);
@@ -151,6 +191,7 @@ derive_pmb_loop::pmb_loop!(
                 false,
                 &view.to_cols_array(),
             );
+            gl.clear_color(clear_color[0], clear_color[1], clear_color[2], 1.);
             gl.clear(glow::COLOR_BUFFER_BIT);
         }
 
@@ -276,6 +317,7 @@ derive_pmb_loop::pmb_loop!(
             }
         }
 
+        egui_glow.paint(context.window());
         context.swap_buffers().unwrap();
     },
 );
