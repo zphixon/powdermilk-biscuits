@@ -230,6 +230,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d8c1fef690941d3e7788d328517591fecc684c084084702d6ff1641e993699a"
 
 [[package]]
+name = "block-sys"
+version = "0.1.0-beta.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0fa55741ee90902547802152aaf3f8e5248aab7e21468089560d4c8840561146"
+dependencies = [
+ "objc-sys",
+]
+
+[[package]]
+name = "block2"
+version = "0.2.0-alpha.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8dd9e63c1744f755c2f60332b88de39d341e5e86239014ad839bd71c106dec42"
+dependencies = [
+ "block-sys",
+ "objc2-encode",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -344,15 +363,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cmake"
-version = "0.1.48"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8ad8cef104ac57b68b89df3208164d228503abbdce70f6880ffa3d970e7443a"
-dependencies = [
- "cc",
-]
-
-[[package]]
 name = "cocoa"
 version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -363,7 +373,7 @@ dependencies = [
  "cocoa-foundation",
  "core-foundation",
  "core-graphics",
- "foreign-types 0.3.2",
+ "foreign-types",
  "libc",
  "objc",
 ]
@@ -378,7 +388,7 @@ dependencies = [
  "block",
  "core-foundation",
  "core-graphics-types",
- "foreign-types 0.3.2",
+ "foreign-types",
  "libc",
  "objc",
 ]
@@ -440,7 +450,7 @@ dependencies = [
  "bitflags",
  "core-foundation",
  "core-graphics-types",
- "foreign-types 0.3.2",
+ "foreign-types",
  "libc",
 ]
 
@@ -452,19 +462,7 @@ checksum = "3a68b68b3446082644c91ac778bf50cd4104bfb002b5a6a7c44cca5a2c70788b"
 dependencies = [
  "bitflags",
  "core-foundation",
- "foreign-types 0.3.2",
- "libc",
-]
-
-[[package]]
-name = "core-text"
-version = "19.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99d74ada66e07c1cefa18f8abfba765b486f250de2e4a999e5727fc0dd4b4a25"
-dependencies = [
- "core-foundation",
- "core-graphics",
- "foreign-types 0.3.2",
+ "foreign-types",
  "libc",
 ]
 
@@ -475,29 +473,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b540bd8bc810d3885c6ea91e2018302f68baba2129ab3e88f32389ee9370880d"
 dependencies = [
  "cfg-if",
-]
-
-[[package]]
-name = "crossfont"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f66b1c1979c4362323f03ab6bf7fb522902bfc418e0c37319ab347f9561d980f"
-dependencies = [
- "cocoa",
- "core-foundation",
- "core-foundation-sys",
- "core-graphics",
- "core-text",
- "dwrote",
- "foreign-types 0.5.0",
- "freetype-rs",
- "libc",
- "log",
- "objc",
- "once_cell",
- "pkg-config",
- "servo-fontconfig",
- "winapi",
 ]
 
 [[package]]
@@ -666,23 +641,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ea835d29036a4087793836fa931b08837ad5e957da9e23886b29586fb9b6650"
 
 [[package]]
-name = "dwrote"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "439a1c2ba5611ad3ed731280541d36d2e9c4ac5e7fb818a27b604bdc5a6aa65b"
-dependencies = [
- "lazy_static",
- "libc",
- "serde",
- "serde_derive",
- "winapi",
- "wio",
-]
-
-[[package]]
 name = "egui"
 version = "0.19.0"
-source = "git+https://github.com/zphixon/egui?branch=my-winit#8ce3c63128eda763f9eebe9fa5475f93c37bdb19"
+source = "git+https://github.com/zphixon/egui?branch=my-winit#2dc30b97af8e021ce496bbc1b072e80e4a447fc0"
 dependencies = [
  "ahash 0.8.0",
  "epaint",
@@ -701,7 +662,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.19.0"
-source = "git+https://github.com/zphixon/egui?branch=my-winit#8ce3c63128eda763f9eebe9fa5475f93c37bdb19"
+source = "git+https://github.com/zphixon/egui?branch=my-winit#2dc30b97af8e021ce496bbc1b072e80e4a447fc0"
 dependencies = [
  "bytemuck",
  "document-features",
@@ -716,7 +677,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.19.0"
-source = "git+https://github.com/zphixon/egui?branch=my-winit#8ce3c63128eda763f9eebe9fa5475f93c37bdb19"
+source = "git+https://github.com/zphixon/egui?branch=my-winit#2dc30b97af8e021ce496bbc1b072e80e4a447fc0"
 dependencies = [
  "arboard",
  "egui",
@@ -730,7 +691,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.19.0"
-source = "git+https://github.com/zphixon/egui?branch=my-winit#8ce3c63128eda763f9eebe9fa5475f93c37bdb19"
+source = "git+https://github.com/zphixon/egui?branch=my-winit#2dc30b97af8e021ce496bbc1b072e80e4a447fc0"
 dependencies = [
  "bytemuck",
  "egui",
@@ -745,7 +706,7 @@ dependencies = [
 [[package]]
 name = "emath"
 version = "0.19.0"
-source = "git+https://github.com/zphixon/egui?branch=my-winit#8ce3c63128eda763f9eebe9fa5475f93c37bdb19"
+source = "git+https://github.com/zphixon/egui?branch=my-winit#2dc30b97af8e021ce496bbc1b072e80e4a447fc0"
 dependencies = [
  "bytemuck",
 ]
@@ -766,7 +727,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.19.0"
-source = "git+https://github.com/zphixon/egui?branch=my-winit#8ce3c63128eda763f9eebe9fa5475f93c37bdb19"
+source = "git+https://github.com/zphixon/egui?branch=my-winit#2dc30b97af8e021ce496bbc1b072e80e4a447fc0"
 dependencies = [
  "ab_glyph",
  "ahash 0.8.0",
@@ -795,16 +756,6 @@ checksum = "b52c2ef4a78da0ba68fbe1fd920627411096d2ac478f7f4c9f3a54ba6705bade"
 dependencies = [
  "bytemuck",
  "num-traits",
-]
-
-[[package]]
-name = "expat-sys"
-version = "2.1.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "658f19728920138342f68408b7cf7644d90d4784353d8ebc32e7e8663dbe45fa"
-dependencies = [
- "cmake",
- "pkg-config",
 ]
 
 [[package]]
@@ -838,28 +789,7 @@ version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f6f339eb8adc052cd2ca78910fda869aefa38d22d5cb648e6485e4d3fc06f3b1"
 dependencies = [
- "foreign-types-shared 0.1.1",
-]
-
-[[package]]
-name = "foreign-types"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d737d9aa519fb7b749cbc3b962edcf310a8dd1f4b67c91c4f83975dbdd17d965"
-dependencies = [
- "foreign-types-macros",
- "foreign-types-shared 0.3.1",
-]
-
-[[package]]
-name = "foreign-types-macros"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8469d0d40519bc608ec6863f1cc88f3f1deee15913f2f3b3e573d81ed38cccc"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
+ "foreign-types-shared",
 ]
 
 [[package]]
@@ -869,40 +799,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
 
 [[package]]
-name = "foreign-types-shared"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa9a19cbb55df58761df49b23516a86d432839add4af60fc256da840f66ed35b"
-
-[[package]]
 name = "form_urlencoded"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a9c384f161156f5260c24a097c56119f9be8c798586aecc13afbcbe7b7e26bf8"
 dependencies = [
  "percent-encoding",
-]
-
-[[package]]
-name = "freetype-rs"
-version = "0.26.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74eadec9d0a5c28c54bb9882e54787275152a4e36ce206b45d7451384e5bf5fb"
-dependencies = [
- "bitflags",
- "freetype-sys",
- "libc",
-]
-
-[[package]]
-name = "freetype-sys"
-version = "0.13.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a37d4011c0cc628dfa766fcc195454f4b068d7afdc2adfd28861191d866e731a"
-dependencies = [
- "cmake",
- "libc",
- "pkg-config",
 ]
 
 [[package]]
@@ -1421,7 +1323,7 @@ dependencies = [
 [[package]]
 name = "lyon"
 version = "1.0.0"
-source = "git+https://github.com/zphixon/lyon?branch=new-euclid#7c6c4328b947d4fc8b94c6d668f8622d217ae16b"
+source = "git+https://github.com/zphixon/lyon?branch=new-euclid#cf78c2e079be2b9a6d5b4c177755965a65436dd7"
 dependencies = [
  "lyon_algorithms",
  "lyon_tessellation",
@@ -1430,7 +1332,7 @@ dependencies = [
 [[package]]
 name = "lyon_algorithms"
 version = "1.0.1"
-source = "git+https://github.com/zphixon/lyon?branch=new-euclid#7c6c4328b947d4fc8b94c6d668f8622d217ae16b"
+source = "git+https://github.com/zphixon/lyon?branch=new-euclid#cf78c2e079be2b9a6d5b4c177755965a65436dd7"
 dependencies = [
  "lyon_path",
 ]
@@ -1438,7 +1340,7 @@ dependencies = [
 [[package]]
 name = "lyon_geom"
 version = "1.0.1"
-source = "git+https://github.com/zphixon/lyon?branch=new-euclid#7c6c4328b947d4fc8b94c6d668f8622d217ae16b"
+source = "git+https://github.com/zphixon/lyon?branch=new-euclid#cf78c2e079be2b9a6d5b4c177755965a65436dd7"
 dependencies = [
  "arrayvec 0.7.2",
  "euclid",
@@ -1448,15 +1350,15 @@ dependencies = [
 [[package]]
 name = "lyon_path"
 version = "1.0.1"
-source = "git+https://github.com/zphixon/lyon?branch=new-euclid#7c6c4328b947d4fc8b94c6d668f8622d217ae16b"
+source = "git+https://github.com/zphixon/lyon?branch=new-euclid#cf78c2e079be2b9a6d5b4c177755965a65436dd7"
 dependencies = [
  "lyon_geom",
 ]
 
 [[package]]
 name = "lyon_tessellation"
-version = "1.0.3"
-source = "git+https://github.com/zphixon/lyon?branch=new-euclid#7c6c4328b947d4fc8b94c6d668f8622d217ae16b"
+version = "1.0.4"
+source = "git+https://github.com/zphixon/lyon?branch=new-euclid#cf78c2e079be2b9a6d5b4c177755965a65436dd7"
 dependencies = [
  "float_next_after",
  "lyon_path",
@@ -1505,7 +1407,7 @@ dependencies = [
  "bitflags",
  "block",
  "core-graphics-types",
- "foreign-types 0.3.2",
+ "foreign-types",
  "log",
  "objc",
 ]
@@ -1764,6 +1666,32 @@ dependencies = [
  "block",
  "objc",
  "objc_id",
+]
+
+[[package]]
+name = "objc-sys"
+version = "0.2.0-beta.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df3b9834c1e95694a05a828b59f55fa2afec6288359cda67146126b3f90a55d7"
+
+[[package]]
+name = "objc2"
+version = "0.3.0-beta.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe31e5425d3d0b89a15982c024392815da40689aceb34bad364d58732bcfd649"
+dependencies = [
+ "block2",
+ "objc-sys",
+ "objc2-encode",
+]
+
+[[package]]
+name = "objc2-encode"
+version = "2.0.0-pre.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "abfcac41015b00a120608fdaa6938c44cb983fee294351cc4bac7638b4e50512"
+dependencies = [
+ "objc-sys",
 ]
 
 [[package]]
@@ -2135,11 +2063,11 @@ checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
 
 [[package]]
 name = "sctk-adwaita"
-version = "0.4.2"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04b7c47a572f73de28bee5b5060d085b42b6ce1e4ee2b49c956ea7b25e94b6f0"
+checksum = "83d36977fe482d24945fbe4687eaf36239b26477c60c3dbe29f8b2c79ac1a5a0"
 dependencies = [
- "crossfont",
+ "ab_glyph",
  "log",
  "smithay-client-toolkit",
  "tiny-skia",
@@ -2163,27 +2091,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "servo-fontconfig"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7e3e22fe5fd73d04ebf0daa049d3efe3eae55369ce38ab16d07ddd9ac5c217c"
-dependencies = [
- "libc",
- "servo-fontconfig-sys",
-]
-
-[[package]]
-name = "servo-fontconfig-sys"
-version = "5.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e36b879db9892dfa40f95da1c38a835d41634b825fbd8c4c418093d53c24b388"
-dependencies = [
- "expat-sys",
- "freetype-sys",
- "pkg-config",
 ]
 
 [[package]]
@@ -2736,7 +2643,7 @@ dependencies = [
  "block",
  "core-graphics-types",
  "d3d12",
- "foreign-types 0.3.2",
+ "foreign-types",
  "fxhash",
  "glow",
  "gpu-alloc",
@@ -2904,11 +2811,10 @@ checksum = "f4dd6dc7df2d84cf7b33822ed5b86318fb1781948e9663bacd047fc9dd52259d"
 
 [[package]]
 name = "winit"
-version = "0.27.2"
-source = "git+https://github.com/zphixon/winit?branch=pen-info2#2dc2c6ecb68b7bc888b62adfd3713144370f57f2"
+version = "0.27.3"
+source = "git+https://github.com/zphixon/winit?branch=pen-info2#a8c4c1d6c64150802e5eed127011b2e019d6c1e8"
 dependencies = [
  "bitflags",
- "cocoa",
  "core-foundation",
  "core-graphics",
  "dispatch",
@@ -2918,9 +2824,8 @@ dependencies = [
  "mio",
  "ndk 0.7.0",
  "ndk-glue 0.7.0",
- "objc",
+ "objc2",
  "once_cell",
- "parking_lot 0.12.1",
  "percent-encoding",
  "raw-window-handle 0.4.3",
  "raw-window-handle 0.5.0",
@@ -2932,15 +2837,6 @@ dependencies = [
  "web-sys",
  "windows-sys",
  "x11-dl",
-]
-
-[[package]]
-name = "wio"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d129932f4644ac2396cb456385cbf9e63b5b30c6e8dc4820bdca4eb082037a5"
-dependencies = [
- "winapi",
 ]
 
 [[package]]

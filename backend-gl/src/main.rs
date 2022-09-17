@@ -50,7 +50,7 @@ derive_loop::pmb_loop!(
         })}
 
         egui_glow = mut {
-            egui_glow::EguiGlow::new(&ev, Arc::clone(&gl))
+            egui_glow::EguiGlow::new(&ev, Arc::clone(&gl), None)
         }
 
         clear_color = mut { [0., 0., 0.] }
