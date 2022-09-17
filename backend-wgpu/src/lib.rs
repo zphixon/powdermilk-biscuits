@@ -403,6 +403,7 @@ impl StrokeRenderer {
         encoder: &mut CommandEncoder,
         sketch: &Sketch<WgpuStrokeBackend>,
         size: Size,
+        clear_color: [f32; 3],
     ) {
         let stroke_view = view_matrix(sketch.zoom, sketch.zoom, size, sketch.origin);
         queue.write_buffer(
@@ -419,7 +420,12 @@ impl StrokeRenderer {
                 view: frame,
                 resolve_target: None,
                 ops: Operations {
-                    load: LoadOp::Clear(WgpuColor::BLACK),
+                    load: LoadOp::Clear(WgpuColor {
+                        r: clear_color[0] as f64,
+                        g: clear_color[1] as f64,
+                        b: clear_color[2] as f64,
+                        a: 1.,
+                    }),
                     store: true,
                 },
             })],
@@ -654,9 +660,9 @@ impl CursorRenderer {
 pub type Size = PhysicalSize<u32>;
 
 pub struct Graphics {
-    surface: Surface,
-    surface_format: TextureFormat,
-    device: Device,
+    pub surface: Surface,
+    pub surface_format: TextureFormat,
+    pub device: Device,
     queue: Queue,
     config: SurfaceConfiguration,
     pub size: Size,
@@ -811,6 +817,10 @@ impl Graphics {
         ui: &Ui<WgpuCoords>,
         size: PhysicalSize<u32>,
         cursor_visible: bool,
+        egui_tris: &[egui::ClippedPrimitive],
+        egui_textures: &egui::TexturesDelta,
+        egui_painter: &mut egui_wgpu::winit::Painter,
+        clear_color: [f32; 3],
     ) -> Result<(), SurfaceError> {
         self.buffer_all_strokes(sketch);
 
@@ -822,8 +832,26 @@ impl Graphics {
                         label: Some("encoder"),
                     });
 
-                self.stroke_renderer
-                    .render(&self.queue, $frame, &mut encoder, sketch, size);
+                self.stroke_renderer.render(
+                    &self.queue,
+                    $frame,
+                    &mut encoder,
+                    sketch,
+                    size,
+                    clear_color,
+                );
+
+                egui_painter.paint_and_update_textures(
+                    1.,
+                    egui_tris,
+                    egui_textures,
+                    &self.device,
+                    &mut encoder,
+                    &self.queue,
+                    size.width,
+                    size.height,
+                    $frame,
+                );
 
                 if !cursor_visible {
                     self.cursor_renderer.render(
