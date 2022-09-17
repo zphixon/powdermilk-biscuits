@@ -1,5 +1,5 @@
 [package]
-name = 'pmb-gl'
+name = 'backend-gl'
 version = '0.1.0'
 edition = '2021'
 build = 'build.rs'
@@ -15,7 +15,7 @@ image = { version = '0.24.2', default-features = false, features = ['png'] }
 glow = '0.11.2'
 glam = '0.21.2'
 powdermilk-biscuits = { path = '../pmb' }
-derive-pmb-loop = { path = '../derive-pmb-loop' }
+derive-loop = { path = '../derive-loop' }
 
 [dependencies.egui_glow]
 git = 'https://github.com/zphixon/egui'

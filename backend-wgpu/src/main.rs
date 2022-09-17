@@ -15,12 +15,12 @@ use winit::{
     window::WindowBuilder,
 };
 
-derive_pmb_loop::pmb_loop!(
+derive_loop::pmb_loop!(
     loop_name: pmb_loop,
     windowing_crate_name: winit,
     event_enum_name: WinitEvent,
     element_state_name: WinitElementState,
-    backend_crate_name: pmb_wgpu,
+    backend_crate_name: backend_wgpu,
     coords_name: WgpuCoords,
     stroke_backend_name: WgpuStrokeBackend,
     keycode_translation: winit_to_pmb_keycode,
@@ -36,7 +36,7 @@ derive_pmb_loop::pmb_loop!(
 
     graphics_setup:
         graphics = mut {
-            let mut graphics = futures::executor::block_on(pmb_wgpu::Graphics::new(&window));
+            let mut graphics = futures::executor::block_on(backend_wgpu::Graphics::new(&window));
             graphics.buffer_all_strokes(&mut sketch);
             graphics
         };

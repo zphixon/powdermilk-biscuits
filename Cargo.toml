@@ -2,9 +2,9 @@
 resolver = '2'
 members = [
     'pmb',
-    'pmb-gl',
-    'pmb-wgpu',
-    'derive-pmb-loop',
+    'backend-gl',
+    'backend-wgpu',
+    'derive-loop',
     'derive-disk',
 ]
 

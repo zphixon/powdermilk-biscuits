@@ -1,5 +1,6 @@
 #![cfg_attr(all(windows, feature = "pmb-release"), windows_subsystem = "windows")]
 
+use backend_gl::GlStrokeBackend;
 use glow::{Context, HasContext};
 use glutin::{
     event::{
@@ -10,7 +11,6 @@ use glutin::{
     window::WindowBuilder,
     ContextBuilder,
 };
-use pmb_gl::GlStrokeBackend;
 use powdermilk_biscuits::{
     bytemuck,
     event::{ElementState, Event},
@@ -19,12 +19,12 @@ use powdermilk_biscuits::{
 };
 use std::sync::Arc;
 
-derive_pmb_loop::pmb_loop!(
+derive_loop::pmb_loop!(
     loop_name: pmb_loop,
     windowing_crate_name: glutin,
     event_enum_name: GlutinEvent,
     element_state_name: GlutinElementState,
-    backend_crate_name: pmb_gl,
+    backend_crate_name: backend_gl,
     coords_name: GlCoords,
     stroke_backend_name: GlStrokeBackend,
     keycode_translation: glutin_to_pmb_keycode,
@@ -79,7 +79,7 @@ derive_pmb_loop::pmb_loop!(
             gl.disable(glow::CULL_FACE);
             gl.clear_color(0.0, 0.0, 0.0, 1.0);
 
-            pen_cursor_program = pmb_gl::compile_program(
+            pen_cursor_program = backend_gl::compile_program(
                 &gl,
                 concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/cursor.vert"),
                 concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/cursor.frag"),
@@ -101,7 +101,7 @@ derive_pmb_loop::pmb_loop!(
                 &glam::Mat4::IDENTITY.to_cols_array(),
             );
 
-            strokes_program = pmb_gl::compile_program(
+            strokes_program = backend_gl::compile_program(
                 &gl,
                 concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/stroke_line.vert"),
                 concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/stroke_line.frag"),
@@ -189,7 +189,7 @@ derive_pmb_loop::pmb_loop!(
 
         unsafe {
             gl.use_program(Some(strokes_program));
-            let view = pmb_gl::view_matrix(sketch.zoom, sketch.zoom, size, sketch.origin);
+            let view = backend_gl::view_matrix(sketch.zoom, sketch.zoom, size, sketch.origin);
             gl.uniform_matrix_4_f32_slice(
                 Some(&strokes_view),
                 false,
@@ -304,7 +304,7 @@ derive_pmb_loop::pmb_loop!(
                     if ui.stylus.down() { 1.0 } else { 0.0 },
                 );
 
-                let view = pmb_gl::view_matrix(
+                let view = backend_gl::view_matrix(
                     sketch.zoom,
                     ui.brush_size as f32,
                     size,

@@ -134,6 +134,37 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
+name = "backend-gl"
+version = "0.1.0"
+dependencies = [
+ "derive-loop",
+ "egui",
+ "egui_glow",
+ "env_logger",
+ "glam",
+ "glow",
+ "glutin",
+ "image",
+ "log",
+ "powdermilk-biscuits",
+]
+
+[[package]]
+name = "backend-wgpu"
+version = "0.1.0"
+dependencies = [
+ "derive-loop",
+ "env_logger",
+ "futures",
+ "glam",
+ "log",
+ "powdermilk-biscuits",
+ "smaa",
+ "wgpu",
+ "winit",
+]
+
+[[package]]
 name = "base64"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -528,7 +559,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "derive-pmb-loop"
+name = "derive-loop"
 version = "0.1.0"
 dependencies = [
  "derive_builder",
@@ -614,6 +645,10 @@ dependencies = [
  "nohash-hasher",
  "tracing",
 ]
+
+[[package]]
+name = "egui-wgpu"
+version = "0.1.0"
 
 [[package]]
 name = "egui-winit"
@@ -1700,37 +1735,6 @@ name = "pkg-config"
 version = "0.3.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1df8c4ec4b0627e53bdf214615ad287367e482558cf84b109250b37464dc03ae"
-
-[[package]]
-name = "pmb-gl"
-version = "0.1.0"
-dependencies = [
- "derive-pmb-loop",
- "egui",
- "egui_glow",
- "env_logger",
- "glam",
- "glow",
- "glutin",
- "image",
- "log",
- "powdermilk-biscuits",
-]
-
-[[package]]
-name = "pmb-wgpu"
-version = "0.1.0"
-dependencies = [
- "derive-pmb-loop",
- "env_logger",
- "futures",
- "glam",
- "log",
- "powdermilk-biscuits",
- "smaa",
- "wgpu",
- "winit",
-]
 
 [[package]]
 name = "png"

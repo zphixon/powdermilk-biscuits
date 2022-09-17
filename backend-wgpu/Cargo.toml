@@ -1,5 +1,5 @@
 [package]
-name = 'pmb-wgpu'
+name = 'backend-wgpu'
 version = '0.1.0'
 edition = '2021'
 build = 'build.rs'
@@ -15,7 +15,7 @@ glam = { version = '0.21.2', features = ['bytemuck'] }
 wgpu = '0.13.1'
 futures = '0.3.21'
 powdermilk-biscuits = { path = '../pmb' }
-derive-pmb-loop = { path = '../derive-pmb-loop' }
+derive-loop = { path = '../derive-loop' }
 smaa = '0.7.0'
 
 [target.'cfg(windows)'.dependencies.winit]
