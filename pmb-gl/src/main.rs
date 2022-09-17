@@ -6,7 +6,7 @@ use glutin::{
         ElementState as GlutinElementState, Event as GlutinEvent, KeyboardInput, MouseScrollDelta,
         Touch, TouchPhase, VirtualKeyCode, WindowEvent,
     },
-    event_loop::{ControlFlow, EventLoop},
+    event_loop::EventLoop,
     window::WindowBuilder,
     ContextBuilder,
 };

@@ -21,6 +21,7 @@ struct PmbLoop {
     graphics_setup: HashMap<Ident, (bool, Option<Block>)>,
 
     window: Block,
+    per_event: Block,
     resize: Block,
     render: Block,
 }
@@ -114,6 +115,7 @@ impl Parse for PmbLoop {
             key_state_translation,
             touch_translation,
             window,
+            per_event,
             resize,
             render;
 
@@ -143,6 +145,7 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         touch_translation,
         graphics_setup,
         window,
+        per_event,
         resize,
         render,
         bindings,
@@ -211,9 +214,11 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             config.resize_window(size.width, size.height);
 
             ev.run(move |event, _, flow| {
-                *flow = ControlFlow::Wait;
+                flow.set_wait();
 
                 log::trace!("{:?} {:?}", ui.state, event);
+
+                #per_event;
 
                 match event {
                     #event_enum_name::WindowEvent {
@@ -235,11 +240,11 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                             )
                             .unwrap_or(false)
                             {
-                                *flow = ControlFlow::Exit;
+                                flow.set_exit();
                                 config.save();
                             }
                         } else {
-                            *flow = ControlFlow::Exit;
+                            flow.set_exit();
                             config.save();
                         }
                     }
@@ -257,7 +262,7 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                             },
                         ..
                     } => {
-                        *flow = ControlFlow::Exit;
+                        flow.set_exit();
                         config.save();
                     }
 

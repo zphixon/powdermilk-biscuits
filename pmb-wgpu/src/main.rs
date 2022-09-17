@@ -11,7 +11,7 @@ use winit::{
         ElementState as WinitElementState, Event as WinitEvent, KeyboardInput, MouseScrollDelta,
         Touch, TouchPhase, VirtualKeyCode, WindowEvent,
     },
-    event_loop::{ControlFlow, EventLoop},
+    event_loop::EventLoop,
     window::WindowBuilder,
 };
 
@@ -41,6 +41,8 @@ derive_pmb_loop::pmb_loop!(
             graphics
         };
 
+    per_event: {},
+
     resize: {
         size = new_size;
         ui.resize(new_size.width, new_size.height, &mut sketch);
@@ -54,7 +56,7 @@ derive_pmb_loop::pmb_loop!(
             Err(SurfaceError::Lost) => graphics.resize(graphics.size),
             Err(SurfaceError::OutOfMemory) => {
                 ui::error("Out of memory!");
-                *flow = ControlFlow::Exit;
+                flow.set_exit();
             }
             _ => {}
         }
