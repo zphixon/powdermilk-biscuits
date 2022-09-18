@@ -216,6 +216,11 @@ impl Config {
         concat!(env!("CARGO_MANIFEST_DIR"), "/../config.ron")
     }
 
+    #[cfg(feature = "pmb-release")]
+    fn path() -> &'static str {
+        todo!()
+    }
+
     // TODO registry/gsettings or something, this is dumb
     pub fn from_disk() -> Config {
         let file = match std::fs::read_to_string(Self::path()) {
