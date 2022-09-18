@@ -1004,7 +1004,7 @@ dependencies = [
 [[package]]
 name = "glutin"
 version = "0.28.0"
-source = "git+https://github.com/zphixon/glutin?branch=my-winit#8c71a8eb1dcaee924c3f8a0d7702c5c5fcc09f21"
+source = "git+https://github.com/zphixon/glutin?branch=my-winit#7a37f6ee017f9edcdddde00198d0025da6db79c8"
 dependencies = [
  "cgl",
  "cocoa",
@@ -1029,7 +1029,7 @@ dependencies = [
 [[package]]
 name = "glutin_egl_sys"
 version = "0.1.5"
-source = "git+https://github.com/zphixon/glutin?branch=my-winit#8c71a8eb1dcaee924c3f8a0d7702c5c5fcc09f21"
+source = "git+https://github.com/zphixon/glutin?branch=my-winit#7a37f6ee017f9edcdddde00198d0025da6db79c8"
 dependencies = [
  "gl_generator",
  "winapi",
@@ -1038,7 +1038,7 @@ dependencies = [
 [[package]]
 name = "glutin_gles2_sys"
 version = "0.1.5"
-source = "git+https://github.com/zphixon/glutin?branch=my-winit#8c71a8eb1dcaee924c3f8a0d7702c5c5fcc09f21"
+source = "git+https://github.com/zphixon/glutin?branch=my-winit#7a37f6ee017f9edcdddde00198d0025da6db79c8"
 dependencies = [
  "gl_generator",
  "objc",
@@ -1047,7 +1047,7 @@ dependencies = [
 [[package]]
 name = "glutin_glx_sys"
 version = "0.1.7"
-source = "git+https://github.com/zphixon/glutin?branch=my-winit#8c71a8eb1dcaee924c3f8a0d7702c5c5fcc09f21"
+source = "git+https://github.com/zphixon/glutin?branch=my-winit#7a37f6ee017f9edcdddde00198d0025da6db79c8"
 dependencies = [
  "gl_generator",
  "x11-dl",
@@ -1056,7 +1056,7 @@ dependencies = [
 [[package]]
 name = "glutin_wgl_sys"
 version = "0.1.5"
-source = "git+https://github.com/zphixon/glutin?branch=my-winit#8c71a8eb1dcaee924c3f8a0d7702c5c5fcc09f21"
+source = "git+https://github.com/zphixon/glutin?branch=my-winit#7a37f6ee017f9edcdddde00198d0025da6db79c8"
 dependencies = [
  "gl_generator",
 ]
@@ -1978,7 +1978,7 @@ checksum = "f1382d1f0a252c4bf97dc20d979a2fdd05b024acd7c2ed0f7595d7817666a157"
 [[package]]
 name = "rfd"
 version = "0.10.0"
-source = "git+https://github.com/zphixon/rfd?branch=yes-no-cancel#6009e98ceff1e06a85c9c6ea281e668587c78eb0"
+source = "git+https://github.com/zphixon/rfd?branch=yes-no-cancel#91af5552692205d8b7093eab060696b3c7ddc0bc"
 dependencies = [
  "block",
  "dispatch",
