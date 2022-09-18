@@ -6,8 +6,12 @@ use glutin::ContextBuilder;
 use powdermilk_biscuits::bytemuck;
 use std::sync::Arc;
 
+fn main() {
+    env_logger::init();
+    pmb_loop();
+}
+
 derive_loop::pmb_loop!(
-    loop_name: pmb_loop,
     windowing_crate_name: glutin,
     backend_crate_name: backend_gl,
     coords_name: GlCoords,
@@ -298,8 +302,3 @@ derive_loop::pmb_loop!(
         context.swap_buffers().unwrap();
     },
 );
-
-fn main() {
-    env_logger::init();
-    pmb_loop();
-}

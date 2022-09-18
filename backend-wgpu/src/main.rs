@@ -1,9 +1,11 @@
 #![cfg_attr(all(windows, feature = "pmb-release"), windows_subsystem = "windows")]
 
-use wgpu::SurfaceError;
+fn main() {
+    env_logger::init();
+    pmb_loop();
+}
 
 derive_loop::pmb_loop!(
-    loop_name: pmb_loop,
     windowing_crate_name: winit,
     backend_crate_name: backend_wgpu,
     coords_name: WgpuCoords,
@@ -68,8 +70,8 @@ derive_loop::pmb_loop!(
             &egui_data.textures_delta,
             &mut egui_painter,
         ) {
-            Err(SurfaceError::Lost) => graphics.resize(graphics.size),
-            Err(SurfaceError::OutOfMemory) => {
+            Err(wgpu::SurfaceError::Lost) => graphics.resize(graphics.size),
+            Err(wgpu::SurfaceError::OutOfMemory) => {
                 powdermilk_biscuits::ui::error("Out of memory!");
                 flow.set_exit();
             }
@@ -78,8 +80,3 @@ derive_loop::pmb_loop!(
 
     },
 );
-
-fn main() {
-    env_logger::init();
-    pmb_loop();
-}

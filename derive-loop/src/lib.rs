@@ -4,7 +4,6 @@ use syn::{parse::Parse, Block, Ident, Token};
 
 #[derive(derive_builder::Builder)]
 struct PmbLoop {
-    loop_name: Ident,
     windowing_crate_name: Ident,
 
     backend_crate_name: Ident,
@@ -101,7 +100,6 @@ impl Parse for PmbLoop {
         }
 
         build!(
-            loop_name,
             windowing_crate_name,
             backend_crate_name,
             coords_name,
@@ -139,7 +137,6 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let loop_ = syn::parse_macro_input!(input as PmbLoop);
 
     let PmbLoop {
-        loop_name,
         windowing_crate_name,
         backend_crate_name,
         coords_name,
@@ -177,7 +174,7 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         .collect::<Vec<_>>();
 
     quote::quote! {
-        fn #loop_name() {
+        fn pmb_loop() {
             use powdermilk_biscuits::{
                 event::{ElementState, Event},
                 gumdrop::Options,
