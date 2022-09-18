@@ -2,28 +2,13 @@
 
 use backend_gl::GlStrokeBackend;
 use glow::{Context, HasContext};
-use glutin::{
-    event::{
-        ElementState as GlutinElementState, Event as GlutinEvent, KeyboardInput, MouseScrollDelta,
-        Touch, TouchPhase, VirtualKeyCode, WindowEvent,
-    },
-    event_loop::EventLoop,
-    window::WindowBuilder,
-    ContextBuilder,
-};
-use powdermilk_biscuits::{
-    bytemuck,
-    event::{ElementState, Event},
-    ui::Ui,
-    Config, Device, Sketch, Tool,
-};
+use glutin::ContextBuilder;
+use powdermilk_biscuits::bytemuck;
 use std::sync::Arc;
 
 derive_loop::pmb_loop!(
     loop_name: pmb_loop,
     windowing_crate_name: glutin,
-    event_enum_name: GlutinEvent,
-    element_state_name: GlutinElementState,
     backend_crate_name: backend_gl,
     coords_name: GlCoords,
     stroke_backend_name: GlStrokeBackend,
@@ -136,7 +121,7 @@ derive_loop::pmb_loop!(
 
     per_event: {
         match &event {
-            GlutinEvent::WindowEvent { event, .. } => {
+            glutin::event::Event::WindowEvent { event, .. } => {
                 let response = egui_glow.on_event(&event);
                 if response.repaint {
                     context.window().request_redraw();
@@ -281,7 +266,7 @@ derive_loop::pmb_loop!(
 
                 gl.uniform_1_f32(
                     Some(&pen_cursor_erasing),
-                    if ui.active_tool == Tool::Eraser {
+                    if ui.active_tool == powdermilk_biscuits::Tool::Eraser {
                         1.0
                     } else {
                         0.0

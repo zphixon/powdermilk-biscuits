@@ -6,8 +6,6 @@ use syn::{parse::Parse, Block, Ident, Token};
 struct PmbLoop {
     loop_name: Ident,
     windowing_crate_name: Ident,
-    event_enum_name: Ident,
-    element_state_name: Ident,
 
     backend_crate_name: Ident,
     coords_name: Ident,
@@ -105,8 +103,6 @@ impl Parse for PmbLoop {
         build!(
             loop_name,
             windowing_crate_name,
-            event_enum_name,
-            element_state_name,
             backend_crate_name,
             coords_name,
             stroke_backend_name,
@@ -145,8 +141,6 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let PmbLoop {
         loop_name,
         windowing_crate_name,
-        event_enum_name,
-        element_state_name,
         backend_crate_name,
         coords_name,
         stroke_backend_name,
@@ -227,8 +221,8 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 }
             };
 
-            let mut config = Config::from_disk(&config_path);
-            let mut builder = WindowBuilder::new()
+            let mut config = powdermilk_biscuits::Config::from_disk(&config_path);
+            let mut builder = #windowing_crate_name::window::WindowBuilder::new()
                 .with_maximized(config.window_maximized)
                 .with_title(powdermilk_biscuits::TITLE_UNMODIFIED);
 
@@ -240,19 +234,19 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 builder = builder.with_inner_size(#windowing_crate_name::dpi::PhysicalSize { width, height });
             }
 
-            let ev = EventLoop::new();
+            let ev = #windowing_crate_name::event_loop::EventLoop::new();
 
             #(#quoted_bindings)*
 
             let mut ui = {
                 let #windowing_crate_name::dpi::PhysicalSize { width, height } = #window.inner_size();
-                Ui::<#backend_crate_name::#coords_name>::new(width, height)
+                powdermilk_biscuits::ui::Ui::<#backend_crate_name::#coords_name>::new(width, height)
             };
-            let mut sketch: Sketch<#backend_crate_name::#stroke_backend_name> =
+            let mut sketch: powdermilk_biscuits::Sketch<#backend_crate_name::#stroke_backend_name> =
                 if let Some(filename) = args.file {
-                    Sketch::with_filename(&mut ui, std::path::PathBuf::from(filename))
+                    powdermilk_biscuits::Sketch::with_filename(&mut ui, std::path::PathBuf::from(filename))
                 } else {
-                    Sketch::default()
+                    powdermilk_biscuits::Sketch::default()
                 };
 
             ui.force_update(&mut sketch);
@@ -275,15 +269,15 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 #per_event;
 
                 match event {
-                    #event_enum_name::WindowEvent {
-                        event: WindowEvent::Focused(focused),
+                    #windowing_crate_name::event::Event::WindowEvent {
+                        event: #windowing_crate_name::event::WindowEvent::Focused(focused),
                         ..
                     } if !focused => {
                         ui.input.clear();
                     }
 
-                    #event_enum_name::WindowEvent {
-                        event: WindowEvent::CloseRequested,
+                    #windowing_crate_name::event::Event::WindowEvent {
+                        event: #windowing_crate_name::event::WindowEvent::CloseRequested,
                         ..
                     } => {
                         if ui.modified {
@@ -303,13 +297,13 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         }
                     }
 
-                    #event_enum_name::WindowEvent {
+                    #windowing_crate_name::event::Event::WindowEvent {
                         event:
-                            WindowEvent::KeyboardInput {
+                            #windowing_crate_name::event::WindowEvent::KeyboardInput {
                                 input:
-                                    KeyboardInput {
-                                        state: #element_state_name::Pressed,
-                                        virtual_keycode: Some(VirtualKeyCode::Escape),
+                                    #windowing_crate_name::event::KeyboardInput {
+                                        state: #windowing_crate_name::event::ElementState::Pressed,
+                                        virtual_keycode: Some(#windowing_crate_name::event::VirtualKeyCode::Escape),
                                         ..
                                     },
                                 ..
@@ -320,11 +314,11 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         config.save(&config_path);
                     }
 
-                    #event_enum_name::WindowEvent {
+                    #windowing_crate_name::event::Event::WindowEvent {
                         event:
-                            WindowEvent::KeyboardInput {
+                            #windowing_crate_name::event::WindowEvent::KeyboardInput {
                                 input:
-                                    KeyboardInput {
+                                    #windowing_crate_name::event::KeyboardInput {
                                         virtual_keycode: Some(key),
                                         state,
                                         ..
@@ -346,59 +340,59 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         #window.request_redraw();
                     }
 
-                    #event_enum_name::WindowEvent {
-                        event: WindowEvent::MouseWheel { delta, .. },
+                    #windowing_crate_name::event::Event::WindowEvent {
+                        event: #windowing_crate_name::event::WindowEvent::MouseWheel { delta, .. },
                         ..
                     } => {
                         match delta {
-                            MouseScrollDelta::LineDelta(_, delta) => {
-                                ui.next(&config, &mut sketch, Event::ScrollZoom(delta));
+                            #windowing_crate_name::event::MouseScrollDelta::LineDelta(_, delta) => {
+                                ui.next(&config, &mut sketch, powdermilk_biscuits::event::Event::ScrollZoom(delta));
                             }
-                            MouseScrollDelta::PixelDelta(delta) => {
-                                ui.next(&config, &mut sketch, Event::ScrollZoom(delta.y as f32));
+                            #windowing_crate_name::event::MouseScrollDelta::PixelDelta(delta) => {
+                                ui.next(&config, &mut sketch, powdermilk_biscuits::event::Event::ScrollZoom(delta.y as f32));
                             }
                         }
 
                         #window.request_redraw();
                     }
 
-                    #event_enum_name::WindowEvent {
-                        event: WindowEvent::MouseInput { state, button, .. },
+                    #windowing_crate_name::event::Event::WindowEvent {
+                        event: #windowing_crate_name::event::WindowEvent::MouseInput { state, button, .. },
                         ..
                     } => {
                         let button = #backend_crate_name::#mouse_button_translation(button);
                         let state = #backend_crate_name::#key_state_translation(state);
 
                         match (button, state) {
-                            (primary, ElementState::Pressed) if primary == config.primary_button => {
-                                ui.next(&config, &mut sketch, Event::MouseDown(button));
+                            (primary, powdermilk_biscuits::event::ElementState::Pressed) if primary == config.primary_button => {
+                                ui.next(&config, &mut sketch, powdermilk_biscuits::event::Event::MouseDown(button));
                             }
-                            (primary, ElementState::Released) if primary == config.primary_button => {
-                                ui.next(&config, &mut sketch, Event::MouseUp(button));
+                            (primary, powdermilk_biscuits::event::ElementState::Released) if primary == config.primary_button => {
+                                ui.next(&config, &mut sketch, powdermilk_biscuits::event::Event::MouseUp(button));
                             }
-                            (pan, ElementState::Pressed) if pan == config.pan_button => {
-                                ui.next(&config, &mut sketch, Event::StartPan);
+                            (pan, powdermilk_biscuits::event::ElementState::Pressed) if pan == config.pan_button => {
+                                ui.next(&config, &mut sketch, powdermilk_biscuits::event::Event::StartPan);
                             }
-                            (pan, ElementState::Released) if pan == config.pan_button => {
-                                ui.next(&config, &mut sketch, Event::EndPan);
+                            (pan, powdermilk_biscuits::event::ElementState::Released) if pan == config.pan_button => {
+                                ui.next(&config, &mut sketch, powdermilk_biscuits::event::Event::EndPan);
                             }
                             _ => {}
                         }
 
-                        ui.prev_device = Device::Mouse;
+                        ui.prev_device = powdermilk_biscuits::Device::Mouse;
                         #window.request_redraw();
                     }
 
-                    #event_enum_name::WindowEvent {
-                        event: WindowEvent::CursorMoved { position, .. },
+                    #windowing_crate_name::event::Event::WindowEvent {
+                        event: #windowing_crate_name::event::WindowEvent::CursorMoved { position, .. },
                         ..
                     } => {
                         ui.next(
                             &config,
                             &mut sketch,
-                            Event::MouseMove(#backend_crate_name::physical_pos_to_pixel_pos(position)),
+                            powdermilk_biscuits::event::Event::MouseMove(#backend_crate_name::physical_pos_to_pixel_pos(position)),
                         );
-                        ui.prev_device = Device::Mouse;
+                        ui.prev_device = powdermilk_biscuits::Device::Mouse;
 
                         if config.use_mouse_for_pen {
                             if cursor_visible {
@@ -416,10 +410,10 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         }
                     }
 
-                    #event_enum_name::WindowEvent {
+                    #windowing_crate_name::event::Event::WindowEvent {
                         event:
-                            WindowEvent::Touch(
-                                touch @ Touch {
+                            #windowing_crate_name::event::WindowEvent::Touch(
+                                touch @ #windowing_crate_name::event::Touch {
                                     phase,
                                     pen_info: Some(_),
                                     ..
@@ -430,14 +424,14 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         let touch = #backend_crate_name::#touch_translation(touch);
 
                         match phase {
-                            TouchPhase::Started => ui.next(&config, &mut sketch, Event::PenDown(touch)),
-                            TouchPhase::Moved => ui.next(&config, &mut sketch, Event::PenMove(touch)),
-                            TouchPhase::Ended | TouchPhase::Cancelled => {
-                                ui.next(&config, &mut sketch, Event::PenUp(touch))
+                            #windowing_crate_name::event::TouchPhase::Started => ui.next(&config, &mut sketch, powdermilk_biscuits::event::Event::PenDown(touch)),
+                            #windowing_crate_name::event::TouchPhase::Moved => ui.next(&config, &mut sketch, powdermilk_biscuits::event::Event::PenMove(touch)),
+                            #windowing_crate_name::event::TouchPhase::Ended | #windowing_crate_name::event::TouchPhase::Cancelled => {
+                                ui.next(&config, &mut sketch, powdermilk_biscuits::event::Event::PenUp(touch))
                             }
                         }
 
-                        ui.prev_device = Device::Pen;
+                        ui.prev_device = powdermilk_biscuits::Device::Pen;
 
                         if cursor_visible {
                             cursor_visible = false;
@@ -447,10 +441,10 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         #window.request_redraw();
                     }
 
-                    #event_enum_name::WindowEvent {
+                    #windowing_crate_name::event::Event::WindowEvent {
                         event:
-                            WindowEvent::Touch(
-                                touch @ Touch {
+                            #windowing_crate_name::event::WindowEvent::Touch(
+                                touch @ #windowing_crate_name::event::Touch {
                                     phase,
                                     pen_info: None,
                                     ..
@@ -463,13 +457,13 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                             &config,
                             &mut sketch,
                             match phase {
-                                TouchPhase::Started => Event::Touch(touch),
-                                TouchPhase::Moved => Event::TouchMove(touch),
-                                TouchPhase::Ended | TouchPhase::Cancelled => Event::Release(touch),
+                                #windowing_crate_name::event::TouchPhase::Started => powdermilk_biscuits::event::Event::Touch(touch),
+                                #windowing_crate_name::event::TouchPhase::Moved => powdermilk_biscuits::event::Event::TouchMove(touch),
+                                #windowing_crate_name::event::TouchPhase::Ended | #windowing_crate_name::event::TouchPhase::Cancelled => powdermilk_biscuits::event::Event::Release(touch),
                             },
                         );
 
-                        ui.prev_device = Device::Touch;
+                        ui.prev_device = powdermilk_biscuits::Device::Touch;
 
                         if cursor_visible {
                             cursor_visible = false;
@@ -479,24 +473,24 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         #window.request_redraw();
                     }
 
-                    #event_enum_name::WindowEvent {
-                        event: WindowEvent::Moved(location),
+                    #windowing_crate_name::event::Event::WindowEvent {
+                        event: #windowing_crate_name::event::WindowEvent::Moved(location),
                         ..
                     } => {
                         config.move_window(location.x, location.y);
                     }
 
-                    #event_enum_name::WindowEvent {
+                    #windowing_crate_name::event::Event::WindowEvent {
                         event:
-                            WindowEvent::Resized(new_size)
-                            | WindowEvent::ScaleFactorChanged {
+                            #windowing_crate_name::event::WindowEvent::Resized(new_size)
+                            | #windowing_crate_name::event::WindowEvent::ScaleFactorChanged {
                                 new_inner_size: &mut new_size,
                                 ..
                             },
                         ..
                     } => #resize,
 
-                    #event_enum_name::MainEventsCleared => {
+                    #windowing_crate_name::event::Event::MainEventsCleared => {
                         use powdermilk_biscuits::event::Keycode::*;
 
                         match (ui.path.as_ref(), ui.modified) {
@@ -510,7 +504,7 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         }
                     }
 
-                    #event_enum_name::RedrawRequested(_) => #render,
+                    #windowing_crate_name::event::Event::RedrawRequested(_) => #render,
 
                     _ => {}
                 }
