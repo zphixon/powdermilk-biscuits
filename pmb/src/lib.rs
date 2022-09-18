@@ -6,6 +6,9 @@ pub mod stroke;
 pub mod ui;
 
 pub extern crate bytemuck;
+pub extern crate dirs;
+pub extern crate egui;
+pub extern crate gumdrop;
 pub extern crate lyon;
 pub extern crate rand;
 
@@ -15,9 +18,7 @@ use crate::{
     graphics::{Color, ColorExt, PixelPos, StrokePoint, StrokePos},
     stroke::{Stroke, StrokeElement},
 };
-pub use dirs;
 use event::Combination;
-pub use gumdrop;
 use lyon::lyon_tessellation::{StrokeOptions, StrokeTessellator};
 use slotmap::{DefaultKey, SlotMap};
 use std::path::{Path, PathBuf};

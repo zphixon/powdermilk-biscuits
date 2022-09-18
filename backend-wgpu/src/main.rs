@@ -17,7 +17,7 @@ derive_loop::pmb_loop!(
     bindings:
         window = { builder.build(&ev).unwrap() }
         egui_winit = mut { egui_winit::State::new(&ev) }
-        egui_ctx = mut { egui::Context::default() };
+        egui_ctx = mut { powdermilk_biscuits::egui::Context::default() };
 
     graphics_setup:
         graphics = mut {

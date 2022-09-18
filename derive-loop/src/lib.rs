@@ -126,7 +126,7 @@ impl Parse for PmbLoop {
 #[proc_macro]
 pub fn egui(_input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     quote::quote!(|ctx| {
-        egui::SidePanel::left("side panel").show(ctx, |eui| {
+        powdermilk_biscuits::egui::SidePanel::left("side panel").show(ctx, |eui| {
             eui.heading("Real Hot Item");
             eui.color_edit_button_rgb(&mut ui.clear_color);
         });

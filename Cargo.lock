@@ -149,7 +149,6 @@ name = "backend-gl"
 version = "0.1.0"
 dependencies = [
  "derive-loop",
- "egui",
  "egui_glow",
  "env_logger",
  "glam",
@@ -165,7 +164,6 @@ name = "backend-wgpu"
 version = "0.1.0"
 dependencies = [
  "derive-loop",
- "egui",
  "egui-wgpu",
  "egui-winit",
  "env_logger",
@@ -1870,6 +1868,7 @@ dependencies = [
  "bytemuck",
  "derive-disk",
  "dirs",
+ "egui",
  "flate2",
  "gumdrop",
  "log",

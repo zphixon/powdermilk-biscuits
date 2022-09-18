@@ -1,5 +1,5 @@
 use powdermilk_biscuits::{
-    bytemuck,
+    bytemuck, egui,
     event::{ElementState, Keycode, MouseButton, PenInfo, Touch, TouchPhase},
     graphics::{ColorExt, PixelPos, StrokePoint},
     stroke::Stroke,
