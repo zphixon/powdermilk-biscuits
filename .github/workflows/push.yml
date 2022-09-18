@@ -16,7 +16,7 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo
       - name: glslang/gtk3
         run: sudo apt install glslang-tools build-essential libgtk-3-dev
       - name: naga
@@ -39,7 +39,7 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo
       - name: install/check naga/glslang
         run: |
           Invoke-WebRequest -URI https://ci.appveyor.com/api/buildjobs/nweuuamas19eil5c/artifacts/build%2Finstall%2Fglslang-master-windows-x64-Release.zip -OutFile glslang.zip
@@ -62,7 +62,7 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo
       - name: glslang
         run: brew install glslang
       - name: naga
