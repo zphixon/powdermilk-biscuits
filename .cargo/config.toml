@@ -1,8 +1,0 @@
-[target.x86_64-unknown-linux-gnu]
-rustflags = ['-C', 'link-arg=-fuse-ld=mold', '-Zshare-generics']
-
-[target.x86_64-unknown-windows-msvc]
-rustflags = ['-C', 'link-arg=-fuse-ld=lld', '-Zshare-generics']
-
-[nightly]
-sparse-registry = true

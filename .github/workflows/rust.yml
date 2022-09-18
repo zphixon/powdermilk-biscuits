@@ -10,17 +10,29 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-
-    runs-on: ubuntu-22.04
-
+  linux:
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
     - name: shaderc and naga
-      run: sudo apt install glslang-tools build-essential libgtk-3-dev mold && cargo install naga-cli
-    - name: -Z minimal-versions
-      run: cargo test --verbose -Z minimal-versions
-    - name: --locked
-      run: cargo test --verbose --locked
-    - name: rm Cargo.lock
-      run: rm Cargo.lock && cargo test
+      run: sudo apt install glslang-tools build-essential libgtk-3-dev && cargo install naga-cli
+    - name: build
+      run: cargo build --release
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: shaderc
+        run: vcpkg install glslang
+      - name: naga
+        run: cargo install naga-cli
+      - name: build
+        run: cargo build --release
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: shaderc and naga
+        run: brew install glslang && cargo install naga-cli
+      - name: build
+        run: cargo build --release
