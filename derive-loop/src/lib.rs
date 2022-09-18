@@ -184,6 +184,19 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     quote::quote! {
         fn #loop_name() {
+            use powdermilk_biscuits::gumdrop::Options;
+            let args = powdermilk_biscuits::Args::parse_args_default_or_exit();
+
+            if args.version {
+                println!(
+                    "Powdermilk Biscuits ({} {}, file format version {})",
+                    env!("CARGO_PKG_NAME"),
+                    env!("CARGO_PKG_VERSION"),
+                    powdermilk_biscuits::migrate::Version::CURRENT,
+                );
+                return;
+            }
+
             if cfg!(unix) {
                 let var = std::env::var("WINIT_UNIX_BACKEND");
                 match var.as_ref().map(|s| s.as_str()) {
@@ -201,7 +214,20 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 }
             }
 
-            let mut config = Config::from_disk();
+            let config_path = if let Some(config_path) = args.config {
+                config_path
+            } else {
+                if cfg!(feature = "pmb-release") {
+                    let mut dir = powdermilk_biscuits::dirs::config_dir().unwrap();
+                    dir.push("powdermilk-biscuits");
+                    dir.push("config.ron");
+                    dir
+                } else {
+                    std::path::PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../config.ron"))
+                }
+            };
+
+            let mut config = Config::from_disk(&config_path);
             let mut builder = WindowBuilder::new()
                 .with_maximized(config.window_maximized)
                 .with_title(powdermilk_biscuits::TITLE_UNMODIFIED);
@@ -223,7 +249,7 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 Ui::<#backend_crate_name::#coords_name>::new(width, height)
             };
             let mut sketch: Sketch<#backend_crate_name::#stroke_backend_name> =
-                if let Some(filename) = std::env::args().nth(1) {
+                if let Some(filename) = args.file {
                     Sketch::with_filename(&mut ui, std::path::PathBuf::from(filename))
                 } else {
                     Sketch::default()
@@ -269,11 +295,11 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                             .unwrap_or(false)
                             {
                                 flow.set_exit();
-                                config.save();
+                                config.save(&config_path);
                             }
                         } else {
                             flow.set_exit();
-                            config.save();
+                            config.save(&config_path);
                         }
                     }
 
@@ -291,7 +317,7 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         ..
                     } => {
                         flow.set_exit();
-                        config.save();
+                        config.save(&config_path);
                     }
 
                     #event_enum_name::WindowEvent {

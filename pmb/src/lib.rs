@@ -15,9 +15,12 @@ use crate::{
     graphics::{Color, ColorExt, PixelPos, StrokePoint, StrokePos},
     stroke::{Stroke, StrokeElement},
 };
+pub use dirs;
 use event::Combination;
+pub use gumdrop;
 use lyon::lyon_tessellation::{StrokeOptions, StrokeTessellator};
 use slotmap::{DefaultKey, SlotMap};
+use std::path::{Path, PathBuf};
 
 pub const TITLE_UNMODIFIED: &str = "hi! <3";
 pub const TITLE_MODIFIED: &str = "hi! <3 (modified)";
@@ -82,6 +85,18 @@ pub trait StrokeBackend: std::fmt::Debug {
     fn is_dirty(&self) -> bool;
 }
 
+#[derive(gumdrop::Options, Debug)]
+pub struct Args {
+    #[options(help = "Show this message")]
+    help: bool,
+    #[options(help = "Print the version", short = "V")]
+    pub version: bool,
+    #[options(help = "Config file location")]
+    pub config: Option<PathBuf>,
+    #[options(free, help = "File to open")]
+    pub file: Option<PathBuf>,
+}
+
 #[derive(Default, PartialEq, Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub enum Tool {
     #[default]
@@ -138,14 +153,12 @@ pub struct Config {
 }
 
 impl Default for Config {
-    #[cfg(feature = "pmb-release")]
     fn default() -> Self {
-        Self::new()
-    }
-
-    #[cfg(not(feature = "pmb-release"))]
-    fn default() -> Self {
-        Self::debug()
+        if cfg!(feature = "pmb-release") {
+            Self::new()
+        } else {
+            Self::debug()
+        }
     }
 }
 
@@ -211,19 +224,10 @@ impl Config {
         }
     }
 
-    #[cfg(not(feature = "pmb-release"))]
-    fn path() -> &'static str {
-        concat!(env!("CARGO_MANIFEST_DIR"), "/../config.ron")
-    }
-
-    #[cfg(feature = "pmb-release")]
-    fn path() -> &'static str {
-        todo!()
-    }
-
     // TODO registry/gsettings or something, this is dumb
-    pub fn from_disk() -> Config {
-        let file = match std::fs::read_to_string(Self::path()) {
+    pub fn from_disk(path: &Path) -> Config {
+        log::info!("load config from {}", path.display());
+        let file = match std::fs::read_to_string(path) {
             Ok(contents) => contents,
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
                 return Config::default();
@@ -243,9 +247,12 @@ impl Config {
         }
     }
 
-    pub fn save(&self) {
+    pub fn save(&self, path: &Path) {
+        log::info!("save config to {}", path.display());
+
         if self.had_error_parsing {
             // don't overwrite broken configs
+            log::error!("had error");
             return;
         }
 
@@ -261,7 +268,7 @@ impl Config {
         let contents =
             format!("// this file generated automatically.\n// do not edit while pmb is running!!\n{contents}");
 
-        match std::fs::write(Self::path(), contents) {
+        match std::fs::write(path, contents) {
             Err(err) => {
                 PmbError::from(err).display_with(String::from("Couldn't read config file"));
             }
