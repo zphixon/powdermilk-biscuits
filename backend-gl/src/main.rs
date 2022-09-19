@@ -68,8 +68,8 @@ derive_loop::pmb_loop!(
 
             pen_cursor_program = backend_gl::compile_program(
                 &gl,
-                concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/cursor.vert"),
-                concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/cursor.frag"),
+                include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/cursor.vert")),
+                include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/cursor.frag")),
             );
             gl.use_program(Some(pen_cursor_program));
 
@@ -90,8 +90,8 @@ derive_loop::pmb_loop!(
 
             strokes_program = backend_gl::compile_program(
                 &gl,
-                concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/stroke_line.vert"),
-                concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/stroke_line.frag"),
+                include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/stroke_line.vert")),
+                include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/stroke_line.frag")),
             );
             gl.use_program(Some(strokes_program));
 

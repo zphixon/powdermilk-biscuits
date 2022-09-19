@@ -193,13 +193,10 @@ impl Display for GlPos {
 pub unsafe fn compile_shader(
     gl: &glow::Context,
     shader_type: u32,
-    path: &'static str,
+    source: &'static str,
 ) -> glow::NativeShader {
-    let source = std::fs::read_to_string(path)
-        .unwrap_or_else(|_| panic!("could not read shader at path {path}"));
-
     let shader = gl.create_shader(shader_type).unwrap();
-    gl.shader_source(shader, &source);
+    gl.shader_source(shader, source);
     gl.compile_shader(shader);
 
     if !gl.get_shader_compile_status(shader) {
@@ -212,13 +209,13 @@ pub unsafe fn compile_shader(
 #[allow(clippy::missing_safety_doc)]
 pub unsafe fn compile_program(
     gl: &glow::Context,
-    vert_path: &'static str,
-    frag_path: &'static str,
+    vert_src: &'static str,
+    frag_src: &'static str,
 ) -> glow::NativeProgram {
     let program = gl.create_program().unwrap();
 
-    let vert = compile_shader(gl, glow::VERTEX_SHADER, vert_path);
-    let frag = compile_shader(gl, glow::FRAGMENT_SHADER, frag_path);
+    let vert = compile_shader(gl, glow::VERTEX_SHADER, vert_src);
+    let frag = compile_shader(gl, glow::FRAGMENT_SHADER, frag_src);
 
     gl.attach_shader(program, vert);
     gl.attach_shader(program, frag);
