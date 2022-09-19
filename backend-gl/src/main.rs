@@ -140,7 +140,9 @@ derive_loop::pmb_loop!(
             _ => {}
         }
 
-        let redraw_after = egui_glow.run(context.window(), derive_loop::egui!());
+        let redraw_after = egui_glow.run(context.window(), |ctx| {
+            powdermilk_biscuits::ui::egui(ctx, &mut ui)
+        });
 
         if redraw_after.is_zero() {
             flow.set_poll();
@@ -167,11 +169,7 @@ derive_loop::pmb_loop!(
         unsafe {
             gl.use_program(Some(strokes_program));
             let view = backend_gl::view_matrix(sketch.zoom, sketch.zoom, size, sketch.origin);
-            gl.uniform_matrix_4_f32_slice(
-                Some(&strokes_view),
-                false,
-                &view.to_cols_array(),
-            );
+            gl.uniform_matrix_4_f32_slice(Some(&strokes_view), false, &view.to_cols_array());
             gl.clear_color(ui.clear_color[0], ui.clear_color[1], ui.clear_color[2], 1.);
             gl.clear(glow::COLOR_BUFFER_BIT);
         }

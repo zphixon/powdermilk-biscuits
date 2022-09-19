@@ -58,7 +58,10 @@ derive_loop::pmb_loop!(
     },
 
     render: {
-        let egui_data = egui_ctx.run(egui_winit.take_egui_input(&window), derive_loop::egui!());
+        let egui_data = egui_ctx.run(egui_winit.take_egui_input(&window), |ctx| {
+            powdermilk_biscuits::ui::egui(ctx, &mut ui)
+        });
+
         let egui_tris = egui_ctx.tessellate(egui_data.shapes);
 
         match graphics.render(
@@ -77,6 +80,5 @@ derive_loop::pmb_loop!(
             }
             _ => {}
         }
-
     },
 );

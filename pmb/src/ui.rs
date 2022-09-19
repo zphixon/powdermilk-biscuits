@@ -67,6 +67,13 @@ pub fn open_dialog() -> Option<PathBuf> {
         .pick_file()
 }
 
+pub fn egui<C: CoordinateSystem>(ctx: &egui::Context, ui: &mut Ui<C>) {
+    egui::SidePanel::left("side panel").show(ctx, |eui| {
+        eui.heading("Real Hot Item");
+        eui.color_edit_button_rgb(&mut ui.clear_color);
+    });
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Action {
     DrawStroke(DefaultKey),
