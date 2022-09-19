@@ -17,8 +17,10 @@ The build has visited the local mage and is no longer cursed. Just `git clone` a
 
 - Gui
   - Layers?
-  - Modify all the ui state stuff
-  - Fix bug with mouse visibility
+  - Modify all the ui state stuff in egui
+  - Fix issues with egui/mouse interaction
+    - Rudimentary widget system?
+    - Embed renderer as a PaintCallback (complex)?
 - Good finger gestures
 - Stroke rendering revamp
   - Infinite scroll, chunks
