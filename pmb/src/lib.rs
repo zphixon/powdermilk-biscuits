@@ -225,6 +225,18 @@ impl Config {
         }
     }
 
+    pub fn config_path() -> Result<PathBuf, PmbError> {
+        let mut path = dirs::config_dir().unwrap();
+        path.push("powdermilk-biscuits");
+
+        if !path.exists() {
+            std::fs::create_dir(&path)?;
+        }
+
+        path.push("config.ron");
+        Ok(path)
+    }
+
     // TODO registry/gsettings or something, this is dumb
     pub fn from_disk(path: &Path) -> Config {
         log::info!("load config from {}", path.display());

@@ -213,10 +213,14 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 config_path
             } else {
                 if cfg!(feature = "pmb-release") {
-                    let mut dir = powdermilk_biscuits::dirs::config_dir().unwrap();
-                    dir.push("powdermilk-biscuits");
-                    dir.push("config.ron");
-                    dir
+                    use powdermilk_biscuits::error::PmbErrorExt;
+                    match Config::config_path().problem(format!("Couldn't open config dir")) {
+                        Ok(path) => path,
+                        Err(e) => {
+                            e.display();
+                            return;
+                        }
+                    }
                 } else {
                     std::path::PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../config.ron"))
                 }
