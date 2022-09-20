@@ -1,0 +1,18 @@
+en-US.UTF-8 {
+  MigrateWarningTitle "Migrate version"
+  MigrateWarningMessage "Significant internal changes have been made to Powdermilk Biscuits since you last opened this file. Although it has not been marked as significantly incompatible with the current version, you may still experience data loss by attempting to upgrade this file to the most recent version.
+
+No changes will be made to the file as is, and you will be prompted to save the file in a new location instead of overwriting it.
+
+Proceed?"
+  ErrorTitle "Error"
+  UnsavedChangesTitle "Unsaved changes"
+  OpenTitle "Open file"
+  RealHotItem "Real hot item"
+  CouldNotOpenFile "Could not open file"
+  CouldNotSaveFile "Could not save file"
+  AskToSaveBeforeOpening "Would you like to save before opening another file?"
+  SaveUnnamedFile "Save unnamed file"
+  OutOfMemory "Out of memory"
+  CouldNotOpenConfigFile "Couldn't read config file"
+}

@@ -21,6 +21,9 @@ The build has visited the local mage and is no longer cursed. Just `git clone` a
   - Fix issues with egui/mouse interaction
     - Rudimentary widget system?
     - Embed renderer as a PaintCallback (complex)?
+  - i18n
+    - We have mappings between messages and languages but we're still passing strings around
+    - Also investigate [fluent](https://projectfluent.org/)
 - Good finger gestures
 - Stroke rendering revamp
   - Infinite scroll, chunks

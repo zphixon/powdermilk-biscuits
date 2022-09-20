@@ -2,7 +2,7 @@ use crate::{
     error::{ErrorKind, PmbError, PmbErrorExt},
     event::{ElementState, Event, InputHandler, Keycode, Touch, TouchPhase},
     graphics::{PixelPos, StrokePos},
-    Config, CoordinateSystem, Device, Sketch, Stroke, StrokeBackend, Stylus, StylusPosition,
+    s, Config, CoordinateSystem, Device, Sketch, Stroke, StrokeBackend, Stylus, StylusPosition,
     StylusState, Tool,
 };
 use lyon::{
@@ -15,23 +15,17 @@ use std::{
     path::{Path, PathBuf},
 };
 
-const MSG: &str = r#"Significant internal changes have been made to Powdermilk Biscuits since you last opened this file. Although it has not been marked as significantly incompatible with the current version, you may still experience data loss by attempting to upgrade this file to the most recent version.
-
-No changes will be made to the file as is, and you will be prompted to save the file in a new location instead of overwriting it.
-
-Proceed?"#;
-
 fn prompt_migrate() -> rfd::MessageDialogResult {
     rfd::MessageDialog::new()
-        .set_title("Migrate version")
+        .set_title(s!(&MigrateWarningTitle))
         .set_buttons(rfd::MessageButtons::YesNo)
-        .set_description(MSG)
+        .set_description(s!(&MigrateWarningMessage))
         .show()
 }
 
 pub fn error(text: &str) -> rfd::MessageDialogResult {
     rfd::MessageDialog::new()
-        .set_title("Error")
+        .set_title(s!(&ErrorTitle))
         .set_description(text)
         .set_level(rfd::MessageLevel::Error)
         .set_buttons(rfd::MessageButtons::Ok)
@@ -41,7 +35,7 @@ pub fn error(text: &str) -> rfd::MessageDialogResult {
 pub fn ask_to_save(why: &str) -> rfd::MessageDialogResult {
     rfd::MessageDialog::new()
         .set_level(rfd::MessageLevel::Warning)
-        .set_title("Unsaved changes")
+        .set_title(s!(&UnsavedChangesTitle))
         .set_description(why)
         .set_buttons(rfd::MessageButtons::YesNoCancel)
         .show()
@@ -62,14 +56,14 @@ pub fn save_dialog(title: &str, filename: Option<&Path>) -> Option<PathBuf> {
 
 pub fn open_dialog() -> Option<PathBuf> {
     rfd::FileDialog::new()
-        .set_title("Open file")
+        .set_title(s!(&OpenTitle))
         .add_filter("PMB", &["pmb"])
         .pick_file()
 }
 
 pub fn egui<C: CoordinateSystem>(ctx: &egui::Context, ui: &mut Ui<C>) {
     egui::SidePanel::left("side panel").show(ctx, |eui| {
-        eui.heading("Real Hot Item");
+        eui.heading(s!(RealHotItem));
         eui.color_edit_button_rgb(&mut ui.clear_color);
     });
 }
@@ -846,7 +840,7 @@ impl<C: CoordinateSystem> Ui<C> {
 
         if self.input.combo_just_pressed(&config.save) {
             save_file(self, sketch)
-                .problem(format!("Could not save file"))
+                .problem(s!(CouldNotSaveFile))
                 .display();
         }
 
@@ -865,7 +859,7 @@ impl<C: CoordinateSystem> Ui<C> {
 
         if self.input.combo_just_pressed(&config.open) {
             read_file(self, None::<&str>, sketch)
-                .problem(format!("Could not open file"))
+                .problem(s!(CouldNotSaveFile))
                 .display();
         }
 
@@ -949,12 +943,8 @@ pub fn read_file<S: StrokeBackend, C: CoordinateSystem>(
     // if we are modified
     if ui.modified {
         // ask to save first
-        if !ask_to_save_then_save(
-            ui,
-            sketch,
-            "Would you like to save before opening another file?",
-        )
-        .problem(String::from("Could not save file"))?
+        if !ask_to_save_then_save(ui, sketch, s!(&AskToSaveBeforeOpening))
+            .problem(s!(CouldNotSaveFile))?
         {
             return Ok(());
         }
@@ -1066,7 +1056,7 @@ pub fn ask_to_save_then_save<S: StrokeBackend, C: CoordinateSystem>(
         (rfd::MessageDialogResult::Yes, None) => {
             log::info!("asking where to save");
             // ask where to save it
-            match save_dialog("Save unnamed file", None) {
+            match save_dialog(s!(&SaveUnnamedFile), None) {
                 Some(new_filename) => {
                     log::info!("writing as {}", new_filename.display());
                     // try write to disk
@@ -1096,7 +1086,7 @@ fn save_file<C: CoordinateSystem, S: StrokeBackend>(
     if let Some(path) = ui.path.as_ref() {
         migrate::write(path, sketch).problem(format!("{}", path.display()))?;
         ui.modified = false;
-    } else if let Some(path) = save_dialog("Save unnamed file", None) {
+    } else if let Some(path) = save_dialog(s!(&SaveUnnamedFile), None) {
         let problem = format!("{}", path.display());
         ui.path = Some(path);
         migrate::write(ui.path.as_ref().unwrap(), sketch).problem(problem)?;

@@ -75,7 +75,7 @@ derive_loop::pmb_loop!(
         ) {
             Err(wgpu::SurfaceError::Lost) => graphics.resize(graphics.size),
             Err(wgpu::SurfaceError::OutOfMemory) => {
-                powdermilk_biscuits::ui::error("Out of memory!");
+                powdermilk_biscuits::ui::error(powdermilk_biscuits::s!(&OutOfMemory));
                 flow.set_exit();
             }
             _ => {}

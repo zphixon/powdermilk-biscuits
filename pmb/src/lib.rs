@@ -1,6 +1,7 @@
 pub mod error;
 pub mod event;
 pub mod graphics;
+pub mod i18n;
 pub mod migrate;
 pub mod stroke;
 pub mod ui;
@@ -246,7 +247,7 @@ impl Config {
                 return Config::default();
             }
             Err(err) => {
-                PmbError::from(err).display_with(String::from("Couldn't read config file"));
+                PmbError::from(err).display_with(s!(CouldNotOpenConfigFile));
                 return Config::default().with_error();
             }
         };
@@ -254,7 +255,7 @@ impl Config {
         match ron::from_str(&file) {
             Ok(config) => config,
             Err(err) => {
-                PmbError::from(err).display_with(String::from("Couldn't read config file"));
+                PmbError::from(err).display_with(s!(CouldNotOpenConfigFile));
                 return Config::default().with_error();
             }
         }
@@ -283,7 +284,7 @@ impl Config {
 
         match std::fs::write(path, contents) {
             Err(err) => {
-                PmbError::from(err).display_with(String::from("Couldn't read config file"));
+                PmbError::from(err).display_with(s!(CouldNotOpenConfigFile));
             }
             _ => {}
         }
@@ -354,7 +355,7 @@ impl<S: StrokeBackend> Sketch<S> {
 
         let mut this = Sketch::new(grid());
         ui::read_file(ui, Some(path), &mut this)
-            .problem(String::from("Could not open file"))
+            .problem(s!(CouldNotOpenFile))
             .display();
 
         this
