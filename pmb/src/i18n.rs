@@ -25,7 +25,7 @@ static LANG: Lazy<String> = Lazy::new(|| {
 
 macro_rules! messages {
     ($($variant:ident),* $(,)?) => {
-        #[derive(Clone, Copy)]
+        #[derive(Clone, Copy, Debug)]
         pub enum Message {
             $($variant),*
         }
@@ -77,47 +77,80 @@ pub fn get_str(key: Message) -> String {
 
     pot.get(&lang)
         .unwrap_or_else(|| panic!("missing language {}", lang))
+        .children()
+        .unwrap_or_else(|| panic!("language {} has no messages", lang))
         .get(key.as_str())
-        .unwrap_or_else(|| panic!("missing language {}", lang))
+        .unwrap_or_else(|| panic!("language {} missing messages {:?}", lang, key))
+        .entries()
+        .get(0)
+        .unwrap_or_else(|| panic!("language {} message {:?} missing value", lang, key))
+        .value()
+        .as_string()
+        .unwrap_or_else(|| panic!("language {} message {:?} is not a string", lang, key))
         .to_string()
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use kdl::KdlValue;
     use std::collections::HashSet;
 
     #[test]
     fn test() {
         let pot = &*POT;
-        let required = Message::all_strs();
+        let required = Message::all_strs()
+            .iter()
+            .fold(HashSet::new(), |mut set, required| {
+                set.insert(*required);
+                set
+            });
 
-        for lang in pot.nodes() {
-            let children = lang
+        pot.nodes().iter().for_each(|lang| {
+            let names = lang
                 .children()
                 .unwrap()
                 .nodes()
                 .iter()
-                .map(|node| {
-                    assert!(
-                        !node.is_empty(),
-                        "language {} missing content for message {}",
-                        lang.name().to_string(),
-                        node.name().to_string()
+                .map(|message| {
+                    assert_eq!(
+                        1,
+                        message.entries().len(),
+                        "language {} message {} should have exactly one translation",
+                        lang.name().value(),
+                        message.name().value(),
                     );
 
-                    node.name().to_string()
+                    assert!(
+                        matches!(
+                            message.entries()[0].value(),
+                            KdlValue::String(_) | KdlValue::RawString(_)
+                        ),
+                        "language {} message {} must be a string",
+                        lang.name().value(),
+                        message.name().value(),
+                    );
+
+                    message.name().value()
                 })
                 .collect::<HashSet<_>>();
 
-            for required in required {
-                assert!(
-                    children.contains(*required),
-                    "language {} missing message {}",
-                    lang.name().to_string(),
-                    required
-                );
-            }
-        }
+            let d1 = required.difference(&names).collect::<Vec<_>>();
+            let d2 = names.difference(&required).collect::<Vec<_>>();
+
+            assert!(
+                d1.is_empty(),
+                "language {} missing translations {:?}",
+                lang.name().value(),
+                d1
+            );
+
+            assert!(
+                d2.is_empty(),
+                "language {} has extraneous translations {:?}",
+                lang.name().value(),
+                d2
+            );
+        });
     }
 }

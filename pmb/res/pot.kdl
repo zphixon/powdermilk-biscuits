@@ -1,4 +1,4 @@
-en-US.UTF-8 {
+en_US.UTF-8 {
   MigrateWarningTitle "Migrate version"
   MigrateWarningMessage "Significant internal changes have been made to Powdermilk Biscuits since you last opened this file. Although it has not been marked as significantly incompatible with the current version, you may still experience data loss by attempting to upgrade this file to the most recent version.
 
