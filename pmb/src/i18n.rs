@@ -46,6 +46,7 @@ messages!(
     Eraser,
     UseMouseForPen,
     ToolForGesture1,
+    Zoom,
 );
 
 #[macro_export]

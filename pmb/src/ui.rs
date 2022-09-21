@@ -54,8 +54,9 @@ pub fn open_dialog() -> Option<PathBuf> {
         .pick_file()
 }
 
-pub fn egui<C: CoordinateSystem>(
+pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
     ctx: &egui::Context,
+    sketch: &mut Sketch<S>,
     widget: &mut widget::SketchWidget<C>,
     config: &mut Config,
 ) {
@@ -73,6 +74,7 @@ pub fn egui<C: CoordinateSystem>(
             ui.radio_value(&mut widget.active_tool, Tool::Eraser, s!(&Eraser));
             ui.radio_value(&mut widget.active_tool, Tool::Pan, s!(&Pan));
             ui.checkbox(&mut config.use_mouse_for_pen, s!(&UseMouseForPen));
+
             egui::ComboBox::from_label(s!(&ToolForGesture1))
                 .selected_text(match config.tool_for_gesture_1 {
                     Tool::Pen => s!(&Pen), // TODO helper for this?
@@ -84,6 +86,17 @@ pub fn egui<C: CoordinateSystem>(
                     ui.selectable_value(&mut config.tool_for_gesture_1, Tool::Eraser, s!(&Eraser));
                     ui.selectable_value(&mut config.tool_for_gesture_1, Tool::Pan, s!(&Pan));
                 });
+
+            if ui
+                .add(
+                    egui::Slider::new(&mut sketch.zoom, crate::MIN_ZOOM..=crate::MAX_ZOOM)
+                        .text(s!(&Zoom)),
+                )
+                .changed()
+            {
+                sketch.update_visible_strokes::<C>(widget.width, widget.height);
+                sketch.update_stroke_primitive();
+            };
         });
     });
 }

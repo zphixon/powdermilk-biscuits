@@ -23,9 +23,10 @@ Proceed?"
   Eraser "Eraser"
   UseMouseForPen "Use mouse for pen"
   ToolForGesture1 "Tool for one-finger touch"
+  Zoom "Zoom"
 }
 
-es {
+/-es {
   MigrateWarningTitle "(es) Migrate version"
   MigrateWarningMessage "(es) Significant internal changes have been made to Powdermilk Biscuits since you last opened this file. Although it has not been marked as significantly incompatible with the current version, you may still experience data loss by attempting to upgrade this file to the most recent version.
 
