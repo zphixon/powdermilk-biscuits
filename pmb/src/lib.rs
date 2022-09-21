@@ -347,7 +347,7 @@ impl<S: StrokeBackend> Sketch<S> {
     }
 
     pub fn with_filename<C: CoordinateSystem>(
-        widget: &mut ui::SketchWidget<C>,
+        widget: &mut ui::widget::SketchWidget<C>,
         path: impl AsRef<std::path::Path>,
     ) -> Self {
         log::info!("create State from {}", path.as_ref().display());

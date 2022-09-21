@@ -3,7 +3,7 @@ use powdermilk_biscuits::{
     event::{ElementState, Keycode, MouseButton, PenInfo, Touch, TouchPhase},
     graphics::{ColorExt, PixelPos, StrokePoint},
     stroke::Stroke,
-    ui::SketchWidget,
+    ui::widget::SketchWidget,
     Sketch, Tool,
 };
 use std::mem::size_of;

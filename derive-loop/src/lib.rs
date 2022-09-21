@@ -167,7 +167,7 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             use powdermilk_biscuits::{
                 event::{ElementState, Event},
                 gumdrop::Options,
-                ui::SketchWidget,
+                ui::widget::SketchWidget,
                 Config, Sketch,
             };
             use #windowing_crate_name::{
@@ -245,7 +245,7 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
             let mut widget = {
                 let PhysicalSize { width, height } = #window.inner_size();
-                powdermilk_biscuits::ui::SketchWidget::<#backend_crate_name::#coords_name>::new(width, height)
+                SketchWidget::<#backend_crate_name::#coords_name>::new(width, height)
             };
             let mut sketch: Sketch<#backend_crate_name::#stroke_backend_name> =
                 if let Some(filename) = args.file {
