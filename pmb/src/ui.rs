@@ -72,10 +72,21 @@ pub fn egui<C: CoordinateSystem>(ctx: &egui::Context, ui: &mut Ui<C>, config: &m
 
     egui::TopBottomPanel::top("top").show(ctx, |eui| {
         eui.horizontal(|eui| {
-            eui.checkbox(&mut config.use_mouse_for_pen, s!(&UseMouseForPen));
             eui.radio_value(&mut ui.active_tool, Tool::Pen, s!(&Pen));
             eui.radio_value(&mut ui.active_tool, Tool::Eraser, s!(&Eraser));
             eui.radio_value(&mut ui.active_tool, Tool::Pan, s!(&Pan));
+            eui.checkbox(&mut config.use_mouse_for_pen, s!(&UseMouseForPen));
+            egui::ComboBox::from_label(s!(&ToolForGesture1))
+                .selected_text(match config.tool_for_gesture_1 {
+                    Tool::Pen => s!(&Pen), // TODO helper for this?
+                    Tool::Pan => s!(&Pan),
+                    Tool::Eraser => s!(&Eraser),
+                })
+                .show_ui(eui, |eui| {
+                    eui.selectable_value(&mut config.tool_for_gesture_1, Tool::Pen, s!(&Pen));
+                    eui.selectable_value(&mut config.tool_for_gesture_1, Tool::Eraser, s!(&Eraser));
+                    eui.selectable_value(&mut config.tool_for_gesture_1, Tool::Pan, s!(&Pan));
+                });
         });
     });
 }
@@ -731,7 +742,8 @@ impl<C: CoordinateSystem> Ui<C> {
                     }
 
                     Tool::Eraser => {
-                        // TODO
+                        self.update_stylus_from_touch(config, sketch, touch);
+                        self.erase_strokes(sketch);
                     }
 
                     Tool::Pan => {
