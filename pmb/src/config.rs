@@ -5,44 +5,72 @@ use crate::{
 };
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct Config {
-    pub use_mouse_for_pen: bool,
-    pub stylus_may_be_inverted: bool,
-    pub primary_button: MouseButton,
-    pub pan_button: MouseButton,
-    pub pen_zoom: Keycode,
-    pub toggle_eraser_pen: Combination,
-    pub brush_increase: Combination,
-    pub brush_decrease: Combination,
-    pub undo: Combination,
-    pub redo: Combination,
-    pub save: Combination,
-    pub reset_view: Combination,
-    pub open: Combination,
-    pub zoom_out: Combination,
-    pub zoom_in: Combination,
-    pub tool_for_gesture_1: Tool,
-    pub tool_for_gesture_2: Tool,
-    pub tool_for_gesture_3: Tool,
-    pub tool_for_gesture_4: Tool,
+macro_rules! config {
+    ($($field:ident : $ty:ty $default:block),* $(,)?) => {
+        paste::paste! {
+            mod default {
+                use super::*;
+                use Keycode::*;
+                $(pub fn $field() -> $ty $default)*
+            }
 
-    pub window_start_x: Option<i32>,
-    pub window_start_y: Option<i32>,
-    pub window_start_width: Option<u32>,
-    pub window_start_height: Option<u32>,
-    pub window_maximized: bool,
+            #[derive(Debug, serde::Serialize, serde::Deserialize)]
+            pub struct Config {
+                $(
+                    #[serde(default = "default::" $field)]
+                    pub $field: $ty,
+                )*
 
-    pub debug_toggle_stylus_invertability: Combination,
-    pub debug_toggle_use_mouse_for_pen: Combination,
-    pub debug_toggle_use_finger_for_pen: Combination,
-    pub debug_clear_strokes: Combination,
-    pub debug_print_strokes: Combination,
-    pub debug_dirty_all_strokes: Combination,
+                #[serde(skip)]
+                had_error_parsing: bool,
+            }
 
-    #[serde(skip)]
-    pub had_error_parsing: bool,
+            impl Config {
+                pub fn new() -> Self {
+                    Self {
+                        $($field: default::$field(),)*
+                        had_error_parsing: false,
+                    }
+                }
+            }
+        }
+    };
 }
+
+config!(
+    use_mouse_for_pen: bool { true },
+    stylus_may_be_inverted: bool { true },
+    primary_button: MouseButton { MouseButton::Left },
+    pan_button: MouseButton { MouseButton::Middle },
+    pen_zoom: Keycode { LControl },
+    toggle_eraser_pen: Combination { E.into() },
+    brush_increase: Combination { Combination::from(RBracket).repeatable() },
+    brush_decrease: Combination { Combination::from(LBracket).repeatable() },
+    undo: Combination { (LControl | Z).repeatable() },
+    redo: Combination { (LControl | LShift | Z).repeatable() },
+    save: Combination { (LControl | S).repeatable() },
+    reset_view: Combination { Z.into() },
+    open: Combination { LControl | O },
+    zoom_out: Combination { LControl | NumpadSubtract },
+    zoom_in: Combination { LControl | NumpadAdd },
+    tool_for_gesture_1: Tool { Tool::Pan },
+    tool_for_gesture_2: Tool { Tool::Pan },
+    tool_for_gesture_3: Tool { Tool::Pan },
+    tool_for_gesture_4: Tool { Tool::Pan },
+
+    window_start_x: Option<i32> { None },
+    window_start_y: Option<i32> { None },
+    window_start_width: Option<u32> { None },
+    window_start_height: Option<u32> { None },
+    window_maximized: bool { false },
+
+    debug_toggle_stylus_invertability: Combination { Combination::INACTIVE },
+    debug_toggle_use_mouse_for_pen: Combination { Combination::INACTIVE },
+    debug_toggle_use_finger_for_pen: Combination { Combination::INACTIVE },
+    debug_clear_strokes: Combination { Combination::INACTIVE },
+    debug_print_strokes: Combination { Combination::INACTIVE },
+    debug_dirty_all_strokes: Combination { Combination::INACTIVE },
+);
 
 impl Default for Config {
     fn default() -> Self {
@@ -55,47 +83,6 @@ impl Default for Config {
 }
 
 impl Config {
-    pub fn new() -> Config {
-        use Keycode::*;
-
-        Config {
-            use_mouse_for_pen: false,
-            stylus_may_be_inverted: true,
-            primary_button: MouseButton::Left,
-            pan_button: MouseButton::Middle,
-            pen_zoom: LControl,
-            toggle_eraser_pen: E.into(),
-            brush_increase: Combination::from(RBracket).repeatable(),
-            brush_decrease: Combination::from(LBracket).repeatable(),
-            undo: (LControl | Z).repeatable(),
-            redo: (LControl | LShift | Z).repeatable(),
-            save: LControl | S,
-            reset_view: Z.into(),
-            open: LControl | O,
-            zoom_out: LControl | NumpadSubtract,
-            zoom_in: LControl | NumpadAdd,
-            tool_for_gesture_1: Tool::Pan,
-            tool_for_gesture_2: Tool::Pan,
-            tool_for_gesture_3: Tool::Pan,
-            tool_for_gesture_4: Tool::Pan,
-
-            window_start_x: None,
-            window_start_y: None,
-            window_start_width: None,
-            window_start_height: None,
-            window_maximized: false,
-
-            debug_toggle_stylus_invertability: Combination::INACTIVE,
-            debug_toggle_use_mouse_for_pen: Combination::INACTIVE,
-            debug_toggle_use_finger_for_pen: Combination::INACTIVE,
-            debug_clear_strokes: Combination::INACTIVE,
-            debug_print_strokes: Combination::INACTIVE,
-            debug_dirty_all_strokes: Combination::INACTIVE,
-
-            had_error_parsing: false,
-        }
-    }
-
     fn with_error(self) -> Config {
         Config {
             had_error_parsing: true,
