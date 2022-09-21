@@ -289,7 +289,7 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                             if powdermilk_biscuits::ui::ask_to_save_then_save(
                                 &mut ui,
                                 &sketch,
-                                "Would you like to save before exiting?",
+                                powdermilk_biscuits::s!(&AskToSaveBeforeClosing),
                             )
                             .unwrap_or(false)
                             {
