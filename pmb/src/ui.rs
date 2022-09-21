@@ -61,7 +61,7 @@ pub fn open_dialog() -> Option<PathBuf> {
         .pick_file()
 }
 
-pub fn egui<C: CoordinateSystem>(ctx: &egui::Context, ui: &mut Ui<C>) {
+pub fn egui<C: CoordinateSystem>(ctx: &egui::Context, ui: &mut Ui<C>, config: &mut Config) {
     egui::SidePanel::left("side").show(ctx, |eui| {
         eui.heading(s!(&RealHotItem));
         eui.label(s!(&ClearColor));
@@ -72,6 +72,7 @@ pub fn egui<C: CoordinateSystem>(ctx: &egui::Context, ui: &mut Ui<C>) {
 
     egui::TopBottomPanel::top("top").show(ctx, |eui| {
         eui.horizontal(|eui| {
+            eui.checkbox(&mut config.use_mouse_for_pen, s!(&UseMouseForPen));
             eui.radio_value(&mut ui.active_tool, Tool::Pen, s!(&Pen));
             eui.radio_value(&mut ui.active_tool, Tool::Eraser, s!(&Eraser));
             eui.radio_value(&mut ui.active_tool, Tool::Pan, s!(&Pan));

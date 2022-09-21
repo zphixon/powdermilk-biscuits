@@ -64,6 +64,7 @@ messages!(
     Pen,
     Pan,
     Eraser,
+    UseMouseForPen,
 );
 
 #[macro_export]

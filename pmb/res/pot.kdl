@@ -20,4 +20,5 @@ Proceed?"
   Pen "Pen"
   Pan "Pan"
   Eraser "Eraser"
+  UseMouseForPen "Use mouse for pen"
 }
