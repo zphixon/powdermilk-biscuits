@@ -13,14 +13,6 @@ jobs:
       - uses: actions/checkout@v3
 
       - uses: actions/cache@v3
-        id: PLEASE
-        with:
-          path: |
-            ~/.cargo/bin/
-            apt/*.deb
-          key: ${{ runner.os }}-deps
-
-      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry/index/
@@ -32,20 +24,28 @@ jobs:
             ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
             ${{ runner.os }}-cargo-
 
-      - name: install gtk/glslang
-        if: 'steps.PLEASE.outputs.cache-hit'
-        run: |
-          sudo cp apt/*.deb /var/cache/apt/archives/
-          sudo apt install glslang-tools build-essential libgtk-3-dev
+      - uses: actions/cache@v3
+        id: cache-deps
+        with:
+          path: |
+            ~/.cargo/bin/
+            apt/*.deb
+          key: ${{ runner.os }}-deps
 
-      - name: download gtk/glslang/naga
-        if: '!steps.PLEASE.outputs.cache-hit'
+      - name: install gtk/glslang/naga
+        if: '!steps.cache-deps.outputs.cache-hit'
         run: |
           sudo apt install --download-only glslang-tools build-essential libgtk-3-dev
           mkdir -p apt
           cp /var/cache/apt/archives/*.deb apt
           sudo apt install glslang-tools build-essential libgtk-3-dev
           cargo install naga-cli
+
+      - name: unpack gtk/glslang
+        if: 'steps.cache-deps.outputs.cache-hit'
+        run: |
+          sudo cp apt/*.deb /var/cache/apt/archives/
+          sudo apt install glslang-tools build-essential libgtk-3-dev
 
       - name: check shader compilers are working
         run: |
@@ -61,14 +61,6 @@ jobs:
       - uses: actions/checkout@v3
 
       - uses: actions/cache@v3
-        id: cache-deps
-        with:
-          path: |
-            C:\glslang\
-            ~/.cargo/bin/
-          key: ${{ runner.os }}-deps
-
-      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry/index/
@@ -80,6 +72,14 @@ jobs:
             ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
             ${{ runner.os }}-cargo-
 
+      - uses: actions/cache@v3
+        id: cache-deps
+        with:
+          path: |
+            C:\glslang\
+            ~/.cargo/bin/
+          key: ${{ runner.os }}-deps
+
       - name: download glslang/naga
         if: '!steps.cache-deps.outputs.cache-hit'
         run: |
@@ -87,10 +87,10 @@ jobs:
           7z x glslang.zip -oC:\glslang
           cargo install naga-cli
 
-      - name: check shaders
+      - name: check shader compilers
         run: |
-          $env:Path += ';C:\glslang\bin'
           Add-Content $env:GITHUB_PATH 'C:\glslang\bin'
+          $env:Path += ';C:\glslang\bin'
           glslangValidator backend-gl/src/shaders/stroke_line.vert
           naga backend-wgpu/src/shaders/stroke_mesh.wgsl
 
@@ -105,116 +105,32 @@ jobs:
       - uses: actions/cache@v3
         with:
           path: |
-            ~/.cargo/bin/
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-            /usr/local/Cellar/glslang/11.11.0/INSTALL_RECEIPT.json
-            /usr/local/Cellar/glslang/11.11.0/bin/spirv-remap
-            /usr/local/Cellar/glslang/11.11.0/bin/glslangValidator
-            /usr/local/Cellar/glslang/11.11.0/.brew/glslang.rb
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/build_info.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/Include/ResourceLimits.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/Include/glslang_c_interface.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/Include/SpirvIntrinsics.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/Include/Types.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/Include/intermediate.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/Include/glslang_c_shader_types.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/Include/BaseTypes.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/Include/InitializeGlobals.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/Include/ShHandle.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/Include/arrays.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/Include/Common.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/Include/ConstantUnion.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/Include/InfoSink.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/Include/PoolAlloc.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/SPIRV/NonSemanticDebugPrintf.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/SPIRV/SPVRemapper.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/SPIRV/SpvBuilder.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/SPIRV/SpvTools.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/SPIRV/GLSL.ext.AMD.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/SPIRV/doc.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/SPIRV/spirv.hpp
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/SPIRV/GLSL.ext.EXT.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/SPIRV/GLSL.ext.KHR.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/SPIRV/GLSL.ext.NV.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/SPIRV/spvIR.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/SPIRV/bitutils.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/SPIRV/disassemble.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/SPIRV/GlslangToSpv.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/SPIRV/GLSL.std.450.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/SPIRV/hex_float.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/SPIRV/Logger.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/MachineIndependent/parseVersions.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/MachineIndependent/gl_types.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/MachineIndependent/ScanContext.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/MachineIndependent/iomapper.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/MachineIndependent/localintermediate.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/MachineIndependent/RemoveTree.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/MachineIndependent/propagateNoContraction.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/MachineIndependent/Versions.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/MachineIndependent/SymbolTable.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/MachineIndependent/glslang_tab.cpp.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/MachineIndependent/LiveTraverser.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/MachineIndependent/Initialize.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/MachineIndependent/attribute.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/MachineIndependent/ParseHelper.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/MachineIndependent/preprocessor/PpTokens.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/MachineIndependent/preprocessor/PpContext.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/MachineIndependent/reflection.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/MachineIndependent/Scan.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/Public/ShaderLang.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/HLSL/hlslParseables.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/HLSL/hlslAttributes.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/HLSL/hlslParseHelper.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/HLSL/hlslScanContext.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/HLSL/hlslTokens.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/HLSL/hlslOpMap.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/HLSL/hlslTokenStream.h
-            /usr/local/Cellar/glslang/11.11.0/include/glslang/HLSL/hlslGrammar.h
-            /usr/local/Cellar/glslang/11.11.0/README.md
-            /usr/local/Cellar/glslang/11.11.0/license-checker.cfg
-            /usr/local/Cellar/glslang/11.11.0/lib/libMachineIndependent.a
-            /usr/local/Cellar/glslang/11.11.0/lib/libOGLCompiler.a
-            /usr/local/Cellar/glslang/11.11.0/lib/cmake/HLSLTargets.cmake
-            /usr/local/Cellar/glslang/11.11.0/lib/cmake/glslang-default-resource-limitsTargets.cmake
-            /usr/local/Cellar/glslang/11.11.0/lib/cmake/OSDependentTargets.cmake
-            /usr/local/Cellar/glslang/11.11.0/lib/cmake/glslangTargets.cmake
-            /usr/local/Cellar/glslang/11.11.0/lib/cmake/spirv-remapTargets.cmake
-            /usr/local/Cellar/glslang/11.11.0/lib/cmake/OGLCompilerTargets.cmake
-            /usr/local/Cellar/glslang/11.11.0/lib/cmake/glslangValidatorTargets.cmake
-            /usr/local/Cellar/glslang/11.11.0/lib/cmake/SPIRVTargets.cmake
-            /usr/local/Cellar/glslang/11.11.0/lib/cmake/SPVRemapperTargets.cmake
-            /usr/local/Cellar/glslang/11.11.0/lib/libglslang-default-resource-limits.a
-            /usr/local/Cellar/glslang/11.11.0/lib/libHLSL.a
-            /usr/local/Cellar/glslang/11.11.0/lib/libOSDependent.a
-            /usr/local/Cellar/glslang/11.11.0/lib/libGenericCodeGen.a
-            /usr/local/Cellar/glslang/11.11.0/lib/libSPVRemapper.a
-            /usr/local/Cellar/glslang/11.11.0/lib/libSPIRV.a
-            /usr/local/Cellar/glslang/11.11.0/lib/libglslang.a
-            /usr/local/Cellar/glslang/11.11.0/CHANGES.md
-            /usr/local/Cellar/glslang/11.11.0/LICENSE.txt
-            /usr/local/Cellar/glslang/11.11.0/share/glslang/glslang-config-version.cmake
-            /usr/local/Cellar/glslang/11.11.0/share/glslang/glslang-targets-release.cmake
-            /usr/local/Cellar/glslang/11.11.0/share/glslang/glslang-config.cmake
-            /usr/local/Cellar/glslang/11.11.0/share/glslang/glslang-targets.cmake
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
             ${{ runner.os }}-cargo-
 
-      - name: glslang
-        run: |
-          if [ ! -e /usr/local/Cellar/glslang/11.11.0/share/glslang/glslang-targets.cmake ]; then
-            brew install glslang
-          else
-            brew link glslang
-          fi
+      - uses: actions/cache@v3
+        id: cache-deps
+        with:
+          path: |
+            /usr/local/Cellar/glslang/*
+            ~/.cargo/bin/
+          key: ${{ runner.os }}-deps
 
-      - name: naga
-        continue-on-error: true
-        run: cargo install naga-cli
+      - name: install glslang/naga
+        if: '!steps.cache-deps.outputs.cache-hit'
+        run: |
+          cargo install naga-cli
+          brew install glslang
+
+      - name: link glslang
+        if: 'steps.cache-deps.outputs.cache-hit'
+        run: brew link glslang
 
       - name: check shader compilers are working
         run: |

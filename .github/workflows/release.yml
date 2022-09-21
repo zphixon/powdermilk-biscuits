@@ -12,103 +12,169 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+
       - uses: actions/cache@v3
         with:
           path: |
-            ~/.cargo/bin/
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
-      - name: glslang/gtk3
-        run: sudo apt install glslang-tools build-essential libgtk-3-dev
-      - name: naga
-        continue-on-error: true
-        run: cargo install naga-cli
+
+      - uses: actions/cache@v3
+        id: cache-deps
+        with:
+          path: |
+            ~/.cargo/bin/
+            apt/*.deb
+          key: ${{ runner.os }}-deps
+
+      - name: download gtk/glslang/naga
+        if: '!steps.cache-deps.outputs.cache-hit'
+        run: |
+          sudo apt install --download-only glslang-tools build-essential libgtk-3-dev
+          mkdir -p apt
+          cp /var/cache/apt/archives/*.deb apt
+          sudo apt install glslang-tools build-essential libgtk-3-dev
+          cargo install naga-cli
+
+      - name: install gtk/glslang
+        if: 'steps.cache-deps.outputs.cache-hit'
+        run: |
+          sudo cp apt/*.deb /var/cache/apt/archives/
+          sudo apt install glslang-tools build-essential libgtk-3-dev
+
       - name: check shader compilers are working
         run: |
           naga backend-wgpu/src/shaders/stroke_mesh.wgsl
           glslangValidator backend-gl/src/shaders/stroke_line.vert
+
+      - name: test
+        run: cargo test
+
       - name: build
         run: CARGO_PROFILE_RELEASE_DEBUG=false cargo build --release --features pmb-release
+
       - name: gl backend artifact
         uses: actions/upload-artifact@v3
         with:
           name: backend-gl-linux
           path: target/release/backend-gl
+
       - name: wgpu backend artifact
         uses: actions/upload-artifact@v3
         with:
           name: backend-wgpu-linux
           path: target/release/backend-wgpu
+
   windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v3
+
       - uses: actions/cache@v3
         with:
           path: |
-            ~/.cargo/bin/
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
-      - name: install/check naga/glslang
+
+      - uses: actions/cache@v3
+        id: cache-deps
+        with:
+          path: |
+            C:\glslang\
+            ~/.cargo/bin/
+          key: ${{ runner.os }}-deps
+
+      - name: download glslang/naga
+        if: '!steps.cache-deps.outputs.cache-hit'
         run: |
           Invoke-WebRequest -URI https://ci.appveyor.com/api/buildjobs/nweuuamas19eil5c/artifacts/build%2Finstall%2Fglslang-master-windows-x64-Release.zip -OutFile glslang.zip
           7z x glslang.zip -oC:\glslang
-          $env:Path += ';C:\glslang\bin'
-          Add-Content $env:GITHUB_PATH 'C:\glslang\bin'
-          glslangValidator backend-gl/src/shaders/stroke_line.vert
           cargo install naga-cli
+
+      - name: check shader compilers
+        run: |
+          Add-Content $env:GITHUB_PATH 'C:\glslang\bin'
+          $env:Path += ';C:\glslang\bin'
+          glslangValidator backend-gl/src/shaders/stroke_line.vert
           naga backend-wgpu/src/shaders/stroke_mesh.wgsl
+
+      - name: test
+        run: cargo test
       - name: build
         run: |
           $env:CARGO_PROFILE_RELEASE_DEBUG = 'false'
           cargo build --release --features pmb-release
+
       - name: gl backend artifact
         uses: actions/upload-artifact@v3
         with:
           name: backend-gl-win-msvc.exe
           path: target/release/backend-gl.exe
+
       - name: wgpu backend artifact
         uses: actions/upload-artifact@v3
         with:
           name: backend-wgpu-win-msvc.exe
           path: target/release/backend-wgpu.exe
+
   macos:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
+
       - uses: actions/cache@v3
         with:
           path: |
-            ~/.cargo/bin/
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
-      - name: glslang
-        run: brew install glslang
-      - name: naga
-        continue-on-error: true
-        run: cargo install naga-cli
+
+      - uses: actions/cache@v3
+        id: cache-deps
+        with:
+          path: |
+            /usr/local/Cellar/glslang/*
+            ~/.cargo/bin/
+          key: ${{ runner.os }}-deps
+
+      - name: install glslang/naga
+        if: '!steps.cache-deps.outputs.cache-hit'
+        run: |
+          cargo install naga-cli
+          brew install glslang
+
+      - name: link glslang
+        if: 'steps.cache-deps.outputs.cache-hit'
+        run: brew link glslang
+
       - name: check shader compilers are working
         run: |
           naga backend-wgpu/src/shaders/stroke_mesh.wgsl
           glslangValidator backend-gl/src/shaders/stroke_line.vert
+
+      - name: test
+        run: cargo test --features pmb-release
+
       - name: build
         run: CARGO_PROFILE_RELEASE_DEBUG=false cargo build --release --features pmb-release
+
       - name: gl backend artifact
         uses: actions/upload-artifact@v3
         with:
           name: backend-gl-macos
           path: target/release/backend-gl
+
       - name: wgpu backend artifact
         uses: actions/upload-artifact@v3
         with:
           name: backend-wgpu-macos
           path: target/release/backend-wgpu
+
   package:
     needs: [windows, linux, macos]
     runs-on: ubuntu-latest
@@ -118,6 +184,7 @@ jobs:
           7z a windows.zip backend-gl-win-msvc.exe backend-wgpu-win-msvc.exe
           7z a linux.zip backend-gl-linux backend-wgpu-linux
           7z a macos.zip backend-gl-macos backend-wgpu-macos
+
       - uses: softprops/action-gh-release@v1
         with:
           draft: true
