@@ -1,6 +1,7 @@
 use crate::{
+    config::Config,
     error::{ErrorKind, PmbError, PmbErrorExt},
-    s, Config, CoordinateSystem, Sketch, StrokeBackend, Tool,
+    s, CoordinateSystem, Sketch, StrokeBackend, Tool,
 };
 use std::path::{Path, PathBuf};
 

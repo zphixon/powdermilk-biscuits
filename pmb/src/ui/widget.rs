@@ -1,11 +1,12 @@
 use crate::{
+    config::Config,
     error::PmbErrorExt,
     event::{ElementState, Event, InputHandler, Keycode, Touch, TouchPhase},
     graphics::{PixelPos, StrokePos},
     s,
     ui::undo::{Action, UndoStack},
-    Config, CoordinateSystem, Device, Sketch, Stroke, StrokeBackend, Stylus, StylusPosition,
-    StylusState, Tool,
+    CoordinateSystem, Device, Sketch, Stroke, StrokeBackend, Stylus, StylusPosition, StylusState,
+    Tool,
 };
 use lyon::{
     lyon_tessellation::{StrokeOptions, StrokeTessellator},

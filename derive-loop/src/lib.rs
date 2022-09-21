@@ -165,10 +165,11 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     quote::quote! {
         fn pmb_loop() {
             use powdermilk_biscuits::{
+                config::Config,
                 event::{ElementState, Event},
                 gumdrop::Options,
                 ui::widget::SketchWidget,
-                Config, Sketch,
+                Sketch,
             };
             use #windowing_crate_name::{
                 dpi::{PhysicalPosition, PhysicalSize},
