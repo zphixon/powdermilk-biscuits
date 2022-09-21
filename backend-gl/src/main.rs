@@ -20,7 +20,9 @@ derive_loop::pmb_loop!(
     mouse_button_translation: glutin_to_pmb_mouse_button,
     key_state_translation: glutin_to_pmb_key_state,
     touch_translation: glutin_to_pmb_touch,
-    window: {context.window()},
+
+    window: { context.window() },
+    egui_ctx: { &egui_glow.egui_ctx },
 
     bindings:
         context = { unsafe {

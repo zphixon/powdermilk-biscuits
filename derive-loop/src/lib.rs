@@ -18,6 +18,7 @@ struct PmbLoop {
     graphics_setup: HashMap<Ident, (bool, Option<Block>)>,
 
     window: Block,
+    egui_ctx: Block,
     per_event: Block,
     resize: Block,
     render: Block,
@@ -109,6 +110,7 @@ impl Parse for PmbLoop {
             key_state_translation,
             touch_translation,
             window,
+            egui_ctx,
             per_event,
             resize,
             render;
@@ -136,6 +138,7 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         touch_translation,
         graphics_setup,
         window,
+        egui_ctx,
         per_event,
         resize,
         render,
@@ -402,14 +405,7 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         widget.prev_device = powdermilk_biscuits::Device::Mouse;
 
                         if config.use_mouse_for_pen {
-                            if cursor_visible {
-                                cursor_visible = false;
-                                #window.set_cursor_visible(false);
-                            }
                             #window.request_redraw();
-                        } else if !cursor_visible {
-                            cursor_visible = true;
-                            #window.set_cursor_visible(true);
                         }
 
                         if widget.state.redraw() {
@@ -440,11 +436,6 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
                         widget.prev_device = powdermilk_biscuits::Device::Pen;
 
-                        if cursor_visible {
-                            cursor_visible = false;
-                            #window.set_cursor_visible(false);
-                        }
-
                         #window.request_redraw();
                     }
 
@@ -471,11 +462,6 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         );
 
                         widget.prev_device = powdermilk_biscuits::Device::Touch;
-
-                        if cursor_visible {
-                            cursor_visible = false;
-                            #window.set_cursor_visible(false);
-                        }
 
                         #window.request_redraw();
                     }
@@ -508,6 +494,22 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                             (Some(path), false) => #window.set_title(&path.display().to_string()),
                             (None, true) => #window.set_title(powdermilk_biscuits::TITLE_MODIFIED),
                             (None, false) => #window.set_title(powdermilk_biscuits::TITLE_UNMODIFIED),
+                        }
+
+                        if #egui_ctx.wants_pointer_input() {
+                            if !cursor_visible {
+                                #window.set_cursor_visible(true);
+                                cursor_visible = true;
+                            }
+                        } else {
+                            use powdermilk_biscuits::{Device, Tool};
+                            let next_visible = widget.active_tool == Tool::Pan
+                                || (widget.prev_device == Device::Mouse
+                                    && !config.use_mouse_for_pen);
+                            if cursor_visible != next_visible {
+                                #window.set_cursor_visible(next_visible);
+                                cursor_visible = next_visible;
+                            }
                         }
                     }
 

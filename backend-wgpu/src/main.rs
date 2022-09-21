@@ -14,7 +14,9 @@ derive_loop::pmb_loop!(
     mouse_button_translation: winit_to_pmb_mouse_button,
     key_state_translation: winit_to_pmb_key_state,
     touch_translation: winit_to_pmb_touch,
-    window: {&window},
+
+    window: { &window },
+    egui_ctx: { &egui_ctx },
 
     bindings:
         window = { builder.build(&ev).unwrap() }
