@@ -107,6 +107,7 @@ impl Version {
     }
 }
 
+#[allow(clippy::needless_return)]
 pub fn from<S>(version: Version, path: impl AsRef<Path>) -> Result<Sketch<S>, PmbError>
 where
     S: StrokeBackend,
@@ -125,7 +126,7 @@ where
         version if version == Version::CURRENT => unreachable!(),
 
         Version(5) => {
-            let v5: v5::SketchV5 = v5::read(file)?.into();
+            let v5: v5::SketchV5 = v5::read(file)?;
 
             let state = Sketch {
                 strokes: crate::map_from_vec(
@@ -157,7 +158,7 @@ where
         }
 
         Version(4) => {
-            let v4: v4::StateV4 = v4::read(file)?.into();
+            let v4: v4::StateV4 = v4::read(file)?;
 
             let state = Sketch {
                 strokes: crate::map_from_vec(
@@ -189,7 +190,7 @@ where
         }
 
         Version(3) => {
-            let v3: v3::StateV3 = v3::read(file)?.into();
+            let v3: v3::StateV3 = v3::read(file)?;
 
             let state = Sketch {
                 strokes: crate::map_from_vec(
@@ -222,7 +223,7 @@ where
         }
 
         Version(2) => {
-            let v2: v2::StateV2 = v2::read(file)?.into();
+            let v2: v2::StateV2 = v2::read(file)?;
 
             let state = Sketch {
                 strokes: crate::map_from_vec(
@@ -253,7 +254,7 @@ where
         }
 
         Version(1) => {
-            let v1: v1::StateV1 = v1::read(file)?.into();
+            let v1: v1::StateV1 = v1::read(file)?;
 
             let state = Sketch {
                 strokes: crate::map_from_vec(

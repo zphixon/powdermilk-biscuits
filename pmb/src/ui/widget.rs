@@ -573,11 +573,13 @@ impl<C: CoordinateSystem> SketchWidget<C> {
             }
 
             (S::Gesture(i), E::Release(_)) => {
+                #[allow(clippy::single_match)]
                 match self.active_tool {
                     Tool::Pen => {
                         self.end_stroke(sketch);
                     }
 
+                    // TODO
                     _ => {}
                 }
 

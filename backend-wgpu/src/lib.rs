@@ -811,6 +811,7 @@ impl Graphics {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn render(
         &mut self,
         sketch: &mut Sketch<WgpuStrokeBackend>,

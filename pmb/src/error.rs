@@ -12,20 +12,14 @@ pub trait PmbErrorExt {
 
 impl<T> PmbErrorExt for Result<T, PmbError> {
     fn display(self) {
-        match self {
-            Err(err) => {
-                err.display();
-            }
-            _ => {}
+        if let Err(err) = self {
+            err.display();
         }
     }
 
     fn display_with(self, header: String) {
-        match self {
-            Err(err) => {
-                err.display_with(header);
-            }
-            _ => {}
+        if let Err(err) = self {
+            err.display_with(header);
         }
     }
 

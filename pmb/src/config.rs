@@ -133,7 +133,7 @@ impl Config {
             Ok(config) => config,
             Err(err) => {
                 PmbError::from(err).display_with(s!(CouldNotOpenConfigFile));
-                return Config::default().with_error();
+                Config::default().with_error()
             }
         }
     }
@@ -159,11 +159,8 @@ impl Config {
         let contents =
             format!("// this file generated automatically.\n// do not edit while pmb is running!!\n{contents}");
 
-        match std::fs::write(path, contents) {
-            Err(err) => {
-                PmbError::from(err).display_with(s!(CouldNotOpenConfigFile));
-            }
-            _ => {}
+        if let Err(err) = std::fs::write(path, contents) {
+            PmbError::from(err).display_with(s!(CouldNotOpenConfigFile));
         }
     }
 

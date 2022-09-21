@@ -126,20 +126,16 @@ derive_loop::pmb_loop!(
         }};
 
     per_event: {
-        match &event {
-            glutin::event::Event::WindowEvent { event, .. } => {
-                let response = egui_glow.on_event(&event);
-                if response.repaint {
-                    context.window().request_redraw();
-                    flow.set_poll();
-                }
-
-                if response.consumed {
-                    return;
-                }
+        if let glutin::event::Event::WindowEvent { event, .. } = &event {
+            let response = egui_glow.on_event(event);
+            if response.repaint {
+                context.window().request_redraw();
+                flow.set_poll();
             }
 
-            _ => {}
+            if response.consumed {
+                return;
+            }
         }
 
         let redraw_after = egui_glow.run(context.window(), |ctx| {

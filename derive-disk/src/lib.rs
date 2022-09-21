@@ -6,10 +6,7 @@ trait OptionExt<Orig, Extra> {
 
 impl<Orig, Extra> OptionExt<Orig, Extra> for Option<Orig> {
     fn also(self, extra: Extra) -> Option<(Orig, Extra)> {
-        match self {
-            Some(orig) => Some((orig, extra)),
-            None => None,
-        }
+        self.map(|orig| (orig, extra))
     }
 }
 
@@ -59,7 +56,6 @@ pub fn derive_disk(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                                 .first()
                                 .unwrap()
                                 .ident
-                                .to_string()
                                 == "custom_codec"
                         })
                         .also(field)

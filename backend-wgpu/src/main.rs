@@ -1,4 +1,5 @@
 #![cfg_attr(all(windows, feature = "pmb-release"), windows_subsystem = "windows")]
+#![allow(clippy::unnecessary_operation)] // -Z macro-backtrace doesn't help so. shh.
 
 fn main() {
     env_logger::init();
@@ -34,20 +35,16 @@ derive_loop::pmb_loop!(
         };
 
     per_event: {
-        match &event {
-            winit::event::Event::WindowEvent { event, .. } => {
-                let response = egui_winit.on_event(&egui_ctx, event);
+        if let winit::event::Event::WindowEvent { event, .. } = &event {
+            let response = egui_winit.on_event(&egui_ctx, event);
 
-                if response.repaint {
-                    window.request_redraw();
-                }
-
-                if response.consumed {
-                    return;
-                }
+            if response.repaint {
+                window.request_redraw();
             }
 
-            _ => {}
+            if response.consumed {
+                return;
+            }
         }
     },
 
