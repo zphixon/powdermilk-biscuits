@@ -10,7 +10,6 @@ pmb-release = []
 
 [dependencies]
 log = '0.4.17'
-rand = '0.8.5'
 derive-disk = { path = '../derive-disk' }
 bincode = '2.0.0-rc.1'
 flate2 = '1.0.24'

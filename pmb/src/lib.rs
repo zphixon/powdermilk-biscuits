@@ -11,7 +11,6 @@ pub extern crate dirs;
 pub extern crate egui;
 pub extern crate gumdrop;
 pub extern crate lyon;
-pub extern crate rand;
 
 use crate::{
     error::{PmbError, PmbErrorExt},
@@ -519,33 +518,6 @@ impl Stylus {
     pub fn eraser(&self) -> bool {
         self.state.eraser
     }
-}
-
-#[allow(dead_code)]
-fn benchmark<S: StrokeBackend>() -> Vec<Stroke<S>> {
-    use rand::Rng;
-    let mut rng = rand::thread_rng();
-    let strokes = (-100..=100)
-        .map(|x| {
-            (-100..=100)
-                .map(|y| {
-                    Stroke::with_points(
-                        (1..=100)
-                            .map(|_| StrokeElement {
-                                x: rng.gen::<f32>() + x as f32,
-                                y: rng.gen::<f32>() + y as f32,
-                                pressure: rng.gen(),
-                            })
-                            .collect(),
-                        rng.gen(),
-                    )
-                })
-                .collect::<Vec<_>>()
-        })
-        .flatten()
-        .collect::<Vec<_>>();
-
-    strokes
 }
 
 #[allow(dead_code)]
