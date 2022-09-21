@@ -289,6 +289,14 @@ impl Config {
         }
     }
 
+    pub fn start_pos(&self) -> (Option<i32>, Option<i32>) {
+        (self.window_start_x, self.window_start_y)
+    }
+
+    pub fn start_size(&self) -> (Option<u32>, Option<u32>) {
+        (self.window_start_width, self.window_start_height)
+    }
+
     pub fn tool_for_gesture(&self, i: u8) -> Tool {
         match i {
             1 => self.tool_for_gesture_1,

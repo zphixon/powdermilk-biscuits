@@ -231,11 +231,11 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 .with_maximized(config.window_maximized)
                 .with_title(powdermilk_biscuits::TITLE_UNMODIFIED);
 
-            if let (Some(x), Some(y)) = (config.window_start_x, config.window_start_y) {
+            if let (Some(x), Some(y)) = config.start_pos() {
                 builder = builder.with_position(PhysicalPosition { x, y });
             }
 
-            if let (Some(width), Some(height)) = (config.window_start_width, config.window_start_height) {
+            if let (Some(width), Some(height)) = config.start_size() {
                 builder = builder.with_inner_size(PhysicalSize { width, height });
             }
 
