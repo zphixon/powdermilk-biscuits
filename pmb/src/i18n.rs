@@ -64,14 +64,14 @@ messages!(
 #[macro_export]
 macro_rules! s {
     ($variant:ident) => {
-        $crate::i18n::get_str($crate::i18n::Message::$variant)
+        $crate::i18n::get_str($crate::i18n::Message::$variant).to_string()
     };
     (&$variant:ident) => {
-        $crate::i18n::get_str($crate::i18n::Message::$variant).as_str()
+        $crate::i18n::get_str($crate::i18n::Message::$variant)
     };
 }
 
-pub fn get_str(key: Message) -> String {
+pub fn get_str(key: Message) -> &'static str {
     let lang = &*LANG;
     let pot = &*POT;
 
@@ -87,7 +87,6 @@ pub fn get_str(key: Message) -> String {
         .value()
         .as_string()
         .unwrap_or_else(|| panic!("language {} message {:?} is not a string", lang, key))
-        .to_string()
 }
 
 #[cfg(test)]
