@@ -143,7 +143,7 @@ derive_loop::pmb_loop!(
         }
 
         let redraw_after = egui_glow.run(context.window(), |ctx| {
-            powdermilk_biscuits::ui::egui(ctx, &mut sketch, &mut widget, &mut config)
+            powdermilk_biscuits::ui::egui(ctx, &mut sketch, &mut widget, &mut config);
         });
 
         if redraw_after.is_zero() {

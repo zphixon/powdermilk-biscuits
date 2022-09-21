@@ -87,13 +87,10 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
                     ui.selectable_value(&mut config.tool_for_gesture_1, Tool::Pan, s!(&Pan));
                 });
 
-            if ui
-                .add(
-                    egui::Slider::new(&mut sketch.zoom, crate::MIN_ZOOM..=crate::MAX_ZOOM)
-                        .text(s!(&Zoom)),
-                )
-                .changed()
-            {
+            let slider = egui::Slider::new(&mut sketch.zoom, crate::MIN_ZOOM..=crate::MAX_ZOOM)
+                .text(s!(&Zoom));
+
+            if ui.add(slider).changed() {
                 sketch.update_visible_strokes::<C>(widget.width, widget.height);
                 sketch.update_stroke_primitive();
             };
