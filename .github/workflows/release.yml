@@ -50,7 +50,7 @@ jobs:
           glslangValidator backend-gl/src/shaders/stroke_line.vert
 
       - name: test
-        run: cargo test
+        run: cargo test --release --features pmb-release
 
       - name: build
         run: CARGO_PROFILE_RELEASE_DEBUG=false cargo build --release --features pmb-release
@@ -103,7 +103,7 @@ jobs:
           naga backend-wgpu/src/shaders/stroke_mesh.wgsl
 
       - name: test
-        run: cargo test
+        run: cargo test --release --features pmb-release
       - name: build
         run: |
           $env:CARGO_PROFILE_RELEASE_DEBUG = 'false'
@@ -158,7 +158,7 @@ jobs:
           glslangValidator backend-gl/src/shaders/stroke_line.vert
 
       - name: test
-        run: cargo test --features pmb-release
+        run: cargo test --release --features pmb-release
 
       - name: build
         run: CARGO_PROFILE_RELEASE_DEBUG=false cargo build --release --features pmb-release
