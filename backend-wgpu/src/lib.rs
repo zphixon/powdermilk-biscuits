@@ -3,7 +3,7 @@ use powdermilk_biscuits::{
     event::{ElementState, Keycode, MouseButton, PenInfo, Touch, TouchPhase},
     graphics::{ColorExt, PixelPos, StrokePoint},
     stroke::Stroke,
-    ui::Ui,
+    ui::SketchWidget,
     Sketch, Tool,
 };
 use std::mem::size_of;
@@ -611,14 +611,14 @@ impl CursorRenderer {
         queue: &Queue,
         frame: &TextureView,
         encoder: &mut CommandEncoder,
-        ui: &Ui<WgpuCoords>,
+        widget: &SketchWidget<WgpuCoords>,
         zoom: f32,
         size: Size,
     ) {
-        let cursor_view = view_matrix(zoom, ui.brush_size as f32, size, ui.stylus.point);
+        let cursor_view = view_matrix(zoom, widget.brush_size as f32, size, widget.stylus.point);
         let info_buffer = [
-            if ui.stylus.down() { 1.0f32 } else { 0. },
-            if ui.active_tool == Tool::Eraser {
+            if widget.stylus.down() { 1.0f32 } else { 0. },
+            if widget.active_tool == Tool::Eraser {
                 1.
             } else {
                 0.
@@ -814,7 +814,7 @@ impl Graphics {
     pub fn render(
         &mut self,
         sketch: &mut Sketch<WgpuStrokeBackend>,
-        ui: &Ui<WgpuCoords>,
+        widget: &SketchWidget<WgpuCoords>,
         size: PhysicalSize<u32>,
         cursor_visible: bool,
         egui_tris: &[egui::ClippedPrimitive],
@@ -837,7 +837,7 @@ impl Graphics {
                     &mut encoder,
                     sketch,
                     size,
-                    ui.clear_color,
+                    widget.clear_color,
                 );
 
                 if !cursor_visible {
@@ -845,7 +845,7 @@ impl Graphics {
                         &self.queue,
                         $frame,
                         &mut encoder,
-                        ui,
+                        widget,
                         sketch.zoom,
                         size,
                     );

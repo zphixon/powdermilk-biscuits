@@ -347,13 +347,13 @@ impl<S: StrokeBackend> Sketch<S> {
     }
 
     pub fn with_filename<C: CoordinateSystem>(
-        ui: &mut ui::Ui<C>,
+        widget: &mut ui::SketchWidget<C>,
         path: impl AsRef<std::path::Path>,
     ) -> Self {
         log::info!("create State from {}", path.as_ref().display());
 
         let mut this = Sketch::new(grid());
-        ui::read_file(ui, Some(path), &mut this)
+        ui::read_file(widget, Some(path), &mut this)
             .problem(s!(CouldNotOpenFile))
             .display();
 

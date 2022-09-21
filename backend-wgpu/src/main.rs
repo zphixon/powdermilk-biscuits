@@ -51,7 +51,7 @@ derive_loop::pmb_loop!(
 
     resize: {
         size = new_size;
-        ui.resize(new_size.width, new_size.height, &mut sketch);
+        widget.resize(new_size.width, new_size.height, &mut sketch);
         graphics.resize(new_size);
         window.request_redraw();
         config.resize_window(new_size.width, new_size.height);
@@ -59,14 +59,14 @@ derive_loop::pmb_loop!(
 
     render: {
         let egui_data = egui_ctx.run(egui_winit.take_egui_input(&window), |ctx| {
-            powdermilk_biscuits::ui::egui(ctx, &mut ui, &mut config)
+            powdermilk_biscuits::ui::egui(ctx, &mut widget, &mut config)
         });
 
         let egui_tris = egui_ctx.tessellate(egui_data.shapes);
 
         match graphics.render(
             &mut sketch,
-            &ui,
+            &widget,
             size,
             cursor_visible,
             &egui_tris,

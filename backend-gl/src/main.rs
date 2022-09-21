@@ -141,7 +141,7 @@ derive_loop::pmb_loop!(
         }
 
         let redraw_after = egui_glow.run(context.window(), |ctx| {
-            powdermilk_biscuits::ui::egui(ctx, &mut ui, &mut config)
+            powdermilk_biscuits::ui::egui(ctx, &mut widget, &mut config)
         });
 
         if redraw_after.is_zero() {
@@ -154,7 +154,7 @@ derive_loop::pmb_loop!(
 
     resize: {
         size = new_size;
-        ui.resize(new_size.width, new_size.height, &mut sketch);
+        widget.resize(new_size.width, new_size.height, &mut sketch);
         context.resize(new_size);
         unsafe {
             gl.viewport(0, 0, new_size.width as i32, new_size.height as i32);
@@ -170,7 +170,7 @@ derive_loop::pmb_loop!(
             gl.use_program(Some(strokes_program));
             let view = backend_gl::view_matrix(sketch.zoom, sketch.zoom, size, sketch.origin);
             gl.uniform_matrix_4_f32_slice(Some(&strokes_view), false, &view.to_cols_array());
-            gl.clear_color(ui.clear_color[0], ui.clear_color[1], ui.clear_color[2], 1.);
+            gl.clear_color(widget.clear_color[0], widget.clear_color[1], widget.clear_color[2], 1.);
             gl.clear(glow::COLOR_BUFFER_BIT);
         }
 
@@ -268,7 +268,7 @@ derive_loop::pmb_loop!(
 
                 gl.uniform_1_f32(
                     Some(&pen_cursor_erasing),
-                    if ui.active_tool == powdermilk_biscuits::Tool::Eraser {
+                    if widget.active_tool == powdermilk_biscuits::Tool::Eraser {
                         1.0
                     } else {
                         0.0
@@ -276,14 +276,14 @@ derive_loop::pmb_loop!(
                 );
                 gl.uniform_1_f32(
                     Some(&pen_cursor_pen_down),
-                    if ui.stylus.down() { 1.0 } else { 0.0 },
+                    if widget.stylus.down() { 1.0 } else { 0.0 },
                 );
 
                 let view = backend_gl::view_matrix(
                     sketch.zoom,
-                    ui.brush_size as f32,
+                    widget.brush_size as f32,
                     size,
-                    ui.stylus.point,
+                    widget.stylus.point,
                 );
 
                 gl.uniform_matrix_4_f32_slice(

@@ -9,11 +9,13 @@ use lyon::{
     lyon_tessellation::{StrokeOptions, StrokeTessellator},
     path::{LineCap, LineJoin},
 };
-use slotmap::DefaultKey;
 use std::{
     marker::PhantomData,
     path::{Path, PathBuf},
 };
+use undo::Action;
+
+pub mod undo;
 
 fn prompt_migrate() -> rfd::MessageDialogResult {
     rfd::MessageDialog::new()
@@ -61,161 +63,42 @@ pub fn open_dialog() -> Option<PathBuf> {
         .pick_file()
 }
 
-pub fn egui<C: CoordinateSystem>(ctx: &egui::Context, ui: &mut Ui<C>, config: &mut Config) {
-    egui::SidePanel::left("side").show(ctx, |eui| {
-        eui.heading(s!(&RealHotItem));
-        eui.label(s!(&ClearColor));
-        eui.color_edit_button_rgb(&mut ui.clear_color);
-        eui.label(s!(&StrokeColor));
-        eui.color_edit_button_rgb(&mut ui.color);
+pub fn egui<C: CoordinateSystem>(
+    ctx: &egui::Context,
+    widget: &mut SketchWidget<C>,
+    config: &mut Config,
+) {
+    egui::SidePanel::left("side").show(ctx, |ui| {
+        ui.heading(s!(&RealHotItem));
+        ui.label(s!(&ClearColor));
+        ui.color_edit_button_rgb(&mut widget.clear_color);
+        ui.label(s!(&StrokeColor));
+        ui.color_edit_button_rgb(&mut widget.color);
     });
 
-    egui::TopBottomPanel::top("top").show(ctx, |eui| {
-        eui.horizontal(|eui| {
-            eui.radio_value(&mut ui.active_tool, Tool::Pen, s!(&Pen));
-            eui.radio_value(&mut ui.active_tool, Tool::Eraser, s!(&Eraser));
-            eui.radio_value(&mut ui.active_tool, Tool::Pan, s!(&Pan));
-            eui.checkbox(&mut config.use_mouse_for_pen, s!(&UseMouseForPen));
+    egui::TopBottomPanel::top("top").show(ctx, |ui| {
+        ui.horizontal(|ui| {
+            ui.radio_value(&mut widget.active_tool, Tool::Pen, s!(&Pen));
+            ui.radio_value(&mut widget.active_tool, Tool::Eraser, s!(&Eraser));
+            ui.radio_value(&mut widget.active_tool, Tool::Pan, s!(&Pan));
+            ui.checkbox(&mut config.use_mouse_for_pen, s!(&UseMouseForPen));
             egui::ComboBox::from_label(s!(&ToolForGesture1))
                 .selected_text(match config.tool_for_gesture_1 {
                     Tool::Pen => s!(&Pen), // TODO helper for this?
                     Tool::Pan => s!(&Pan),
                     Tool::Eraser => s!(&Eraser),
                 })
-                .show_ui(eui, |eui| {
-                    eui.selectable_value(&mut config.tool_for_gesture_1, Tool::Pen, s!(&Pen));
-                    eui.selectable_value(&mut config.tool_for_gesture_1, Tool::Eraser, s!(&Eraser));
-                    eui.selectable_value(&mut config.tool_for_gesture_1, Tool::Pan, s!(&Pan));
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut config.tool_for_gesture_1, Tool::Pen, s!(&Pen));
+                    ui.selectable_value(&mut config.tool_for_gesture_1, Tool::Eraser, s!(&Eraser));
+                    ui.selectable_value(&mut config.tool_for_gesture_1, Tool::Pan, s!(&Pan));
                 });
         });
     });
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Action {
-    DrawStroke(DefaultKey),
-    EraseStroke(DefaultKey),
-}
-
-#[derive(Debug)]
-pub struct UndoStack {
-    buffer: Vec<Action>,
-    cursor: usize,
-}
-
-impl UndoStack {
-    fn new() -> Self {
-        UndoStack {
-            buffer: Vec::new(),
-            cursor: 0,
-        }
-    }
-
-    #[must_use]
-    fn last(&self) -> Option<Action> {
-        if self.cursor == 0 {
-            return None;
-        }
-
-        self.buffer.get(self.cursor - 1).copied()
-    }
-
-    fn push(&mut self, action: Action) {
-        if self.cursor == self.buffer.len() {
-            log::debug!("append");
-            // [a, b, c, d]
-            //           ^ c=4
-            // [a, b, c, d, e]
-            //              ^ c=5
-            self.buffer.push(action);
-        } else if 1 <= self.cursor && self.cursor < self.buffer.len() {
-            log::debug!("split off");
-            // [a, b, c, d]
-            //        ^ c=3
-            // [a, b, e]
-            //        ^ c=3
-            let _old = self.buffer.split_off(self.cursor);
-            self.buffer.push(action);
-        } else {
-            log::debug!("replace");
-            // [a, b, c, d]
-            //  ^ c=1
-            // [e]
-            //  ^ c=1
-            self.buffer = vec![action];
-        }
-
-        self.cursor = self.buffer.len();
-    }
-
-    #[must_use]
-    fn undo(&mut self) -> Option<Action> {
-        let last = self.last();
-        if self.cursor > 0 {
-            self.cursor -= 1;
-        }
-        last
-    }
-
-    #[must_use]
-    fn redo(&mut self) -> Option<Action> {
-        if self.cursor < self.buffer.len() {
-            self.cursor += 1;
-            self.last()
-        } else {
-            None
-        }
-    }
-}
-
-#[test]
-fn undo_stack() {
-    let mut sm = slotmap::SlotMap::new();
-    let mut stack = UndoStack::new();
-
-    let a1 = sm.insert(());
-    stack.push(Action::DrawStroke(a1));
-    assert_eq!(stack.last(), Some(Action::DrawStroke(a1)));
-
-    let a2 = sm.insert(());
-    stack.push(Action::DrawStroke(a2));
-    assert_eq!(stack.last(), Some(Action::DrawStroke(a2)));
-
-    let to_be_undone = stack.undo();
-    assert_eq!(to_be_undone, Some(Action::DrawStroke(a2)));
-    assert_eq!(stack.last(), Some(Action::DrawStroke(a1)));
-
-    let to_be_undone = stack.undo();
-    assert_eq!(to_be_undone, Some(Action::DrawStroke(a1)));
-    assert_eq!(stack.last(), None);
-
-    let to_be_redone = stack.redo();
-    assert_eq!(to_be_redone, Some(Action::DrawStroke(a1)));
-    assert_eq!(stack.last(), Some(Action::DrawStroke(a1)));
-
-    let to_be_undone = stack.undo();
-    assert_eq!(to_be_undone, Some(Action::DrawStroke(a1)));
-    assert_eq!(stack.last(), None);
-
-    let to_be_redone = stack.redo();
-    assert_eq!(to_be_redone, Some(Action::DrawStroke(a1)));
-    assert_eq!(stack.last(), Some(Action::DrawStroke(a1)));
-
-    let to_be_redone = stack.redo();
-    assert_eq!(to_be_redone, Some(Action::DrawStroke(a2)));
-    assert_eq!(stack.last(), Some(Action::DrawStroke(a2)));
-
-    let _undone = stack.undo();
-    let _undone = stack.undo();
-    let _undone = stack.undo();
-    let _undone = stack.undo();
-    let a3 = sm.insert(());
-    stack.push(Action::DrawStroke(a3));
-    assert_eq!(stack.last(), Some(Action::DrawStroke(a3)));
-}
-
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
-pub enum UiState {
+pub enum SketchWidgetState {
     #[default]
     Ready,
     Pan,
@@ -231,15 +114,15 @@ pub enum UiState {
     SaveDialog,
 }
 
-impl UiState {
+impl SketchWidgetState {
     pub fn redraw(&self) -> bool {
-        use UiState::*;
+        use SketchWidgetState::*;
         !matches!(self, Ready | OpenDialog | SaveDialog)
     }
 }
 
-pub struct Ui<C: CoordinateSystem> {
-    pub state: UiState,
+pub struct SketchWidget<C: CoordinateSystem> {
+    pub state: SketchWidgetState,
     pub modified: bool,
     pub path: Option<std::path::PathBuf>,
 
@@ -249,7 +132,7 @@ pub struct Ui<C: CoordinateSystem> {
     pub stylus: Stylus,
     pub brush_size: usize,
     pub active_tool: Tool,
-    pub undo_stack: UndoStack,
+    pub undo_stack: undo::UndoStack,
     pub color: [f32; 3],
 
     pub width: u32,
@@ -261,14 +144,14 @@ pub struct Ui<C: CoordinateSystem> {
     coords: PhantomData<C>,
 }
 
-impl<C: CoordinateSystem> Ui<C> {
+impl<C: CoordinateSystem> SketchWidget<C> {
     pub fn new(width: u32, height: u32) -> Self {
         Self {
-            state: UiState::default(),
+            state: SketchWidgetState::default(),
             stylus: Stylus::default(),
             prev_device: Device::Mouse,
             active_tool: Tool::Pen,
-            undo_stack: UndoStack::new(),
+            undo_stack: undo::UndoStack::new(),
             brush_size: crate::DEFAULT_BRUSH,
             modified: false,
             path: None,
@@ -502,7 +385,7 @@ impl<C: CoordinateSystem> Ui<C> {
         event: Event,
     ) {
         use Event as E;
-        use UiState as S;
+        use SketchWidgetState as S;
 
         self.state = match (self.state, event) {
             (S::Ready, E::IncreaseBrush(change)) => {
@@ -799,8 +682,8 @@ impl<C: CoordinateSystem> Ui<C> {
         sketch: &mut Sketch<S>,
         key: Keycode,
         state: ElementState,
-        _width: u32,
-        _height: u32,
+        width: u32,
+        height: u32,
     ) {
         log::debug!("handle key {key:?} {state:?}");
         self.input.handle_key(key, state);
@@ -850,7 +733,7 @@ impl<C: CoordinateSystem> Ui<C> {
                 Some(Action::DrawStroke(stroke)) => sketch.strokes[stroke].erase(),
                 Some(Action::EraseStroke(stroke)) => {
                     sketch.strokes[stroke].erased = false;
-                    sketch.update_visible_strokes::<C>(_width, _height);
+                    sketch.update_visible_strokes::<C>(width, height);
                 }
                 None => {}
             }
@@ -860,7 +743,7 @@ impl<C: CoordinateSystem> Ui<C> {
             match self.undo_stack.redo() {
                 Some(Action::DrawStroke(stroke)) => {
                     sketch.strokes[stroke].erased = false;
-                    sketch.update_visible_strokes::<C>(_width, _height);
+                    sketch.update_visible_strokes::<C>(width, height);
                 }
                 Some(Action::EraseStroke(stroke)) => sketch.strokes[stroke].erase(),
                 None => {}
@@ -969,7 +852,7 @@ impl<C: CoordinateSystem> Ui<C> {
 }
 
 pub fn read_file<S: StrokeBackend, C: CoordinateSystem>(
-    ui: &mut Ui<C>,
+    widget: &mut SketchWidget<C>,
     path: Option<impl AsRef<std::path::Path>>,
     sketch: &mut Sketch<S>,
 ) -> Result<(), PmbError> {
@@ -979,9 +862,9 @@ pub fn read_file<S: StrokeBackend, C: CoordinateSystem>(
     };
 
     // if we are modified
-    if ui.modified {
+    if widget.modified {
         // ask to save first
-        if !ask_to_save_then_save(ui, sketch, s!(&AskToSaveBeforeOpening))
+        if !ask_to_save_then_save(widget, sketch, s!(&AskToSaveBeforeOpening))
             .problem(s!(CouldNotSaveFile))?
         {
             return Ok(());
@@ -1006,8 +889,8 @@ pub fn read_file<S: StrokeBackend, C: CoordinateSystem>(
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
             log::info!("using a new file");
             // if it doesn't exist don't try to read it
-            ui.path = Some(path);
-            ui.modified = true;
+            widget.path = Some(path);
+            widget.modified = true;
             return Ok(());
         }
         Err(err) => Err(PmbError::from(err))?,
@@ -1031,16 +914,16 @@ pub fn read_file<S: StrokeBackend, C: CoordinateSystem>(
                         let disk = migrate::from(version, &path)?;
 
                         sketch.update_from::<C>(
-                            ui.width,
-                            ui.height,
-                            &mut ui.tesselator,
-                            &ui.stroke_options,
+                            widget.width,
+                            widget.height,
+                            &mut widget.tesselator,
+                            &widget.stroke_options,
                             disk,
                         );
 
-                        ui.modified = true;
+                        widget.modified = true;
                         // set to none so the user is prompted to save  elsewhere
-                        ui.path = None;
+                        widget.path = None;
 
                         return Ok(());
                     }
@@ -1058,35 +941,38 @@ pub fn read_file<S: StrokeBackend, C: CoordinateSystem>(
     };
 
     sketch.update_from::<C>(
-        ui.width,
-        ui.height,
-        &mut ui.tesselator,
-        &ui.stroke_options,
+        widget.width,
+        widget.height,
+        &mut widget.tesselator,
+        &widget.stroke_options,
         disk,
     );
 
-    ui.modified = false;
-    ui.path = Some(path);
+    widget.modified = false;
+    widget.path = Some(path);
 
-    log::info!("success, read from {}", ui.path.as_ref().unwrap().display());
+    log::info!(
+        "success, read from {}",
+        widget.path.as_ref().unwrap().display()
+    );
 
     Ok(())
 }
 
 pub fn ask_to_save_then_save<S: StrokeBackend, C: CoordinateSystem>(
-    ui: &mut Ui<C>,
+    widget: &mut SketchWidget<C>,
     sketch: &Sketch<S>,
     why: &str,
 ) -> Result<bool, PmbError> {
     use crate::migrate;
 
     log::info!("asking to save {why:?}");
-    match (ask_to_save(why), ui.path.as_ref()) {
+    match (ask_to_save(why), widget.path.as_ref()) {
         // if they say yes and the file we're editing has a path
         (rfd::MessageDialogResult::Yes, Some(path)) => {
             log::info!("writing as {}", path.display());
             migrate::write(path, sketch).problem(format!("{}", path.display()))?;
-            ui.modified = false;
+            widget.modified = false;
             Ok(true)
         }
 
@@ -1100,7 +986,7 @@ pub fn ask_to_save_then_save<S: StrokeBackend, C: CoordinateSystem>(
                     // try write to disk
                     migrate::write(&new_filename, sketch)
                         .problem(format!("{}", new_filename.display()))?;
-                    ui.modified = false;
+                    widget.modified = false;
                     Ok(true)
                 }
 
@@ -1116,21 +1002,21 @@ pub fn ask_to_save_then_save<S: StrokeBackend, C: CoordinateSystem>(
 }
 
 fn save_file<C: CoordinateSystem, S: StrokeBackend>(
-    ui: &mut Ui<C>,
+    widget: &mut SketchWidget<C>,
     sketch: &Sketch<S>,
 ) -> Result<(), PmbError> {
     use crate::migrate;
 
-    if let Some(path) = ui.path.as_ref() {
+    if let Some(path) = widget.path.as_ref() {
         migrate::write(path, sketch).problem(format!("{}", path.display()))?;
-        ui.modified = false;
+        widget.modified = false;
     } else if let Some(path) = save_dialog(s!(&SaveUnnamedFile), None) {
         let problem = format!("{}", path.display());
-        ui.path = Some(path);
-        migrate::write(ui.path.as_ref().unwrap(), sketch).problem(problem)?;
-        ui.modified = false;
+        widget.path = Some(path);
+        migrate::write(widget.path.as_ref().unwrap(), sketch).problem(problem)?;
+        widget.modified = false;
     }
 
-    log::info!("saved file as {}", ui.path.as_ref().unwrap().display());
+    log::info!("saved file as {}", widget.path.as_ref().unwrap().display());
     Ok(())
 }
