@@ -62,9 +62,20 @@ pub fn open_dialog() -> Option<PathBuf> {
 }
 
 pub fn egui<C: CoordinateSystem>(ctx: &egui::Context, ui: &mut Ui<C>) {
-    egui::SidePanel::left("side panel").show(ctx, |eui| {
-        eui.heading(s!(RealHotItem));
+    egui::SidePanel::left("side").show(ctx, |eui| {
+        eui.heading(s!(&RealHotItem));
+        eui.label(s!(&ClearColor));
         eui.color_edit_button_rgb(&mut ui.clear_color);
+        eui.label(s!(&StrokeColor));
+        eui.color_edit_button_rgb(&mut ui.color);
+    });
+
+    egui::TopBottomPanel::top("top").show(ctx, |eui| {
+        eui.horizontal(|eui| {
+            eui.radio_value(&mut ui.active_tool, Tool::Pen, s!(&Pen));
+            eui.radio_value(&mut ui.active_tool, Tool::Eraser, s!(&Eraser));
+            eui.radio_value(&mut ui.active_tool, Tool::Pan, s!(&Pan));
+        });
     });
 }
 
@@ -227,6 +238,7 @@ pub struct Ui<C: CoordinateSystem> {
     pub brush_size: usize,
     pub active_tool: Tool,
     pub undo_stack: UndoStack,
+    pub color: [f32; 3],
 
     pub width: u32,
     pub height: u32,
@@ -258,6 +270,7 @@ impl<C: CoordinateSystem> Ui<C> {
                 .with_tolerance(0.001)
                 .with_variable_line_width(0),
             clear_color: [0., 0., 0.],
+            color: [1., 1., 1.],
             coords: Default::default(),
         }
     }
@@ -279,11 +292,14 @@ impl<C: CoordinateSystem> Ui<C> {
     }
 
     fn start_stroke<S: StrokeBackend>(&mut self, sketch: &mut Sketch<S>) {
+        use crate::graphics::{Color, ColorExt};
         self.modified = true;
         let stroke_brush_size = self.brush_size as f32 / sketch.zoom;
-        let key = sketch
-            .strokes
-            .insert(Stroke::new(rand::random(), stroke_brush_size, true));
+        let key = sketch.strokes.insert(Stroke::new(
+            Color::from_float(self.color),
+            stroke_brush_size,
+            true,
+        ));
         self.undo_stack.push(Action::DrawStroke(key));
     }
 

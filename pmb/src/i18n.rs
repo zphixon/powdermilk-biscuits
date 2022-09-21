@@ -59,6 +59,11 @@ messages!(
     SaveUnnamedFile,
     OutOfMemory,
     CouldNotOpenConfigFile,
+    ClearColor,
+    StrokeColor,
+    Pen,
+    Pan,
+    Eraser,
 );
 
 #[macro_export]
