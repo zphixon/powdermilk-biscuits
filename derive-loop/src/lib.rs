@@ -302,6 +302,7 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         }
                     }
 
+                    #[cfg(not(feature = "pmb-release"))]
                     WindowingEvent::WindowEvent {
                         event:
                             WindowEvent::KeyboardInput {
