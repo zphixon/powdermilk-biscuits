@@ -18,6 +18,7 @@ pub trait ColorExt {
     }
 
     fn to_float(&self) -> [f32; 3];
+    fn from_float(color: [f32; 3]) -> Self;
 }
 
 impl ColorExt for Color {
@@ -26,6 +27,14 @@ impl ColorExt for Color {
             self[0] as f32 / 255.,
             self[1] as f32 / 255.,
             self[2] as f32 / 255.,
+        ]
+    }
+
+    fn from_float(color: [f32; 3]) -> Color {
+        [
+            (color[0] * 255.) as u8,
+            (color[1] * 255.) as u8,
+            (color[2] * 255.) as u8,
         ]
     }
 }
