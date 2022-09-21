@@ -1,4 +1,4 @@
-en_US.UTF-8 {
+en-US {
   MigrateWarningTitle "Migrate version"
   MigrateWarningMessage "Significant internal changes have been made to Powdermilk Biscuits since you last opened this file. Although it has not been marked as significantly incompatible with the current version, you may still experience data loss by attempting to upgrade this file to the most recent version.
 
@@ -23,4 +23,31 @@ Proceed?"
   Eraser "Eraser"
   UseMouseForPen "Use mouse for pen"
   ToolForGesture1 "Tool for one-finger touch"
+}
+
+es {
+  MigrateWarningTitle "(es) Migrate version"
+  MigrateWarningMessage "(es) Significant internal changes have been made to Powdermilk Biscuits since you last opened this file. Although it has not been marked as significantly incompatible with the current version, you may still experience data loss by attempting to upgrade this file to the most recent version.
+
+No changes will be made to the file as is, and you will be prompted to save the file in a new location instead of overwriting it.
+
+Proceed?"
+  ErrorTitle "(es) Error"
+  UnsavedChangesTitle "(es) Unsaved changes"
+  OpenTitle "(es) Open file"
+  RealHotItem "(es) Real Hot Item"
+  CouldNotOpenFile "(es) Could not open file"
+  CouldNotSaveFile "(es) Could not save file"
+  AskToSaveBeforeOpening "(es) Would you like to save before opening another file?"
+  AskToSaveBeforeClosing "(es) Would you like to save before exiting?"
+  SaveUnnamedFile "(es) Save unnamed file"
+  OutOfMemory "(es) Out of memory"
+  CouldNotOpenConfigFile "(es) Couldn't read config file"
+  ClearColor "(es) Clear color"
+  StrokeColor "(es) Stroke color"
+  Pen "(es) Pen"
+  Pan "(es) Pan"
+  Eraser "(es) Eraser"
+  UseMouseForPen "(es) Use mouse for pen"
+  ToolForGesture1 "(es) Tool for one-finger touch"
 }

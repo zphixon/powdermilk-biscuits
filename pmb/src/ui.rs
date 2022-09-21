@@ -955,6 +955,15 @@ impl<C: CoordinateSystem> Ui<C> {
             self.force_update(sketch);
         }
 
+        if self.input.combo_just_pressed(&Keycode::L.into()) {
+            use crate::i18n::*;
+            if get_lang() == "es" {
+                set_lang("en");
+            } else {
+                set_lang("es-MX");
+            }
+        }
+
         self.input.pump_key_state();
     }
 }

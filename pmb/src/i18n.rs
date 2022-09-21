@@ -1,27 +1,6 @@
 use kdl::KdlDocument;
 use once_cell::sync::Lazy;
-
-static POT: Lazy<KdlDocument> = Lazy::new(|| {
-    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/res/pot.kdl"))
-        .parse()
-        .expect("pot.kdl failed to parse")
-});
-
-static LANG: Lazy<String> = Lazy::new(|| {
-    #[cfg(unix)]
-    {
-        std::env::var("LANGUAGE")
-            .or_else(|_| std::env::var("LANG"))
-            .unwrap_or_else(|_| String::from("en_US.UTF-8"))
-    }
-
-    #[cfg(windows)]
-    {
-        todo!()
-    }
-
-    // TODO wasm??
-});
+use std::sync::RwLock;
 
 macro_rules! messages {
     ($($variant:ident),* $(,)?) => {
@@ -56,6 +35,7 @@ messages!(
     CouldNotOpenFile,
     CouldNotSaveFile,
     AskToSaveBeforeOpening,
+    AskToSaveBeforeClosing,
     SaveUnnamedFile,
     OutOfMemory,
     CouldNotOpenConfigFile,
@@ -78,11 +58,40 @@ macro_rules! s {
     };
 }
 
-pub fn get_str(key: Message) -> &'static str {
-    let lang = &*LANG;
-    let pot = &*POT;
+static POT: Lazy<KdlDocument> = Lazy::new(|| {
+    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/res/pot.kdl"))
+        .parse()
+        .expect("pot.kdl failed to parse")
+});
 
-    pot.get(&lang)
+static LANGS: Lazy<Vec<String>> = Lazy::new(|| whoami::lang().collect());
+static LANG: Lazy<RwLock<String>> = Lazy::new(|| {
+    let lang = LANGS.first().expect("user has no preferred language");
+    RwLock::new(lang.to_string())
+});
+
+pub fn get_lang() -> String {
+    LANG.read().unwrap().clone()
+}
+
+pub fn set_lang(requested: &str) {
+    if let Some(lang) = POT
+        .nodes()
+        .iter()
+        .map(|node| node.name().value())
+        // TODO probably split on dashes and compare the first segment
+        .find(|lang| requested.starts_with(lang) || lang.starts_with(requested))
+    {
+        log::info!("setting language to {} (matches {})", lang, requested,);
+        *LANG.try_write().expect("multithreaded set_lang") = lang.to_string();
+    } else {
+        panic!("no matching language for {}", requested);
+    }
+}
+
+pub fn get_str(key: Message) -> &'static str {
+    let lang = LANG.read().unwrap();
+    POT.get(&lang)
         .unwrap_or_else(|| panic!("missing language {}", lang))
         .children()
         .unwrap_or_else(|| panic!("language {} has no messages", lang))
