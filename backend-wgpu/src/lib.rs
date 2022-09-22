@@ -433,11 +433,7 @@ impl StrokeRenderer {
         });
 
         sketch.visible_strokes().for_each(|stroke| {
-            if stroke.draw_tesselated {
-                pass.set_pipeline(&self.triangle_pipeline);
-            } else {
-                pass.set_pipeline(&self.line_pipeline);
-            }
+            pass.set_pipeline(&self.line_pipeline);
 
             pass.set_bind_group(0, &self.view_bind_group, &[]);
             pass.set_push_constants(
@@ -446,7 +442,22 @@ impl StrokeRenderer {
                 bytemuck::cast_slice(&stroke.color().to_float()),
             );
 
+            let WgpuStrokeBackend {
+                points, points_len, ..
+            } = stroke.backend().unwrap();
+            pass.set_vertex_buffer(0, points.slice(..));
+            pass.draw(0..(*points_len as u32), 0..1);
+
             if stroke.draw_tesselated {
+                pass.set_pipeline(&self.triangle_pipeline);
+
+                pass.set_bind_group(0, &self.view_bind_group, &[]);
+                pass.set_push_constants(
+                    ShaderStages::VERTEX,
+                    0,
+                    bytemuck::cast_slice(&stroke.color().to_float()),
+                );
+
                 let WgpuStrokeBackend {
                     mesh,
                     indices,
@@ -456,12 +467,6 @@ impl StrokeRenderer {
                 pass.set_vertex_buffer(0, mesh.slice(..));
                 pass.set_index_buffer(indices.slice(..), IndexFormat::Uint16);
                 pass.draw_indexed(0..(*num_indices as u32), 0, 0..1);
-            } else {
-                let WgpuStrokeBackend {
-                    points, points_len, ..
-                } = stroke.backend().unwrap();
-                pass.set_vertex_buffer(0, points.slice(..));
-                pass.draw(0..(*points_len as u32), 0..1);
             }
         });
     }

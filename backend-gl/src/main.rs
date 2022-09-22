@@ -243,18 +243,18 @@ derive_loop::pmb_loop!(
             );
             gl.uniform_1_f32(Some(&strokes_brush_size), stroke.brush_size());
 
+            let GlStrokeBackend {
+                line_vao, line_len, ..
+            } = stroke.backend().unwrap();
+            gl.bind_vertex_array(Some(*line_vao));
+            gl.draw_arrays(glow::LINE_STRIP, 0, *line_len);
+
             if stroke.draw_tesselated {
                 let GlStrokeBackend {
                     mesh_vao, mesh_len, ..
                 } = stroke.backend().unwrap();
                 gl.bind_vertex_array(Some(*mesh_vao));
                 gl.draw_elements(glow::TRIANGLES, *mesh_len, glow::UNSIGNED_SHORT, 0);
-            } else {
-                let GlStrokeBackend {
-                    line_vao, line_len, ..
-                } = stroke.backend().unwrap();
-                gl.bind_vertex_array(Some(*line_vao));
-                gl.draw_arrays(glow::LINE_STRIP, 0, *line_len);
             }
         });
 
