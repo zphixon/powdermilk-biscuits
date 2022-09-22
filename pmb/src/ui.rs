@@ -197,6 +197,7 @@ pub fn read_file<S: StrokeBackend, C: CoordinateSystem>(
 
     widget.modified = false;
     widget.path = Some(path);
+    widget.undo_stack.clear();
 
     log::info!(
         "success, read from {}",

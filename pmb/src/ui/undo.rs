@@ -20,6 +20,10 @@ impl UndoStack {
         }
     }
 
+    pub fn clear(&mut self) {
+        *self = Self::new();
+    }
+
     #[must_use]
     pub fn last(&self) -> Option<Action> {
         if self.cursor == 0 {
