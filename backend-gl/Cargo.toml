@@ -11,7 +11,6 @@ pmb-release = ['powdermilk-biscuits/pmb-release']
 [dependencies]
 env_logger = '0.9.0'
 log = '*'
-image = { version = '0.24.2', default-features = false, features = ['png'] }
 glow = '0.11.2'
 glam = '0.21.2'
 powdermilk-biscuits = { path = '../pmb' }
