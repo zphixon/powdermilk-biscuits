@@ -617,6 +617,7 @@ impl<C: CoordinateSystem> SketchWidget<C> {
 
         if self.input.combo_just_pressed(&config.debug_clear_strokes) {
             sketch.clear_strokes();
+            self.undo_stack.clear();
             self.modified = true;
         }
 
