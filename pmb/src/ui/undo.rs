@@ -10,6 +10,7 @@ pub enum Action {
 pub struct UndoStack {
     buffer: Vec<Action>,
     cursor: usize,
+    saved: usize,
 }
 
 impl UndoStack {
@@ -17,11 +18,20 @@ impl UndoStack {
         UndoStack {
             buffer: Vec::new(),
             cursor: 0,
+            saved: 0,
         }
     }
 
     pub fn clear(&mut self) {
         *self = Self::new();
+    }
+
+    pub fn at_saved_state(&self) -> bool {
+        self.cursor == self.saved
+    }
+
+    pub fn set_saved_state(&mut self) {
+        self.saved = self.cursor;
     }
 
     #[must_use]

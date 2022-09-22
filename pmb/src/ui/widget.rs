@@ -656,6 +656,8 @@ impl<C: CoordinateSystem> SketchWidget<C> {
                 }
                 None => {}
             }
+
+            self.modified = !self.undo_stack.at_saved_state();
         }
 
         if self.input.combo_just_pressed(&config.redo) {
@@ -667,11 +669,16 @@ impl<C: CoordinateSystem> SketchWidget<C> {
                 Some(Action::EraseStroke(stroke)) => sketch.strokes[stroke].erase(),
                 None => {}
             }
+
+            self.modified = !self.undo_stack.at_saved_state();
         }
 
         if self.input.combo_just_pressed(&config.save) {
             super::save_file(self, sketch)
                 .problem(s!(CouldNotSaveFile))
+                .map(|_| {
+                    self.undo_stack.set_saved_state();
+                })
                 .display();
         }
 
