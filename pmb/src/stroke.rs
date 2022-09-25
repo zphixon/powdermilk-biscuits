@@ -1,4 +1,5 @@
 use crate::{
+    error::PmbError,
     graphics::{Color, ColorExt, StrokePos},
     StrokeBackend,
 };
@@ -211,7 +212,8 @@ where
         stylus: &crate::Stylus,
         tesselator: &mut StrokeTessellator,
         options: &StrokeOptions,
-    ) {
+    ) -> bool {
+        let mut should_be_split = false;
         let x = stylus.pos.x;
         let y = stylus.pos.y;
 
@@ -222,7 +224,17 @@ where
         });
 
         if self.points.len() >= 2 {
-            self.rebuild_mesh(tesselator, options);
+            use crate::error::ErrorKind;
+            use lyon::lyon_tessellation::{GeometryBuilderError, TessellationError};
+            should_be_split = matches!(
+                self.rebuild_mesh(tesselator, options),
+                Err(PmbError {
+                    kind: ErrorKind::Tessellator(TessellationError::GeometryBuilder(
+                        GeometryBuilderError::TooManyVertices,
+                    )),
+                    ..
+                })
+            );
         }
 
         if self.points.len() == 1 {
@@ -233,9 +245,15 @@ where
         if let Some(backend) = self.backend_mut() {
             backend.make_dirty();
         }
+
+        should_be_split
     }
 
-    pub fn rebuild_mesh(&mut self, tesselator: &mut StrokeTessellator, options: &StrokeOptions) {
+    pub fn rebuild_mesh(
+        &mut self,
+        tesselator: &mut StrokeTessellator,
+        options: &StrokeOptions,
+    ) -> Result<(), PmbError> {
         use lyon::geom::point as point2d;
         let mut path = Path::builder_with_attributes(1);
         if let Some(first) = self.points.first() {
@@ -255,12 +273,12 @@ where
         let mut mesh = VertexBuffers::new();
         let mut builder = simple_builder(&mut mesh);
 
-        tesselator
-            .tessellate_path(&path, options, &mut builder)
-            .unwrap();
+        tesselator.tessellate_path(&path, options, &mut builder)?;
 
         self.mesh = mesh;
         self.update_bounding_box();
+
+        Ok(())
     }
 
     pub fn finish(&mut self) {

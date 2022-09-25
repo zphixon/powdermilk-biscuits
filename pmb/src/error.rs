@@ -96,6 +96,7 @@ pub enum ErrorKind {
     VersionMismatch(Version),
     UnknownVersion(Version),
     IncompatibleVersion(Version),
+    Tessellator(lyon::lyon_tessellation::TessellationError),
 }
 
 impl From<std::io::Error> for PmbError {
@@ -122,6 +123,12 @@ impl From<ron::error::SpannedError> for PmbError {
     }
 }
 
+impl From<lyon::lyon_tessellation::TessellationError> for PmbError {
+    fn from(err: lyon::lyon_tessellation::TessellationError) -> Self {
+        PmbError::new(ErrorKind::Tessellator(err))
+    }
+}
+
 impl Display for ErrorKind {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
@@ -140,6 +147,9 @@ impl Display for ErrorKind {
                     "Version {version} is incompatible with the current version {}",
                     Version::CURRENT
                 )
+            }
+            ErrorKind::Tessellator(err) => {
+                write!(f, "Tessellator error: {}", err)
             }
         }
     }

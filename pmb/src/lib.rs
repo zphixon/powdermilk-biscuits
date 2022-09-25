@@ -257,7 +257,8 @@ impl<S: StrokeBackend> Sketch<S> {
         self.strokes
             .values_mut()
             .flat_map(|stroke| {
-                stroke.rebuild_mesh(tessellator, options);
+                // should not ever result in the stroke having to be split
+                let _ = stroke.rebuild_mesh(tessellator, options);
                 stroke.backend_mut()
             })
             .for_each(|backend| backend.make_dirty());
