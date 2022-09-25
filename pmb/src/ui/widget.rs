@@ -695,7 +695,7 @@ impl<C: CoordinateSystem> SketchWidget<C> {
 
         if self.input.combo_just_pressed(&config.open) {
             super::read_file(self, None::<&str>, sketch)
-                .problem(s!(CouldNotSaveFile))
+                .problem(s!(CouldNotOpenFile))
                 .display();
         }
 
