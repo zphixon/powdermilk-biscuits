@@ -32,7 +32,7 @@ derive_loop::pmb_loop!(
     egui_ctx: { &egui_glow.egui_ctx },
 
     bindings:
-        window = { WindowBuilder::new().build(&ev).unwrap() }
+        window = { builder.build(&ev).unwrap() }
 
         display = { unsafe {
             Display::from_raw(
@@ -48,6 +48,7 @@ derive_loop::pmb_loop!(
                     ConfigTemplateBuilder::new()
                         .compatible_with_native_window(window.raw_window_handle())
                         .with_surface_type(ConfigSurfaceTypes::WINDOW)
+                        .with_sample_buffers(4)
                         .build(),
                 )
                 .unwrap()
