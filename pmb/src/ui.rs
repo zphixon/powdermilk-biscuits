@@ -66,6 +66,11 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
         ui.color_edit_button_rgb(&mut widget.clear_color);
         ui.label(s!(&StrokeColor));
         ui.color_edit_button_rgb(&mut widget.color);
+        ui.label(s!(&BrushSize));
+        ui.add(egui::Slider::new(
+            &mut widget.brush_size,
+            crate::MIN_BRUSH..=crate::MAX_BRUSH,
+        ));
     });
 
     egui::TopBottomPanel::top("top").show(ctx, |ui| {

@@ -47,6 +47,7 @@ messages!(
     UseMouseForPen,
     ToolForGesture1,
     Zoom,
+    BrushSize
 );
 
 #[macro_export]

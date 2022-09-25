@@ -24,6 +24,7 @@ Proceed?"
   UseMouseForPen "Use mouse for pen"
   ToolForGesture1 "Tool for one-finger touch"
   Zoom "Zoom"
+  BrushSize "Brush size"
 }
 
 /-es {
