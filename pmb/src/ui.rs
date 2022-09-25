@@ -165,17 +165,17 @@ pub fn read_file<S: StrokeBackend, C: CoordinateSystem>(
                     rfd::MessageDialogResult::Yes => {
                         let disk = migrate::from(version, &path)?;
 
-                        sketch.update_from::<C>(
+                        *sketch = disk;
+                        sketch.force_update::<C>(
                             widget.width,
                             widget.height,
                             &mut widget.tesselator,
                             &widget.stroke_options,
-                            disk,
                         );
 
-                        widget.modified = true;
-                        // set to none so the user is prompted to save  elsewhere
+                        // set the path to none so the user is prompted to save elsewhere
                         widget.path = None;
+                        widget.modified = true;
 
                         return Ok(());
                     }
@@ -192,12 +192,12 @@ pub fn read_file<S: StrokeBackend, C: CoordinateSystem>(
         err => err?,
     };
 
-    sketch.update_from::<C>(
+    *sketch = disk;
+    sketch.force_update::<C>(
         widget.width,
         widget.height,
         &mut widget.tesselator,
         &widget.stroke_options,
-        disk,
     );
 
     widget.modified = false;

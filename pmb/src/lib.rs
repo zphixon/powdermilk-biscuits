@@ -210,28 +210,6 @@ impl<S: StrokeBackend> Sketch<S> {
         }
     }
 
-    pub fn update_from<C: CoordinateSystem>(
-        &mut self,
-        width: u32,
-        height: u32,
-        tessellator: &mut StrokeTessellator,
-        options: &StrokeOptions,
-        other: Sketch<S>,
-    ) {
-        self.strokes = other.strokes;
-        self.update_zoom::<C>(width, height, other.zoom);
-        self.move_origin::<C>(
-            width,
-            height,
-            Default::default(),
-            StrokePos {
-                x: other.origin.x, // kill me :)
-                y: other.origin.y,
-            },
-        );
-        self.force_update::<C>(width, height, tessellator, options);
-    }
-
     pub fn clear_strokes(&mut self) {
         self.strokes.clear();
     }
