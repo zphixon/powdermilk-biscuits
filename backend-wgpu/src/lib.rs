@@ -403,7 +403,7 @@ impl StrokeRenderer {
         encoder: &mut CommandEncoder,
         sketch: &Sketch<WgpuStrokeBackend>,
         size: Size,
-        clear_color: [f32; 3],
+        bg_color: [f32; 3],
     ) {
         let stroke_view = view_matrix(sketch.zoom, sketch.zoom, size, sketch.origin);
         queue.write_buffer(
@@ -421,9 +421,9 @@ impl StrokeRenderer {
                 resolve_target: None,
                 ops: Operations {
                     load: LoadOp::Clear(WgpuColor {
-                        r: clear_color[0] as f64,
-                        g: clear_color[1] as f64,
-                        b: clear_color[2] as f64,
+                        r: bg_color[0] as f64,
+                        g: bg_color[1] as f64,
+                        b: bg_color[2] as f64,
                         a: 1.,
                     }),
                     store: true,
@@ -839,7 +839,7 @@ impl Graphics {
                     &mut encoder,
                     sketch,
                     size,
-                    widget.clear_color,
+                    sketch.bg_color,
                 );
 
                 if !cursor_visible {

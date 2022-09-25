@@ -229,7 +229,7 @@ derive_loop::pmb_loop!(
             });
 
         unsafe {
-            gl.clear_color(widget.clear_color[0], widget.clear_color[1], widget.clear_color[2], 1.);
+            gl.clear_color(sketch.bg_color[0], sketch.bg_color[1], sketch.bg_color[2], 1.);
             gl.clear(glow::COLOR_BUFFER_BIT);
         }
 

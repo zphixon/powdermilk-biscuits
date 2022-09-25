@@ -121,6 +121,7 @@ pub struct Sketch<S: StrokeBackend> {
     pub strokes: SlotMap<DefaultKey, Stroke<S>>,
     pub zoom: f32,
     pub origin: StrokePoint,
+    pub bg_color: Color,
 }
 
 pub fn map_from_vec<S: StrokeBackend>(strokes: Vec<Stroke<S>>) -> SlotMap<DefaultKey, Stroke<S>> {
@@ -144,6 +145,7 @@ impl<S: StrokeBackend> Sketch<S> {
             strokes: map_from_vec(strokes),
             zoom: crate::DEFAULT_ZOOM,
             origin: StrokePoint::default(),
+            bg_color: Color::BLACK,
         }
     }
 

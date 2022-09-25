@@ -88,7 +88,7 @@ impl Display for Version {
 }
 
 impl Version {
-    pub const CURRENT: Self = Version(7);
+    pub const CURRENT: Self = Version(8);
 
     pub fn upgrade_type(from: Self) -> UpgradeType {
         use UpgradeType::*;
@@ -98,6 +98,7 @@ impl Version {
         }
 
         match from {
+            Version(7) => Smooth,
             Version(6) => Smooth,
             Version(5) => Smooth,
             Version(4) => Rocky,
@@ -130,6 +131,43 @@ where
 
     match version {
         version if version == Version::CURRENT => unreachable!(),
+
+        Version(7) => {
+            let v7: v7::SketchV7 = v7::read(file)?;
+
+            let state = Sketch {
+                strokes: crate::map_from_vec(
+                    v7.strokes
+                        .into_iter()
+                        .map(|v7| Stroke {
+                            points: {
+                                v7.points
+                                    .iter()
+                                    .map(|point| StrokeElement {
+                                        x: point.x,
+                                        y: point.y,
+                                        pressure: point.pressure,
+                                    })
+                                    .collect()
+                            },
+                            color: v7.color,
+                            brush_size: v7.brush_size,
+                            erased: v7.erased,
+                            ..Default::default()
+                        })
+                        .collect(),
+                ),
+                zoom: v7.zoom,
+                origin: StrokePoint {
+                    x: v7.origin.x,
+                    y: v7.origin.y,
+                },
+                bg_color: v7.bg_color,
+                ..Default::default()
+            };
+
+            return Ok(state);
+        }
 
         Version(6) => {
             let v6: v6::SketchV6 = v6::read(file)?;
@@ -347,6 +385,67 @@ where
         }
 
         _ => Err(PmbError::new(ErrorKind::UnknownVersion(version))),
+    }
+}
+
+mod v7 {
+    use super::*;
+
+    #[derive(bincode::Decode)]
+    pub struct StrokePointV7 {
+        pub x: f32,
+        pub y: f32,
+    }
+
+    #[derive(bincode::Decode)]
+    pub struct StrokeElementV7 {
+        pub x: f32,
+        pub y: f32,
+        pub pressure: f32,
+    }
+
+    #[derive(bincode::Decode)]
+    pub struct StrokeV7 {
+        pub points: Vec<StrokeElementV7>,
+        pub color: [f32; 3],
+        pub brush_size: f32,
+        pub erased: bool,
+    }
+
+    #[derive(bincode::Decode)]
+    pub struct SketchV7 {
+        pub zoom: f32,
+        pub origin: StrokePointV7,
+        pub bg_color: [f32; 3],
+        pub strokes: Vec<StrokeV7>,
+    }
+
+    pub fn read(mut reader: impl Read) -> Result<SketchV7, PmbError> {
+        let mut magic = [0; 3];
+        reader.read_exact(&mut magic)?;
+
+        if magic != crate::PMB_MAGIC {
+            return Err(PmbError::new(ErrorKind::MissingHeader));
+        }
+
+        let mut version_bytes = [0; std::mem::size_of::<u64>()];
+        reader.read_exact(&mut version_bytes)?;
+        let version = Version(u64::from_le_bytes(version_bytes));
+
+        log::debug!("got version {}", version);
+        if version != Version(7) {
+            unreachable!(
+                "called v6::read when you should have called v{}::read",
+                version
+            );
+        }
+
+        log::debug!("inflating");
+        let mut deflate_reader = flate2::read::DeflateDecoder::new(reader);
+        Ok(bincode::decode_from_std_read(
+            &mut deflate_reader,
+            standard(),
+        )?)
     }
 }
 

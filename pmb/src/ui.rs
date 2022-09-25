@@ -63,7 +63,7 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
     egui::SidePanel::left("side").show(ctx, |ui| {
         ui.heading(s!(&RealHotItem));
         ui.label(s!(&ClearColor));
-        ui.color_edit_button_rgb(&mut widget.clear_color);
+        ui.color_edit_button_rgb(&mut sketch.bg_color);
         ui.label(s!(&StrokeColor));
         ui.color_edit_button_rgb(&mut widget.color);
         ui.label(s!(&BrushSize));
