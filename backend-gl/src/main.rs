@@ -50,7 +50,6 @@ derive_loop::pmb_loop!(
 
         strokes_view = no_init
         strokes_color = no_init
-        strokes_brush_size = no_init
 
         pen_cursor_view = no_init
         pen_cursor_erasing = no_init
@@ -106,9 +105,6 @@ derive_loop::pmb_loop!(
             strokes_view = gl.get_uniform_location(line_strokes_program, "view").unwrap();
             strokes_color = gl
                 .get_uniform_location(line_strokes_program, "strokeColor")
-                .unwrap();
-            strokes_brush_size = gl
-                .get_uniform_location(line_strokes_program, "brushSize")
                 .unwrap();
             gl.uniform_matrix_4_f32_slice(
                 Some(&strokes_view),
@@ -247,7 +243,6 @@ derive_loop::pmb_loop!(
                 stroke.color()[1] as f32 / 255.0,
                 stroke.color()[2] as f32 / 255.0,
             );
-            gl.uniform_1_f32(Some(&strokes_brush_size), stroke.brush_size());
 
             let GlStrokeBackend {
                 line_vao, line_len, ..
