@@ -1,40 +1,36 @@
 use std::fmt::{Display, Formatter};
 
-pub type Color = [u8; 3];
+pub type Color = [f32; 3];
 
 pub trait ColorExt {
-    const WHITE: Color = [0xff, 0xff, 0xff];
-    const BLACK: Color = [0x00, 0x00, 0x00];
-    const NICE_RED: Color = [255, 166, 166];
-    const NICE_GREEN: Color = [166, 255, 190];
-    const PMB: Color = [0x50, 0x4d, 0x42];
+    const WHITE: Color = [1., 1., 1.];
+    const BLACK: Color = [0., 0., 0.];
+    const NICE_RED: Color = [1., 0.65, 0.65];
+    const NICE_GREEN: Color = [0.65, 1., 0.75];
+    const PMB: Color = [0.314, 0.301, 0.259];
 
     fn grey(level: f32) -> Color {
-        [
-            (level * 0xff as f32) as u8,
-            (level * 0xff as f32) as u8,
-            (level * 0xff as f32) as u8,
-        ]
+        [level, level, level]
     }
 
-    fn to_float(&self) -> [f32; 3];
-    fn from_float(color: [f32; 3]) -> Self;
+    fn to_u8(&self) -> [u8; 3];
+    fn from_u8(color: [u8; 3]) -> Self;
 }
 
 impl ColorExt for Color {
-    fn to_float(&self) -> [f32; 3] {
+    fn from_u8(color: [u8; 3]) -> Color {
         [
-            self[0] as f32 / 255.,
-            self[1] as f32 / 255.,
-            self[2] as f32 / 255.,
+            color[0] as f32 / 255.,
+            color[1] as f32 / 255.,
+            color[2] as f32 / 255.,
         ]
     }
 
-    fn from_float(color: [f32; 3]) -> Color {
+    fn to_u8(&self) -> [u8; 3] {
         [
-            (color[0] * 255.) as u8,
-            (color[1] * 255.) as u8,
-            (color[2] * 255.) as u8,
+            (self[0] * 255.) as u8,
+            (self[1] * 255.) as u8,
+            (self[2] * 255.) as u8,
         ]
     }
 }

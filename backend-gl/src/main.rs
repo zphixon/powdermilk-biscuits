@@ -239,9 +239,9 @@ derive_loop::pmb_loop!(
             gl.uniform_matrix_4_f32_slice(Some(&strokes_view), false, &view.to_cols_array());
             gl.uniform_3_f32(
                 Some(&strokes_color),
-                stroke.color()[0] as f32 / 255.0,
-                stroke.color()[1] as f32 / 255.0,
-                stroke.color()[2] as f32 / 255.0,
+                stroke.color[0],
+                stroke.color[1],
+                stroke.color[2],
             );
 
             let GlStrokeBackend {
@@ -255,9 +255,9 @@ derive_loop::pmb_loop!(
                 gl.uniform_matrix_4_f32_slice(Some(&strokes_view), false, &view.to_cols_array());
                 gl.uniform_3_f32(
                     Some(&strokes_color),
-                    stroke.color()[0] as f32 / 255.0,
-                    stroke.color()[1] as f32 / 255.0,
-                    stroke.color()[2] as f32 / 255.0,
+                    stroke.color[0],
+                    stroke.color[1],
+                    stroke.color[2],
                 );
 
                 let GlStrokeBackend {

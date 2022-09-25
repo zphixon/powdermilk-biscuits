@@ -104,14 +104,11 @@ impl<C: CoordinateSystem> SketchWidget<C> {
     }
 
     fn start_stroke<S: StrokeBackend>(&mut self, sketch: &mut Sketch<S>) {
-        use crate::graphics::{Color, ColorExt};
         self.modified = true;
         let stroke_brush_size = self.brush_size as f32 / sketch.zoom;
-        let key = sketch.strokes.insert(Stroke::new(
-            Color::from_float(self.color),
-            stroke_brush_size,
-            true,
-        ));
+        let key = sketch
+            .strokes
+            .insert(Stroke::new(self.color, stroke_brush_size, true));
         self.undo_stack.push(Action::DrawStroke(key));
     }
 

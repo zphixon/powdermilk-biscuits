@@ -9,8 +9,9 @@
 //!
 //! - Increment [Version::CURRENT]
 //! - Add a new module named v\[old\] where \[old\] is the previous version
-//! - Copy/paste every type with `derive(Disk)` to that module, suffixing its name with V\[new\], and
-//!   removing any fields that do not get serialized to disk
+//! - Copy/paste every type with `derive(Disk)` to that module, suffixing its name with V\[new\],
+//!   removing any fields that do not get serialized to disk, and moving any `#[custom_enc]` fields
+//!   after any normal fields
 //! - Derive bincode::Decode for each type
 //! - Add the new version to [Version::upgrade_type] and edit the compatibility between the old and
 //!   new [Sketch]es
@@ -87,7 +88,7 @@ impl Display for Version {
 }
 
 impl Version {
-    pub const CURRENT: Self = Version(6);
+    pub const CURRENT: Self = Version(7);
 
     pub fn upgrade_type(from: Self) -> UpgradeType {
         use UpgradeType::*;
@@ -97,6 +98,7 @@ impl Version {
         }
 
         match from {
+            Version(6) => Smooth,
             Version(5) => Smooth,
             Version(4) => Rocky,
             Version(3) => Smooth,
@@ -119,11 +121,50 @@ where
         Version::upgrade_type(version)
     );
 
-    use crate::stroke::*;
+    use crate::{
+        graphics::{Color, ColorExt, StrokePoint},
+        stroke::*,
+    };
     let file = std::fs::File::open(&path)?;
 
     match version {
         version if version == Version::CURRENT => unreachable!(),
+
+        Version(6) => {
+            let v6: v6::SketchV6 = v6::read(file)?;
+
+            let state = Sketch {
+                strokes: crate::map_from_vec(
+                    v6.strokes
+                        .into_iter()
+                        .map(|v6| Stroke {
+                            points: {
+                                v6.points
+                                    .iter()
+                                    .map(|point| StrokeElement {
+                                        x: point.x,
+                                        y: point.y,
+                                        pressure: point.pressure,
+                                    })
+                                    .collect()
+                            },
+                            color: Color::from_u8(v6.color),
+                            brush_size: v6.brush_size,
+                            erased: v6.erased,
+                            ..Default::default()
+                        })
+                        .collect(),
+                ),
+                zoom: v6.zoom,
+                origin: StrokePoint {
+                    x: v6.origin.x,
+                    y: v6.origin.y,
+                },
+                ..Default::default()
+            };
+
+            return Ok(state);
+        }
 
         Version(5) => {
             let v5: v5::SketchV5 = v5::read(file)?;
@@ -143,7 +184,7 @@ where
                                     })
                                     .collect()
                             },
-                            color: v5.color,
+                            color: Color::from_u8(v5.color),
                             brush_size: v5.brush_size,
                             erased: v5.erased,
                             ..Default::default()
@@ -179,7 +220,7 @@ where
                                     })
                                     .collect()
                             },
-                            color: v4.color,
+                            color: Color::from_u8(v4.color),
                             brush_size: v4.brush_size,
                             erased: v4.erased,
                             ..Default::default()
@@ -216,7 +257,7 @@ where
                                     })
                                     .collect()
                             },
-                            color: v3.color,
+                            color: Color::from_u8(v3.color),
                             brush_size: v3.brush_size,
                             erased: v3.erased,
                             ..Default::default()
@@ -251,7 +292,7 @@ where
                                     pressure: v2.pressure,
                                 })
                                 .collect(),
-                            color: v2.color,
+                            color: Color::from_u8(v2.color),
                             brush_size: v2.brush_size,
                             erased: v2.erased,
                             ..Default::default()
@@ -286,7 +327,7 @@ where
                                     pressure: v1.pressure,
                                 })
                                 .collect(),
-                            color: v1.color,
+                            color: Color::from_u8(v1.color),
                             brush_size: v1.brush_size,
                             erased: v1.erased,
                             ..Default::default()
@@ -305,6 +346,63 @@ where
         }
 
         _ => Err(PmbError::new(ErrorKind::UnknownVersion(version))),
+    }
+}
+
+mod v6 {
+    use super::*;
+
+    #[derive(bincode::Decode)]
+    pub struct StrokePointV6 {
+        pub x: f32,
+        pub y: f32,
+    }
+
+    #[derive(bincode::Decode)]
+    pub struct StrokeElementV6 {
+        pub x: f32,
+        pub y: f32,
+        pub pressure: f32,
+    }
+
+    #[derive(bincode::Decode)]
+    pub struct StrokeV6 {
+        pub points: Vec<StrokeElementV6>,
+        pub color: [u8; 3],
+        pub brush_size: f32,
+        pub erased: bool,
+    }
+
+    #[derive(bincode::Decode)]
+    pub struct SketchV6 {
+        pub zoom: f32,
+        pub origin: StrokePointV6,
+        pub strokes: Vec<StrokeV6>,
+    }
+
+    pub fn read(mut reader: impl Read) -> Result<SketchV6, PmbError> {
+        let mut magic = [0; 3];
+        reader.read_exact(&mut magic)?;
+
+        if magic != crate::PMB_MAGIC {
+            return Err(PmbError::new(ErrorKind::MissingHeader));
+        }
+
+        let mut version_bytes = [0; std::mem::size_of::<u64>()];
+        reader.read_exact(&mut version_bytes)?;
+        let version = Version(u64::from_le_bytes(version_bytes));
+
+        log::debug!("got version {}", version);
+        if version != Version(6) {
+            return Err(PmbError::new(ErrorKind::VersionMismatch(version)));
+        }
+
+        log::debug!("inflating");
+        let mut deflate_reader = flate2::read::DeflateDecoder::new(reader);
+        Ok(bincode::decode_from_std_read(
+            &mut deflate_reader,
+            bincode::config::standard(),
+        )?)
     }
 }
 

@@ -1,7 +1,7 @@
 use powdermilk_biscuits::{
     bytemuck, egui,
     event::{ElementState, Keycode, MouseButton, PenInfo, Touch, TouchPhase},
-    graphics::{ColorExt, PixelPos, StrokePoint},
+    graphics::{PixelPos, StrokePoint},
     stroke::Stroke,
     ui::widget::SketchWidget,
     Sketch, Tool,
@@ -436,11 +436,7 @@ impl StrokeRenderer {
             pass.set_pipeline(&self.line_pipeline);
 
             pass.set_bind_group(0, &self.view_bind_group, &[]);
-            pass.set_push_constants(
-                ShaderStages::VERTEX,
-                0,
-                bytemuck::cast_slice(&stroke.color().to_float()),
-            );
+            pass.set_push_constants(ShaderStages::VERTEX, 0, bytemuck::cast_slice(&stroke.color));
 
             let WgpuStrokeBackend {
                 points, points_len, ..
@@ -455,7 +451,7 @@ impl StrokeRenderer {
                 pass.set_push_constants(
                     ShaderStages::VERTEX,
                     0,
-                    bytemuck::cast_slice(&stroke.color().to_float()),
+                    bytemuck::cast_slice(&stroke.color),
                 );
 
                 let WgpuStrokeBackend {
