@@ -44,7 +44,8 @@ derive_loop::pmb_loop!(
             egui_glow::EguiGlow::new(&ev, Arc::clone(&gl), None)
         }
 
-        strokes_program = no_init
+        line_strokes_program = no_init
+        mesh_strokes_program = no_init
         pen_cursor_program = no_init
 
         strokes_view = no_init
@@ -90,19 +91,24 @@ derive_loop::pmb_loop!(
                 &glam::Mat4::IDENTITY.to_cols_array(),
             );
 
-            strokes_program = backend_gl::compile_program(
+            line_strokes_program = backend_gl::compile_program(
                 &gl,
                 include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/stroke_line.vert")),
                 include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/stroke_line.frag")),
             );
-            gl.use_program(Some(strokes_program));
 
-            strokes_view = gl.get_uniform_location(strokes_program, "view").unwrap();
+            mesh_strokes_program = backend_gl::compile_program(
+                &gl,
+                include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/stroke_line.vert")),
+                include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/stroke_mesh.frag")),
+            );
+
+            strokes_view = gl.get_uniform_location(line_strokes_program, "view").unwrap();
             strokes_color = gl
-                .get_uniform_location(strokes_program, "strokeColor")
+                .get_uniform_location(line_strokes_program, "strokeColor")
                 .unwrap();
             strokes_brush_size = gl
-                .get_uniform_location(strokes_program, "brushSize")
+                .get_uniform_location(line_strokes_program, "brushSize")
                 .unwrap();
             gl.uniform_matrix_4_f32_slice(
                 Some(&strokes_view),
@@ -163,14 +169,6 @@ derive_loop::pmb_loop!(
 
     render: {
         use std::mem::size_of;
-
-        unsafe {
-            gl.use_program(Some(strokes_program));
-            let view = backend_gl::view_matrix(sketch.zoom, sketch.zoom, size, sketch.origin);
-            gl.uniform_matrix_4_f32_slice(Some(&strokes_view), false, &view.to_cols_array());
-            gl.clear_color(widget.clear_color[0], widget.clear_color[1], widget.clear_color[2], 1.);
-            gl.clear(glow::COLOR_BUFFER_BIT);
-        }
 
         sketch
             .strokes
@@ -234,7 +232,15 @@ derive_loop::pmb_loop!(
                 });
             });
 
+        unsafe {
+            gl.clear_color(widget.clear_color[0], widget.clear_color[1], widget.clear_color[2], 1.);
+            gl.clear(glow::COLOR_BUFFER_BIT);
+        }
+
         sketch.visible_strokes().for_each(|stroke| unsafe {
+            gl.use_program(Some(line_strokes_program));
+            let view = backend_gl::view_matrix(sketch.zoom, sketch.zoom, size, sketch.origin);
+            gl.uniform_matrix_4_f32_slice(Some(&strokes_view), false, &view.to_cols_array());
             gl.uniform_3_f32(
                 Some(&strokes_color),
                 stroke.color()[0] as f32 / 255.0,
@@ -250,6 +256,15 @@ derive_loop::pmb_loop!(
             gl.draw_arrays(glow::LINE_STRIP, 0, *line_len);
 
             if stroke.draw_tesselated {
+                gl.use_program(Some(mesh_strokes_program));
+                gl.uniform_matrix_4_f32_slice(Some(&strokes_view), false, &view.to_cols_array());
+                gl.uniform_3_f32(
+                    Some(&strokes_color),
+                    stroke.color()[0] as f32 / 255.0,
+                    stroke.color()[1] as f32 / 255.0,
+                    stroke.color()[2] as f32 / 255.0,
+                );
+
                 let GlStrokeBackend {
                     mesh_vao, mesh_len, ..
                 } = stroke.backend().unwrap();

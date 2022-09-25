@@ -7,5 +7,5 @@ layout (location=2) in vec3 fragStrokeColor;
 layout (location=0) out vec4 color;
 
 void main() {
-  color = vec4(fragStrokeColor * pressure, 1.0);
+  color = vec4(fragStrokeColor, 1.0);
 }
