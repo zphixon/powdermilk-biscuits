@@ -50,7 +50,7 @@ pub fn read<S: StrokeBackend>(mut reader: impl Read) -> Result<Sketch<S>, PmbErr
     let mut deflate_reader = flate2::read::DeflateDecoder::new(reader);
     Ok(bincode::decode_from_std_read(
         &mut deflate_reader,
-        bincode::config::standard(),
+        standard(),
     )?)
 }
 
@@ -65,7 +65,7 @@ pub fn write<S: StrokeBackend>(
     file.write_all(&u64::to_le_bytes(Version::CURRENT.0))?;
 
     let mut deflate_writer = flate2::write::DeflateEncoder::new(file, flate2::Compression::fast());
-    bincode::encode_into_std_write(state, &mut deflate_writer, bincode::config::standard())?;
+    bincode::encode_into_std_write(state, &mut deflate_writer, standard())?;
 
     Ok(())
 }
@@ -125,6 +125,7 @@ where
         graphics::{Color, ColorExt, StrokePoint},
         stroke::*,
     };
+
     let file = std::fs::File::open(&path)?;
 
     match version {
@@ -394,14 +395,17 @@ mod v6 {
 
         log::debug!("got version {}", version);
         if version != Version(6) {
-            return Err(PmbError::new(ErrorKind::VersionMismatch(version)));
+            unreachable!(
+                "called v6::read when you should have called v{}::read",
+                version
+            );
         }
 
         log::debug!("inflating");
         let mut deflate_reader = flate2::read::DeflateDecoder::new(reader);
         Ok(bincode::decode_from_std_read(
             &mut deflate_reader,
-            bincode::config::standard(),
+            standard(),
         )?)
     }
 }
@@ -451,14 +455,17 @@ mod v5 {
 
         log::debug!("got version {}", version);
         if version != Version(5) {
-            return Err(PmbError::new(ErrorKind::VersionMismatch(version)));
+            unreachable!(
+                "called v5::read when you should have called v{}::read",
+                version
+            );
         }
 
         log::debug!("inflating");
         let mut deflate_reader = flate2::read::DeflateDecoder::new(reader);
         Ok(bincode::decode_from_std_read(
             &mut deflate_reader,
-            bincode::config::standard(),
+            standard(),
         )?)
     }
 }
@@ -508,7 +515,10 @@ mod v4 {
         let version = Version(u64::from_le_bytes(version_bytes));
 
         if version != Version(4) {
-            return Err(PmbError::new(ErrorKind::VersionMismatch(version)));
+            unreachable!(
+                "called v4::read when you should have called v{}::read",
+                version
+            );
         }
 
         let mut deflate_reader = flate2::read::DeflateDecoder::new(reader);
@@ -521,7 +531,6 @@ mod v4 {
 
 mod v3 {
     use super::*;
-    use bincode::config::standard;
 
     #[derive(bincode::Decode)]
     pub struct StrokePointV3 {
@@ -559,7 +568,10 @@ mod v3 {
         let version = Version(u64::from_le_bytes(version_bytes));
 
         if version != Version(3) {
-            return Err(PmbError::new(ErrorKind::VersionMismatch(version)));
+            unreachable!(
+                "called v3::read when you should have called v{}::read",
+                version
+            );
         }
 
         let mut deflate_reader = flate2::read::DeflateDecoder::new(reader);
@@ -572,7 +584,6 @@ mod v3 {
 
 mod v2 {
     use super::*;
-    use bincode::config::standard;
 
     #[derive(bincode::Decode)]
     pub struct StrokePointV2 {
@@ -617,7 +628,10 @@ mod v2 {
         let version = Version(u64::from_le_bytes(version_bytes));
 
         if version != Version(2) {
-            return Err(PmbError::new(ErrorKind::VersionMismatch(version)));
+            unreachable!(
+                "called v2::read when you should have called v{}::read",
+                version
+            );
         }
 
         let mut deflate_reader = flate2::read::DeflateDecoder::new(reader);
@@ -630,7 +644,6 @@ mod v2 {
 
 mod v1 {
     use super::*;
-    use bincode::config::standard;
 
     #[derive(bincode::Decode)]
     pub struct StrokePointV1 {
@@ -675,7 +688,10 @@ mod v1 {
         let version = Version(u64::from_le_bytes(version_bytes));
 
         if version != Version(1) {
-            return Err(PmbError::new(ErrorKind::VersionMismatch(version)));
+            unreachable!(
+                "called v1::read when you should have called v{}::read",
+                version
+            );
         }
 
         let mut deflate_reader = flate2::read::DeflateDecoder::new(reader);
