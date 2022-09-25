@@ -1,15 +1,15 @@
 use glow::HasContext;
-use glutin::{
+use powdermilk_biscuits::{
+    event::{ElementState, Keycode, MouseButton, PenInfo, Touch, TouchPhase},
+    graphics::{PixelPos, StrokePoint},
+};
+use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
     event::{
         ElementState as GlutinElementState, MouseButton as GlutinMouseButton,
         PenInfo as GlutinPenInfo, Touch as GlutinTouch, TouchPhase as GlutinTouchPhase,
         VirtualKeyCode as GlutinKeycode,
     },
-};
-use powdermilk_biscuits::{
-    event::{ElementState, Keycode, MouseButton, PenInfo, Touch, TouchPhase},
-    graphics::{PixelPos, StrokePoint},
 };
 
 #[derive(Debug, Default, Clone, Copy)]

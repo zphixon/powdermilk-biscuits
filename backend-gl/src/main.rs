@@ -2,9 +2,16 @@
 
 use backend_gl::GlStrokeBackend;
 use glow::{Context, HasContext};
-use glutin::ContextBuilder;
+use glutin::{
+    config::{ConfigSurfaceTypes, ConfigTemplateBuilder},
+    context::{ContextAttributesBuilder, PossiblyCurrentGlContext},
+    display::{Display, DisplayApiPreference},
+    prelude::{GlDisplay, NotCurrentGlContextSurfaceAccessor},
+    surface::{GlSurface, SurfaceAttributesBuilder, WindowSurface},
+};
 use powdermilk_biscuits::bytemuck;
-use std::sync::Arc;
+use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
+use std::{num::NonZeroU32, sync::Arc};
 
 fn main() {
     env_logger::init();
@@ -12,7 +19,7 @@ fn main() {
 }
 
 derive_loop::pmb_loop!(
-    windowing_crate_name: glutin,
+    windowing_crate_name: winit,
     backend_crate_name: backend_gl,
     coords_name: GlCoords,
     stroke_backend_name: GlStrokeBackend,
@@ -21,23 +28,63 @@ derive_loop::pmb_loop!(
     key_state_translation: glutin_to_pmb_key_state,
     touch_translation: glutin_to_pmb_touch,
 
-    window: { context.window() },
+    window: { &window },
     egui_ctx: { &egui_glow.egui_ctx },
 
     bindings:
-        context = { unsafe {
-            ContextBuilder::new()
-                .with_vsync(true)
-                .with_gl(glutin::GlRequest::Latest)
-                .with_multisampling(4)
-                .build_windowed(builder, &ev)
+        window = { WindowBuilder::new().build(&ev).unwrap() }
+
+        display = { unsafe {
+            Display::from_raw(
+                window.raw_display_handle(),
+                DisplayApiPreference::EglThenWgl(Some(window.raw_window_handle())),
+            )
+            .unwrap()
+        }}
+
+        gl_config = { unsafe {
+            display
+                .find_configs(
+                    ConfigTemplateBuilder::new()
+                        .compatible_with_native_window(window.raw_window_handle())
+                        .with_surface_type(ConfigSurfaceTypes::WINDOW)
+                        .build(),
+                )
                 .unwrap()
-                .make_current()
+                .nth(1)
+                .unwrap()
+        }}
+
+        gl_attrs = {
+            let PhysicalSize { width, height } = window.inner_size();
+            SurfaceAttributesBuilder::<WindowSurface>::new().build(
+                window.raw_window_handle(),
+                NonZeroU32::new(width).unwrap(),
+                NonZeroU32::new(height).unwrap(),
+            )
+        }
+
+        surface = { unsafe {
+            display
+                .create_window_surface(&gl_config, &gl_attrs)
+                .unwrap()
+        }}
+
+        context = { unsafe {
+            display
+                .create_context(
+                    &gl_config,
+                    &ContextAttributesBuilder::new().build(Some(window.raw_window_handle())),
+                )
+                .unwrap()
+                .make_current(&surface)
                 .unwrap()
         }}
 
         gl = { Arc::new(unsafe {
-            Context::from_loader_function(|name| context.get_proc_address(name) as *const _)
+            Context::from_loader_function(|name| {
+                context.get_proc_address(&std::ffi::CString::new(name).unwrap()) as *const _
+            })
         })}
 
         egui_glow = mut {
@@ -128,10 +175,10 @@ derive_loop::pmb_loop!(
         }};
 
     per_event: {
-        if let glutin::event::Event::WindowEvent { event, .. } = &event {
+        if let winit::event::Event::WindowEvent { event, .. } = &event {
             let response = egui_glow.on_event(event);
             if response.repaint {
-                context.window().request_redraw();
+                window.request_redraw();
                 flow.set_poll();
             }
 
@@ -140,13 +187,13 @@ derive_loop::pmb_loop!(
             }
         }
 
-        let redraw_after = egui_glow.run(context.window(), |ctx| {
+        let redraw_after = egui_glow.run(&window, |ctx| {
             powdermilk_biscuits::ui::egui(ctx, &mut sketch, &mut widget, &mut config);
         });
 
         if redraw_after.is_zero() {
             flow.set_poll();
-            context.window().request_redraw();
+            window.request_redraw();
         } else if let Some(after) = std::time::Instant::now().checked_add(redraw_after) {
             flow.set_wait_until(after);
         }
@@ -155,11 +202,15 @@ derive_loop::pmb_loop!(
     resize: {
         size = new_size;
         widget.resize(new_size.width, new_size.height, &mut sketch);
-        context.resize(new_size);
+        surface.resize(
+            &context,
+            NonZeroU32::new(new_size.width).unwrap(),
+            NonZeroU32::new(new_size.height).unwrap(),
+        );
         unsafe {
             gl.viewport(0, 0, new_size.width as i32, new_size.height as i32);
         }
-        context.window().request_redraw();
+        window.request_redraw();
         config.resize_window(new_size.width, new_size.height);
     },
 
@@ -304,7 +355,7 @@ derive_loop::pmb_loop!(
             }
         }
 
-        egui_glow.paint(context.window());
-        context.swap_buffers().unwrap();
+        egui_glow.paint(&window);
+        surface.swap_buffers(&context).unwrap();
     },
 );
