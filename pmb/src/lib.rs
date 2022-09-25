@@ -157,7 +157,7 @@ impl<S: StrokeBackend> Sketch<S> {
     ) -> Self {
         log::info!("create State from {}", path.as_ref().display());
 
-        let mut this = Sketch::new(grid());
+        let mut this = Sketch::empty();
         ui::read_file(widget, Some(path), &mut this)
             .problem(s!(CouldNotOpenFile))
             .display();
