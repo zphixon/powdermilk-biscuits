@@ -151,6 +151,10 @@ where
                         .collect(),
                 ),
                 zoom: v5.zoom,
+                origin: StrokePoint {
+                    x: v5.origin.x,
+                    y: v5.origin.y,
+                },
                 ..Default::default()
             };
 
@@ -183,6 +187,10 @@ where
                         .collect(),
                 ),
                 zoom: v4.zoom,
+                origin: StrokePoint {
+                    x: v4.origin.x,
+                    y: v4.origin.y,
+                },
                 ..Default::default()
             };
 
@@ -216,6 +224,10 @@ where
                         .collect(),
                 ),
                 zoom: v3.zoom,
+                origin: StrokePoint {
+                    x: v3.origin.x,
+                    y: v3.origin.y,
+                },
                 ..Default::default()
             };
 
@@ -247,6 +259,10 @@ where
                         .collect(),
                 ),
                 zoom: v2.zoom,
+                origin: StrokePoint {
+                    x: v2.origin.x,
+                    y: v2.origin.y,
+                },
                 ..Default::default()
             };
 
@@ -278,6 +294,10 @@ where
                         .collect(),
                 ),
                 zoom: v1.zoom,
+                origin: StrokePoint {
+                    x: v1.origin.x,
+                    y: v1.origin.y,
+                },
                 ..Default::default()
             };
 
