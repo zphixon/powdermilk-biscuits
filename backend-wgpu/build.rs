@@ -50,6 +50,9 @@ fn main() -> Result<(), BuildError> {
         let entry = entry?;
         let source_path = entry.path();
         let source_path_str = source_path.to_str().unwrap();
+
+        println!("cargo:rerun-if-changed={}", source_path_str);
+
         let output = Command::new("naga").arg(source_path_str).output()?;
         if !output.status.success() {
             print_message(output)?;

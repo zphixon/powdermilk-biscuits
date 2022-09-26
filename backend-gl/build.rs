@@ -51,6 +51,8 @@ fn main() -> Result<(), BuildError> {
         let source_path = entry.path();
         let source_path_str = source_path.to_str().unwrap();
 
+        println!("cargo:rerun-if-changed={}", source_path_str);
+
         let output = Command::new("glslangValidator")
             .arg(source_path_str)
             .output()?;
