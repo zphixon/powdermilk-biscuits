@@ -34,12 +34,22 @@ derive_loop::pmb_loop!(
     bindings:
         window = { builder.build(&ev).unwrap() }
 
+        display_api = {
+            #[cfg(target_os = "windows")] {
+                DisplayApiPreference::WglThenEgl(Some(window.raw_window_handle()))
+            }
+
+            #[cfg(target_os = "linux")] {
+                DisplayApiPreference::Egl
+            }
+
+            #[cfg(target_os = "macos")] {
+                DisplayApiPreference::Cgl
+            }
+        }
+
         display = { unsafe {
-            Display::from_raw(
-                window.raw_display_handle(),
-                DisplayApiPreference::EglThenWgl(Some(window.raw_window_handle())),
-            )
-            .unwrap()
+            Display::from_raw(window.raw_display_handle(), display_api).unwrap()
         }}
 
         gl_config = { unsafe {
