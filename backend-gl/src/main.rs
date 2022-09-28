@@ -40,7 +40,9 @@ derive_loop::pmb_loop!(
             }
 
             #[cfg(target_os = "linux")] {
-                DisplayApiPreference::Egl
+                DisplayApiPreference::GlxThenEgl(Box::new(
+                    winit::platform::x11::register_xlib_error_hook,
+                ))
             }
 
             #[cfg(target_os = "macos")] {
@@ -53,17 +55,20 @@ derive_loop::pmb_loop!(
         }}
 
         gl_config = { unsafe {
-            display
-                .find_configs(
-                    ConfigTemplateBuilder::new()
-                        .compatible_with_native_window(window.raw_window_handle())
-                        .with_surface_type(ConfigSurfaceTypes::WINDOW)
-                        .with_sample_buffers(4)
-                        .build(),
-                )
-                .unwrap()
-                .nth(1)
-                .unwrap()
+            match display.find_configs(
+                ConfigTemplateBuilder::new()
+                    .compatible_with_native_window(window.raw_window_handle())
+                    .with_surface_type(ConfigSurfaceTypes::WINDOW)
+                    .with_sample_buffers(4)
+                    .build(),
+            ) {
+                Ok(mut configs) => configs.nth(0).unwrap(),
+                Err(_) => display
+                    .find_configs(ConfigTemplateBuilder::new().build())
+                    .unwrap()
+                    .nth(0)
+                    .unwrap(),
+            }
         }}
 
         gl_attrs = {
