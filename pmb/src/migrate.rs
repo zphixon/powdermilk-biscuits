@@ -163,7 +163,6 @@ where
                     y: v7.origin.y,
                 },
                 bg_color: v7.bg_color,
-                ..Default::default()
             };
 
             return Ok(state);
