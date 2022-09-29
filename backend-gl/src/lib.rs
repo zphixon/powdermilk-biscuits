@@ -202,7 +202,7 @@ impl Renderer {
             let pen_cursor_view = gl.get_uniform_location(pen_cursor_program, "view").unwrap();
 
             let line_strokes_program = compile_program(
-                &gl,
+                gl,
                 include_str!(concat!(
                     env!("CARGO_MANIFEST_DIR"),
                     "/src/shaders/stroke_line.vert"
@@ -214,7 +214,7 @@ impl Renderer {
             );
 
             let mesh_strokes_program = compile_program(
-                &gl,
+                gl,
                 include_str!(concat!(
                     env!("CARGO_MANIFEST_DIR"),
                     "/src/shaders/stroke_line.vert"

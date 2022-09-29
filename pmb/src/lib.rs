@@ -1,4 +1,4 @@
-#![allow(clippy::new_without_default)]
+#![allow(clippy::new_without_default, clippy::derive_partial_eq_without_eq)]
 
 pub mod config;
 pub mod error;
