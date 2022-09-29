@@ -1,7 +1,7 @@
 use crate::{
     config::Config,
     error::PmbErrorExt,
-    event::{ElementState, Event, InputHandler, Keycode, Touch, TouchPhase},
+    event::{Event, InputHandler},
     graphics::{PixelPos, StrokePos},
     s,
     ui::undo::{Action, UndoStack},
@@ -13,6 +13,7 @@ use lyon::{
     path::{LineCap, LineJoin},
 };
 use std::marker::PhantomData;
+use winit::event::{ElementState, Touch, TouchPhase, VirtualKeyCode as Keycode};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub enum SketchWidgetState {
@@ -227,7 +228,7 @@ impl<C: CoordinateSystem> SketchWidget<C> {
             ..
         } = touch;
 
-        let pressure = force.unwrap_or(1.0);
+        let pressure = force.map(|force| force.normalized()).unwrap_or(1.0);
 
         if let Some(pen_info) = pen_info {
             if config.stylus_may_be_inverted {
@@ -243,7 +244,7 @@ impl<C: CoordinateSystem> SketchWidget<C> {
             .map(|info| info.inverted || info.eraser)
             .unwrap_or(self.active_tool == Tool::Eraser);
 
-        self.update_stylus(sketch, phase, location, eraser, pressure);
+        self.update_stylus(sketch, phase, location.into(), eraser, pressure);
     }
 
     fn update_stylus<S: StrokeBackend>(
@@ -258,17 +259,17 @@ impl<C: CoordinateSystem> SketchWidget<C> {
         let pos = crate::graphics::xform_point_to_pos(sketch.origin, point);
 
         let state = match phase {
-            TouchPhase::Start => StylusState {
+            TouchPhase::Started => StylusState {
                 pos: StylusPosition::Down,
                 eraser,
             },
 
-            TouchPhase::Move => {
+            TouchPhase::Moved => {
                 self.stylus.state.eraser = eraser;
                 self.stylus.state
             }
 
-            TouchPhase::End | TouchPhase::Cancel => StylusState {
+            TouchPhase::Ended | TouchPhase::Cancelled => StylusState {
                 pos: StylusPosition::Up,
                 eraser,
             },
@@ -319,7 +320,7 @@ impl<C: CoordinateSystem> SketchWidget<C> {
                 sketch.update_zoom::<C>(self.width, self.height, next_zoom);
 
                 if config.use_mouse_for_pen {
-                    self.update_stylus_from_mouse(config, sketch, TouchPhase::Move);
+                    self.update_stylus_from_mouse(config, sketch, TouchPhase::Moved);
                 }
 
                 S::Ready
@@ -334,7 +335,7 @@ impl<C: CoordinateSystem> SketchWidget<C> {
                 self.input
                     .handle_mouse_button(button, ElementState::Pressed);
                 if config.use_mouse_for_pen {
-                    self.update_stylus_from_mouse(config, sketch, TouchPhase::Start);
+                    self.update_stylus_from_mouse(config, sketch, TouchPhase::Started);
                     match self.active_tool {
                         Tool::Pen => {
                             self.start_stroke(sketch);
@@ -384,7 +385,7 @@ impl<C: CoordinateSystem> SketchWidget<C> {
                 sketch.move_origin::<C>(self.width, self.height, prev, next);
 
                 if config.use_mouse_for_pen {
-                    self.update_stylus_from_mouse(config, sketch, TouchPhase::Move);
+                    self.update_stylus_from_mouse(config, sketch, TouchPhase::Moved);
                 }
 
                 S::Pan
@@ -459,7 +460,7 @@ impl<C: CoordinateSystem> SketchWidget<C> {
                 self.input.handle_mouse_move(location);
 
                 if config.use_mouse_for_pen {
-                    self.update_stylus_from_mouse(config, sketch, TouchPhase::End);
+                    self.update_stylus_from_mouse(config, sketch, TouchPhase::Ended);
                 }
 
                 S::Ready
@@ -467,7 +468,7 @@ impl<C: CoordinateSystem> SketchWidget<C> {
 
             (S::MouseDraw, E::MouseMove(location)) => {
                 self.input.handle_mouse_move(location);
-                self.update_stylus_from_mouse(config, sketch, TouchPhase::Move);
+                self.update_stylus_from_mouse(config, sketch, TouchPhase::Moved);
                 self.continue_stroke(sketch);
                 S::MouseDraw
             }
@@ -475,13 +476,13 @@ impl<C: CoordinateSystem> SketchWidget<C> {
             (S::MouseDraw, E::MouseUp(button)) => {
                 self.input
                     .handle_mouse_button(button, ElementState::Released);
-                self.update_stylus_from_mouse(config, sketch, TouchPhase::End);
+                self.update_stylus_from_mouse(config, sketch, TouchPhase::Ended);
                 S::Ready
             }
 
             (S::MouseErase, E::MouseMove(location)) => {
                 self.input.handle_mouse_move(location);
-                self.update_stylus_from_mouse(config, sketch, TouchPhase::Move);
+                self.update_stylus_from_mouse(config, sketch, TouchPhase::Moved);
                 self.erase_strokes(sketch);
                 S::MouseErase
             }
@@ -489,7 +490,7 @@ impl<C: CoordinateSystem> SketchWidget<C> {
             (S::MouseErase, E::MouseUp(button)) => {
                 self.input
                     .handle_mouse_button(button, ElementState::Released);
-                self.update_stylus_from_mouse(config, sketch, TouchPhase::End);
+                self.update_stylus_from_mouse(config, sketch, TouchPhase::Ended);
                 S::Ready
             }
 
@@ -504,7 +505,7 @@ impl<C: CoordinateSystem> SketchWidget<C> {
                     }
                     _ => {
                         // TODO
-                        self.input.handle_mouse_move(touch.location);
+                        self.input.handle_mouse_move(touch.location.into());
                     }
                 }
 
@@ -522,7 +523,7 @@ impl<C: CoordinateSystem> SketchWidget<C> {
                     }
                     _ => {
                         // TODO
-                        self.input.handle_mouse_move(touch.location);
+                        self.input.handle_mouse_move(touch.location.into());
                     }
                 }
 
@@ -554,7 +555,7 @@ impl<C: CoordinateSystem> SketchWidget<C> {
                             self.input.cursor_pos(),
                         );
 
-                        self.input.handle_mouse_move(touch.location);
+                        self.input.handle_mouse_move(touch.location.into());
 
                         let next = C::pixel_to_pos(
                             self.width,

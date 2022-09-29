@@ -2,7 +2,7 @@
 
 use backend_gl::GlStrokeBackend;
 use ezgl::{gl, gl::HasContext, Ezgl};
-use powdermilk_biscuits::bytemuck;
+use powdermilk_biscuits::{bytemuck, winit};
 
 fn no_winit_ezgl(window: &winit::window::Window, size: winit::dpi::PhysicalSize<u32>) -> Ezgl {
     #[cfg(all(unix, not(target_os = "macos")))]
@@ -21,14 +21,9 @@ fn main() {
 }
 
 derive_loop::pmb_loop!(
-    windowing_crate_name: winit,
     backend_crate_name: backend_gl,
     coords_name: GlCoords,
     stroke_backend_name: GlStrokeBackend,
-    keycode_translation: glutin_to_pmb_keycode,
-    mouse_button_translation: glutin_to_pmb_mouse_button,
-    key_state_translation: glutin_to_pmb_key_state,
-    touch_translation: glutin_to_pmb_touch,
 
     window: { &window },
     egui_ctx: { &egui_glow.egui_ctx },

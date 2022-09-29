@@ -4,21 +4,16 @@ use syn::{parse::Parse, Block, Ident, Token};
 
 #[derive(derive_builder::Builder)]
 struct PmbLoop {
-    windowing_crate_name: Ident,
-
     backend_crate_name: Ident,
     coords_name: Ident,
     stroke_backend_name: Ident,
-    keycode_translation: Ident,
-    mouse_button_translation: Ident,
-    key_state_translation: Ident,
-    touch_translation: Ident,
+
+    window: Block,
+    egui_ctx: Block,
 
     bindings: HashMap<Ident, (bool, Option<Block>)>,
     graphics_setup: HashMap<Ident, (bool, Option<Block>)>,
 
-    window: Block,
-    egui_ctx: Block,
     per_event: Block,
     resize: Block,
     render: Block,
@@ -101,22 +96,16 @@ impl Parse for PmbLoop {
         }
 
         build!(
-            windowing_crate_name,
             backend_crate_name,
             coords_name,
             stroke_backend_name,
-            keycode_translation,
-            mouse_button_translation,
-            key_state_translation,
-            touch_translation,
             window,
             egui_ctx,
             per_event,
             resize,
             render;
-
             bindings,
-            graphics_setup
+            graphics_setup,
         );
 
         Ok(builder.build().unwrap())
@@ -128,21 +117,16 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let loop_ = syn::parse_macro_input!(input as PmbLoop);
 
     let PmbLoop {
-        windowing_crate_name,
         backend_crate_name,
         coords_name,
         stroke_backend_name,
-        keycode_translation,
-        mouse_button_translation,
-        key_state_translation,
-        touch_translation,
-        graphics_setup,
         window,
         egui_ctx,
+        bindings,
+        graphics_setup,
         per_event,
         resize,
         render,
-        bindings,
     } = loop_;
 
     let quoted_bindings = bindings
@@ -169,19 +153,20 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         fn pmb_loop() {
             use powdermilk_biscuits::{
                 config::Config,
-                event::{ElementState, Event},
+                event::Event,
                 gumdrop::Options,
                 ui::widget::SketchWidget,
                 Sketch,
-            };
-            use #windowing_crate_name::{
-                dpi::{PhysicalPosition, PhysicalSize},
-                event::{
-                    ElementState as WindowingElementState, Event as WindowingEvent, KeyboardInput,
-                    MouseScrollDelta, Touch as WindowingTouch, TouchPhase, VirtualKeyCode, WindowEvent,
-                },
-                event_loop::EventLoop,
-                window::WindowBuilder,
+                winit::{
+                    self,
+                    dpi::{PhysicalPosition, PhysicalSize},
+                    event::{
+                        ElementState, Event as WinitEvent, KeyboardInput,
+                        MouseScrollDelta, Touch, TouchPhase, VirtualKeyCode, WindowEvent,
+                    },
+                    event_loop::EventLoop,
+                    window::WindowBuilder,
+                }
             };
 
             let args = powdermilk_biscuits::Args::parse_args_default_or_exit();
@@ -278,14 +263,14 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 #per_event;
 
                 match event {
-                    WindowingEvent::WindowEvent {
+                    WinitEvent::WindowEvent {
                         event: WindowEvent::Focused(focused),
                         ..
                     } if !focused => {
                         widget.input.clear();
                     }
 
-                    WindowingEvent::WindowEvent {
+                    WinitEvent::WindowEvent {
                         event: WindowEvent::CloseRequested,
                         ..
                     } => {
@@ -307,12 +292,12 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     }
 
                     #[cfg(not(feature = "pmb-release"))]
-                    WindowingEvent::WindowEvent {
+                    WinitEvent::WindowEvent {
                         event:
                             WindowEvent::KeyboardInput {
                                 input:
                                     KeyboardInput {
-                                        state: WindowingElementState::Pressed,
+                                        state: ElementState::Pressed,
                                         virtual_keycode: Some(VirtualKeyCode::Escape),
                                         ..
                                     },
@@ -324,7 +309,7 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         config.save(&config_path);
                     }
 
-                    WindowingEvent::WindowEvent {
+                    WinitEvent::WindowEvent {
                         event:
                             WindowEvent::KeyboardInput {
                                 input:
@@ -337,8 +322,6 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                             },
                         ..
                     } => {
-                        let key = #backend_crate_name::#keycode_translation(key);
-                        let state = #backend_crate_name::#key_state_translation(state);
                         widget.handle_key(
                             &mut config,
                             &mut sketch,
@@ -350,7 +333,7 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         #window.request_redraw();
                     }
 
-                    WindowingEvent::WindowEvent {
+                    WinitEvent::WindowEvent {
                         event: WindowEvent::MouseWheel { delta, .. },
                         ..
                     } => {
@@ -366,13 +349,10 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         #window.request_redraw();
                     }
 
-                    WindowingEvent::WindowEvent {
+                    WinitEvent::WindowEvent {
                         event: WindowEvent::MouseInput { state, button, .. },
                         ..
                     } => {
-                        let button = #backend_crate_name::#mouse_button_translation(button);
-                        let state = #backend_crate_name::#key_state_translation(state);
-
                         match (button, state) {
                             (primary, ElementState::Pressed) if primary == config.primary_button => {
                                 widget.next(&config, &mut sketch, Event::MouseDown(button));
@@ -393,7 +373,7 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         #window.request_redraw();
                     }
 
-                    WindowingEvent::WindowEvent {
+                    WinitEvent::WindowEvent {
                         event: WindowEvent::CursorMoved { position, .. },
                         ..
                     } => {
@@ -413,10 +393,10 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         }
                     }
 
-                    WindowingEvent::WindowEvent {
+                    WinitEvent::WindowEvent {
                         event:
                             WindowEvent::Touch(
-                                touch @ WindowingTouch {
+                                touch @ Touch {
                                     phase,
                                     pen_info: Some(_),
                                     ..
@@ -424,8 +404,6 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                             ),
                         ..
                     } => {
-                        let touch = #backend_crate_name::#touch_translation(touch);
-
                         match phase {
                             TouchPhase::Started => widget.next(&config, &mut sketch, Event::PenDown(touch)),
                             TouchPhase::Moved => widget.next(&config, &mut sketch, Event::PenMove(touch)),
@@ -439,10 +417,10 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         #window.request_redraw();
                     }
 
-                    WindowingEvent::WindowEvent {
+                    WinitEvent::WindowEvent {
                         event:
                             WindowEvent::Touch(
-                                touch @ WindowingTouch {
+                                touch @ Touch {
                                     phase,
                                     pen_info: None,
                                     ..
@@ -450,7 +428,6 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                             ),
                         ..
                     } => {
-                        let touch = #backend_crate_name::#touch_translation(touch);
                         widget.next(
                             &config,
                             &mut sketch,
@@ -466,14 +443,14 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         #window.request_redraw();
                     }
 
-                    WindowingEvent::WindowEvent {
+                    WinitEvent::WindowEvent {
                         event: WindowEvent::Moved(location),
                         ..
                     } => {
                         config.move_window(location.x, location.y);
                     }
 
-                    WindowingEvent::WindowEvent {
+                    WinitEvent::WindowEvent {
                         event:
                             WindowEvent::Resized(new_size)
                             | WindowEvent::ScaleFactorChanged {
@@ -483,8 +460,8 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         ..
                     } => #resize,
 
-                    WindowingEvent::MainEventsCleared => {
-                        use powdermilk_biscuits::event::Keycode::*;
+                    WinitEvent::MainEventsCleared => {
+                        use powdermilk_biscuits::winit::event::VirtualKeyCode::*;
 
                         match (widget.path.as_ref(), widget.modified) {
                             (Some(path), true) => {
@@ -513,7 +490,7 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         }
                     }
 
-                    WindowingEvent::RedrawRequested(_) => #render,
+                    WinitEvent::RedrawRequested(_) => #render,
 
                     _ => {}
                 }

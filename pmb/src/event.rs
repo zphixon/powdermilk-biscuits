@@ -1,5 +1,6 @@
 use crate::graphics::PixelPos;
 use std::collections::HashMap;
+use winit::event::{ElementState, MouseButton, Touch, VirtualKeyCode as Keycode};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Event {
@@ -24,29 +25,6 @@ pub enum Event {
     DecreaseBrush(usize),
 
     ScrollZoom(f32),
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct PenInfo {
-    pub barrel: bool,
-    pub inverted: bool,
-    pub eraser: bool,
-}
-
-#[derive(PartialEq, Debug, Clone, Copy)]
-pub enum TouchPhase {
-    Start,
-    Move,
-    End,
-    Cancel,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct Touch {
-    pub force: Option<f64>,
-    pub phase: TouchPhase,
-    pub location: PixelPos,
-    pub pen_info: Option<PenInfo>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -85,26 +63,13 @@ impl From<Keycode> for Combination {
     }
 }
 
-#[derive(Eq, Hash, PartialEq, Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
-#[rustfmt::skip]
-pub enum Keycode {
-    Key1, Key2, Key3, Key4, Key5, Key6, Key7, Key8, Key9, Key0, A, B, C, D, E, F, G, H, I, J, K, L,
-    M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z, Escape, F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11,
-    F12, F13, F14, F15, F16, F17, F18, F19, F20, F21, F22, F23, F24, Snapshot, Scroll, Pause,
-    Insert, Home, Delete, End, PageDown, PageUp, Left, Up, Right, Down, Back, Return, Space,
-    Compose, Caret, Numlock, Numpad0, Numpad1, Numpad2, Numpad3, Numpad4, Numpad5, Numpad6,
-    Numpad7, Numpad8, Numpad9, NumpadAdd, NumpadDivide, NumpadDecimal, NumpadComma, NumpadEnter,
-    NumpadEquals, NumpadMultiply, NumpadSubtract, AbntC1, AbntC2, Apostrophe, Apps, Asterisk, At,
-    Ax, Backslash, Calculator, Capital, Colon, Comma, Convert, Equals, Grave, Kana, Kanji, LAlt,
-    LBracket, LControl, LShift, LWin, Mail, MediaSelect, MediaStop, Minus, Mute, MyComputer,
-    NavigateForward, NavigateBackward, NextTrack, NoConvert, OEM102, Period, PlayPause, Plus,
-    Power, PrevTrack, RAlt, RBracket, RControl, RShift, RWin, Semicolon, Slash, Sleep, Stop, Sysrq,
-    Tab, Underline, Unlabeled, VolumeDown, VolumeUp, Wake, WebBack, WebFavorites, WebForward,
-    WebHome, WebRefresh, WebSearch, WebStop, Yen, Copy, Paste, Cut
+pub trait KeycodeExt {
+    fn normalize_mirrored(self) -> Self;
+    fn modifier(&self) -> bool;
 }
 
-impl Keycode {
-    pub fn normalize_mirrored(self) -> Keycode {
+impl KeycodeExt for Keycode {
+    fn normalize_mirrored(self) -> Keycode {
         use Keycode::*;
 
         macro_rules! normalize {
@@ -124,20 +89,9 @@ impl Keycode {
         )
     }
 
-    pub fn modifier(&self) -> bool {
+    fn modifier(&self) -> bool {
         use Keycode::*;
         matches!(self.normalize_mirrored(), LControl | LShift | LAlt | LWin)
-    }
-}
-
-impl std::ops::BitOr for Keycode {
-    type Output = Combination;
-
-    fn bitor(self, rhs: Self) -> Self::Output {
-        Combination {
-            keys: vec![self.normalize_mirrored(), rhs.normalize_mirrored()],
-            repeatable: false,
-        }
     }
 }
 
@@ -147,20 +101,6 @@ impl std::ops::BitOr<Keycode> for Combination {
         self.keys.push(rhs.normalize_mirrored());
         self
     }
-}
-
-#[derive(Eq, Hash, PartialEq, Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
-pub enum MouseButton {
-    Left,
-    Middle,
-    Right,
-    Other(usize),
-}
-
-#[derive(PartialEq, Debug, Clone, Copy)]
-pub enum ElementState {
-    Pressed,
-    Released,
 }
 
 #[derive(Debug, Clone, Copy)]

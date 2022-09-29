@@ -7,14 +7,9 @@ fn main() {
 }
 
 derive_loop::pmb_loop!(
-    windowing_crate_name: winit,
     backend_crate_name: backend_wgpu,
     coords_name: WgpuCoords,
     stroke_backend_name: WgpuStrokeBackend,
-    keycode_translation: winit_to_pmb_keycode,
-    mouse_button_translation: winit_to_pmb_mouse_button,
-    key_state_translation: winit_to_pmb_key_state,
-    touch_translation: winit_to_pmb_touch,
 
     window: { &window },
     egui_ctx: { &egui_ctx },

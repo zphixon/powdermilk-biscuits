@@ -30,3 +30,13 @@ paste = '1.0.9'
 git = 'https://github.com/zphixon/egui'
 branch = 'unadulterated'
 package = 'egui'
+
+[target.'cfg(windows)'.dependencies.winit]
+git = 'https://github.com/zphixon/winit'
+branch = 'pen-info2'
+features = ['serde']
+
+[target.'cfg(unix)'.dependencies.winit]
+git = 'https://github.com/zphixon/winit'
+branch = 'pen-info2'
+features = ['x11', 'serde']

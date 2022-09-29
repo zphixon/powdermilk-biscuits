@@ -1,9 +1,13 @@
 use powdermilk_biscuits::{
     bytemuck, egui,
-    event::{ElementState, Keycode, MouseButton, PenInfo, Touch, TouchPhase},
     graphics::{PixelPos, StrokePoint},
     stroke::Stroke,
     ui::widget::SketchWidget,
+    winit::{
+        self,
+        dpi::{PhysicalPosition, PhysicalSize},
+        window::Window,
+    },
     Sketch, Tool,
 };
 use std::mem::size_of;
@@ -19,15 +23,6 @@ use wgpu::{
     RenderPipelineDescriptor, RequestAdapterOptions, ShaderStages, Surface, SurfaceConfiguration,
     SurfaceError, TextureFormat, TextureUsages, TextureView, TextureViewDescriptor,
     VertexAttribute, VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
-};
-use winit::{
-    dpi::{PhysicalPosition, PhysicalSize},
-    event::{
-        ElementState as WinitElementState, MouseButton as WinitMouseButton,
-        PenInfo as WinitPenInfo, Touch as WinitTouch, TouchPhase as WinitTouchPhase,
-        VirtualKeyCode as WinitKeycode,
-    },
-    window::Window,
 };
 
 pub type WgpuStroke = Stroke<WgpuStrokeBackend>;
@@ -112,78 +107,6 @@ pub fn physical_pos_to_pixel_pos(pos: PhysicalPosition<f64>) -> PixelPos {
     PixelPos {
         x: pos.x as f32,
         y: pos.y as f32,
-    }
-}
-
-pub fn glutin_to_pmb_pen_info(pen_info: WinitPenInfo) -> PenInfo {
-    PenInfo {
-        barrel: pen_info.barrel,
-        inverted: pen_info.inverted,
-        eraser: pen_info.eraser,
-    }
-}
-
-pub fn glutin_to_pmb_touch_phase(phase: WinitTouchPhase) -> TouchPhase {
-    match phase {
-        WinitTouchPhase::Started => TouchPhase::Start,
-        WinitTouchPhase::Moved => TouchPhase::Move,
-        WinitTouchPhase::Ended => TouchPhase::End,
-        WinitTouchPhase::Cancelled => TouchPhase::Cancel,
-    }
-}
-
-pub fn winit_to_pmb_touch(touch: WinitTouch) -> Touch {
-    Touch {
-        force: touch.force.map(|f| f.normalized()),
-        phase: glutin_to_pmb_touch_phase(touch.phase),
-        location: physical_pos_to_pixel_pos(touch.location),
-        pen_info: touch.pen_info.map(glutin_to_pmb_pen_info),
-    }
-}
-
-pub fn winit_to_pmb_keycode(code: WinitKeycode) -> Keycode {
-    macro_rules! codes {
-        ($($code:ident),*) => {
-            $(if code == WinitKeycode::$code {
-                return Keycode::$code;
-            })*
-        };
-    }
-
-    #[rustfmt::skip]
-    codes!(
-        Key1, Key2, Key3, Key4, Key5, Key6, Key7, Key8, Key9, Key0, A, B, C, D, E, F, G, H, I, J,
-        K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z, Escape, F1, F2, F3, F4, F5, F6, F7, F8, F9,
-        F10, F11, F12, F13, F14, F15, F16, F17, F18, F19, F20, F21, F22, F23, F24, Snapshot,
-        Scroll, Pause, Insert, Home, Delete, End, PageDown, PageUp, Left, Up, Right, Down, Back,
-        Return, Space, Compose, Caret, Numlock, Numpad0, Numpad1, Numpad2, Numpad3, Numpad4,
-        Numpad5, Numpad6, Numpad7, Numpad8, Numpad9, NumpadAdd, NumpadDivide, NumpadDecimal,
-        NumpadComma, NumpadEnter, NumpadEquals, NumpadMultiply, NumpadSubtract, AbntC1, AbntC2,
-        Apostrophe, Apps, Asterisk, At, Ax, Backslash, Calculator, Capital, Colon, Comma, Convert,
-        Equals, Grave, Kana, Kanji, LAlt, LBracket, LControl, LShift, LWin, Mail, MediaSelect,
-        MediaStop, Minus, Mute, MyComputer, NavigateForward, NavigateBackward, NextTrack,
-        NoConvert, OEM102, Period, PlayPause, Plus, Power, PrevTrack, RAlt, RBracket, RControl,
-        RShift, RWin, Semicolon, Slash, Sleep, Stop, Sysrq, Tab, Underline, Unlabeled, VolumeDown,
-        VolumeUp, Wake, WebBack, WebFavorites, WebForward, WebHome, WebRefresh, WebSearch, WebStop,
-        Yen, Copy, Paste, Cut
-    );
-
-    panic!("unmatched keycode: {code:?}");
-}
-
-pub fn winit_to_pmb_key_state(state: WinitElementState) -> ElementState {
-    match state {
-        WinitElementState::Pressed => ElementState::Pressed,
-        WinitElementState::Released => ElementState::Released,
-    }
-}
-
-pub fn winit_to_pmb_mouse_button(button: WinitMouseButton) -> MouseButton {
-    match button {
-        WinitMouseButton::Left => MouseButton::Left,
-        WinitMouseButton::Right => MouseButton::Right,
-        WinitMouseButton::Middle => MouseButton::Middle,
-        WinitMouseButton::Other(b) => MouseButton::Other(b as usize),
     }
 }
 

@@ -21,12 +21,3 @@ git = 'https://github.com/zphixon/egui'
 branch = 'unadulterated'
 package = 'egui_glow'
 features = [ 'winit' ]
-
-[target.'cfg(windows)'.dependencies.winit]
-git = 'https://github.com/zphixon/winit'
-branch = 'pen-info2'
-
-[target.'cfg(unix)'.dependencies.winit]
-git = 'https://github.com/zphixon/winit'
-branch = 'pen-info2'
-features = ['x11']

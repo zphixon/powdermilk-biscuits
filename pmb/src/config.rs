@@ -1,9 +1,10 @@
 use crate::{
     error::{PmbError, PmbErrorExt},
-    event::{Combination, Keycode, MouseButton},
+    event::Combination,
     s, Tool,
 };
 use std::path::{Path, PathBuf};
+use winit::event::{MouseButton, VirtualKeyCode as Keycode};
 
 macro_rules! config {
     ($($field:ident : $ty:ty $default:block),* $(,)?) => {
@@ -46,13 +47,13 @@ config!(
     toggle_eraser_pen: Combination { E.into() },
     brush_increase: Combination { Combination::from(RBracket).repeatable() },
     brush_decrease: Combination { Combination::from(LBracket).repeatable() },
-    undo: Combination { (LControl | Z).repeatable() },
-    redo: Combination { (LControl | LShift | Z).repeatable() },
-    save: Combination { (LControl | S).repeatable() },
+    undo: Combination { Combination::from(LControl).repeatable() | Z },
+    redo: Combination { Combination::from(LControl).repeatable() | LShift | Z },
+    save: Combination { Combination::from(LControl).repeatable() | S },
     reset_view: Combination { Z.into() },
-    open: Combination { LControl | O },
-    zoom_out: Combination { LControl | NumpadSubtract },
-    zoom_in: Combination { LControl | NumpadAdd },
+    open: Combination { Combination::from(LControl) | O },
+    zoom_out: Combination { Combination::from(LControl) | NumpadSubtract },
+    zoom_in: Combination { Combination::from(LControl) | NumpadAdd },
     tool_for_gesture_1: Tool { Tool::Pan },
     tool_for_gesture_2: Tool { Tool::Pan },
     tool_for_gesture_3: Tool { Tool::Pan },
@@ -98,7 +99,7 @@ impl Config {
             debug_toggle_use_finger_for_pen: F.into(),
             debug_clear_strokes: C.into(),
             debug_print_strokes: D.into(),
-            debug_dirty_all_strokes: LControl | D,
+            debug_dirty_all_strokes: Combination::from(LControl) | D,
             ..Config::new()
         }
     }

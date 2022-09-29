@@ -1,4 +1,5 @@
 use std::fmt::{Display, Formatter};
+use winit::dpi::PhysicalPosition;
 
 pub type Color = [f32; 3];
 
@@ -95,6 +96,15 @@ macro_rules! coordinate_types {
 }
 
 coordinate_types!(PixelPos, StrokePoint, StrokePos);
+
+impl From<PhysicalPosition<f64>> for PixelPos {
+    fn from(pos: PhysicalPosition<f64>) -> Self {
+        Self {
+            x: pos.x as f32,
+            y: pos.y as f32,
+        }
+    }
+}
 
 pub fn xform_point_to_pos(origin: StrokePoint, stroke: StrokePoint) -> StrokePos {
     let x = stroke.x - origin.x;

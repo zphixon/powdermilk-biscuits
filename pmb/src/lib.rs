@@ -14,6 +14,7 @@ pub extern crate dirs;
 pub extern crate egui;
 pub extern crate gumdrop;
 pub extern crate lyon;
+pub extern crate winit;
 
 use crate::{
     error::PmbErrorExt,

@@ -155,7 +155,6 @@ dependencies = [
  "glam",
  "log",
  "powdermilk-biscuits",
- "winit",
 ]
 
 [[package]]
@@ -172,7 +171,6 @@ dependencies = [
  "powdermilk-biscuits",
  "smaa",
  "wgpu",
- "winit",
 ]
 
 [[package]]
@@ -1856,6 +1854,7 @@ dependencies = [
  "serde",
  "slotmap",
  "whoami",
+ "winit",
 ]
 
 [[package]]
@@ -2811,6 +2810,7 @@ dependencies = [
  "raw-window-handle 0.4.3",
  "raw-window-handle 0.5.0",
  "sctk-adwaita",
+ "serde",
  "smithay-client-toolkit",
  "wasm-bindgen",
  "wayland-client",
