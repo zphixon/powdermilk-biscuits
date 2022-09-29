@@ -11,12 +11,10 @@ pmb-release = ['powdermilk-biscuits/pmb-release']
 [dependencies]
 env_logger = '0.9.0'
 log = '*'
-glow = '0.11.2'
 glam = '0.21.2'
-glutin = '0.30.0-beta.2'
 powdermilk-biscuits = { path = '../pmb' }
 derive-loop = { path = '../derive-loop' }
-raw-window-handle = '*'
+ezgl = { git = 'https://github.com/zphixon/ezgl' }
 
 [dependencies.egui_glow]
 git = 'https://github.com/zphixon/egui'

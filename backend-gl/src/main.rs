@@ -1,17 +1,19 @@
 #![cfg_attr(all(windows, feature = "pmb-release"), windows_subsystem = "windows")]
 
 use backend_gl::GlStrokeBackend;
-use glow::{Context, HasContext};
-use glutin::{
-    config::{ConfigSurfaceTypes, ConfigTemplateBuilder},
-    context::{ContextAttributesBuilder, PossiblyCurrentGlContext},
-    display::{Display, DisplayApiPreference},
-    prelude::{GlDisplay, NotCurrentGlContextSurfaceAccessor},
-    surface::{GlSurface, SurfaceAttributesBuilder, WindowSurface},
-};
+use ezgl::{gl, gl::HasContext, Ezgl};
 use powdermilk_biscuits::bytemuck;
-use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
-use std::{num::NonZeroU32, sync::Arc};
+
+fn no_winit_ezgl(window: &winit::window::Window, size: winit::dpi::PhysicalSize<u32>) -> Ezgl {
+    #[cfg(unix)]
+    let reg = Some(Box::new(winit::platform::x11::register_xlib_error_hook)
+        as ezgl::glutin::api::glx::XlibErrorHookRegistrar);
+
+    #[cfg(not(unix))]
+    let reg = None;
+
+    Ezgl::new(&window, size.width, size.height, reg).unwrap()
+}
 
 fn main() {
     env_logger::init();
@@ -34,77 +36,10 @@ derive_loop::pmb_loop!(
     bindings:
         window = { builder.build(&ev).unwrap() }
 
-        display_api = {
-            #[cfg(target_os = "windows")] {
-                DisplayApiPreference::WglThenEgl(Some(window.raw_window_handle()))
-            }
-
-            #[cfg(target_os = "linux")] {
-                DisplayApiPreference::GlxThenEgl(Box::new(
-                    winit::platform::x11::register_xlib_error_hook,
-                ))
-            }
-
-            #[cfg(target_os = "macos")] {
-                DisplayApiPreference::Cgl
-            }
-        }
-
-        display = { unsafe {
-            Display::from_raw(window.raw_display_handle(), display_api).unwrap()
-        }}
-
-        gl_config = { unsafe {
-            match display.find_configs(
-                ConfigTemplateBuilder::new()
-                    .compatible_with_native_window(window.raw_window_handle())
-                    .with_surface_type(ConfigSurfaceTypes::WINDOW)
-                    .with_sample_buffers(4)
-                    .build(),
-            ) {
-                Ok(mut configs) => configs.nth(0).unwrap(),
-                Err(_) => display
-                    .find_configs(ConfigTemplateBuilder::new().build())
-                    .unwrap()
-                    .nth(0)
-                    .unwrap(),
-            }
-        }}
-
-        gl_attrs = {
-            let PhysicalSize { width, height } = window.inner_size();
-            SurfaceAttributesBuilder::<WindowSurface>::new().build(
-                window.raw_window_handle(),
-                NonZeroU32::new(width).unwrap(),
-                NonZeroU32::new(height).unwrap(),
-            )
-        }
-
-        surface = { unsafe {
-            display
-                .create_window_surface(&gl_config, &gl_attrs)
-                .unwrap()
-        }}
-
-        context = { unsafe {
-            display
-                .create_context(
-                    &gl_config,
-                    &ContextAttributesBuilder::new().build(Some(window.raw_window_handle())),
-                )
-                .unwrap()
-                .make_current(&surface)
-                .unwrap()
-        }}
-
-        gl = { Arc::new(unsafe {
-            Context::from_loader_function(|name| {
-                context.get_proc_address(&std::ffi::CString::new(name).unwrap()) as *const _
-            })
-        })}
+        gl = { no_winit_ezgl(&window, window.inner_size()) }
 
         egui_glow = mut {
-            egui_glow::EguiGlow::new(&ev, Arc::clone(&gl), None)
+            egui_glow::EguiGlow::new(&ev, gl.glow_context(), None)
         }
 
         line_strokes_program = no_init
@@ -123,12 +58,12 @@ derive_loop::pmb_loop!(
 
     graphics_setup:
         _nada = {unsafe {
-            gl.enable(glow::SRGB8_ALPHA8);
-            gl.enable(glow::FRAMEBUFFER_SRGB);
-            gl.enable(glow::MULTISAMPLE);
-            gl.enable(glow::VERTEX_PROGRAM_POINT_SIZE);
-            gl.enable(glow::DEBUG_OUTPUT);
-            gl.disable(glow::CULL_FACE);
+            gl.enable(gl::SRGB8_ALPHA8);
+            gl.enable(gl::FRAMEBUFFER_SRGB);
+            gl.enable(gl::MULTISAMPLE);
+            gl.enable(gl::VERTEX_PROGRAM_POINT_SIZE);
+            gl.enable(gl::DEBUG_OUTPUT);
+            gl.disable(gl::CULL_FACE);
             gl.clear_color(0.0, 0.0, 0.0, 1.0);
 
             pen_cursor_program = backend_gl::compile_program(
@@ -178,16 +113,16 @@ derive_loop::pmb_loop!(
             cursor_vao = gl.create_vertex_array().unwrap();
             gl.bind_vertex_array(Some(cursor_vao));
             cursor_buffer = gl.create_buffer().unwrap();
-            gl.bind_buffer(glow::ARRAY_BUFFER, Some(cursor_buffer));
+            gl.bind_buffer(gl::ARRAY_BUFFER, Some(cursor_buffer));
 
             let float_size = std::mem::size_of::<f32>();
             let circle = powdermilk_biscuits::graphics::cursor_geometry(1., 50);
             let bytes =
                 std::slice::from_raw_parts(circle.as_ptr() as *const u8, circle.len() * float_size);
 
-            gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, bytes, glow::STATIC_DRAW);
+            gl.buffer_data_u8_slice(gl::ARRAY_BUFFER, bytes, gl::STATIC_DRAW);
             gl.enable_vertex_attrib_array(0);
-            gl.vertex_attrib_pointer_f32(0, 2, glow::FLOAT, false, 2 * float_size as i32, 0);
+            gl.vertex_attrib_pointer_f32(0, 2, gl::FLOAT, false, 2 * float_size as i32, 0);
         }};
 
     per_event: {
@@ -218,11 +153,7 @@ derive_loop::pmb_loop!(
     resize: {
         size = new_size;
         widget.resize(new_size.width, new_size.height, &mut sketch);
-        surface.resize(
-            &context,
-            NonZeroU32::new(new_size.width).unwrap(),
-            NonZeroU32::new(new_size.height).unwrap(),
-        );
+        gl.resize(new_size.width, new_size.height);
         unsafe {
             gl.viewport(0, 0, new_size.width as i32, new_size.height as i32);
         }
@@ -246,18 +177,18 @@ derive_loop::pmb_loop!(
                     gl.bind_vertex_array(Some(line_vao));
 
                     let points = gl.create_buffer().unwrap();
-                    gl.bind_buffer(glow::ARRAY_BUFFER, Some(points));
+                    gl.bind_buffer(gl::ARRAY_BUFFER, Some(points));
                     gl.buffer_data_u8_slice(
-                        glow::ARRAY_BUFFER,
+                        gl::ARRAY_BUFFER,
                         bytemuck::cast_slice(&stroke.points),
-                        glow::STATIC_DRAW,
+                        gl::STATIC_DRAW,
                     );
 
-                    gl.vertex_attrib_pointer_f32(0, 2, glow::FLOAT, false, f32_size * 3, 0);
+                    gl.vertex_attrib_pointer_f32(0, 2, gl::FLOAT, false, f32_size * 3, 0);
                     gl.vertex_attrib_pointer_f32(
                         1,
                         1,
-                        glow::FLOAT,
+                        gl::FLOAT,
                         false,
                         f32_size * 3,
                         f32_size * 2,
@@ -268,21 +199,21 @@ derive_loop::pmb_loop!(
                     let mesh_vao = gl.create_vertex_array().unwrap();
                     gl.bind_vertex_array(Some(mesh_vao));
                     let mesh = gl.create_buffer().unwrap();
-                    gl.bind_buffer(glow::ARRAY_BUFFER, Some(mesh));
+                    gl.bind_buffer(gl::ARRAY_BUFFER, Some(mesh));
                     gl.buffer_data_u8_slice(
-                        glow::ARRAY_BUFFER,
+                        gl::ARRAY_BUFFER,
                         bytemuck::cast_slice(&stroke.mesh.vertices),
-                        glow::STATIC_DRAW,
+                        gl::STATIC_DRAW,
                     );
-                    gl.vertex_attrib_pointer_f32(0, 2, glow::FLOAT, false, f32_size * 2, 0);
+                    gl.vertex_attrib_pointer_f32(0, 2, gl::FLOAT, false, f32_size * 2, 0);
                     gl.enable_vertex_attrib_array(0);
 
                     let mesh_ebo = gl.create_buffer().unwrap();
-                    gl.bind_buffer(glow::ELEMENT_ARRAY_BUFFER, Some(mesh_ebo));
+                    gl.bind_buffer(gl::ELEMENT_ARRAY_BUFFER, Some(mesh_ebo));
                     gl.buffer_data_u8_slice(
-                        glow::ELEMENT_ARRAY_BUFFER,
+                        gl::ELEMENT_ARRAY_BUFFER,
                         bytemuck::cast_slice(&stroke.mesh.indices),
-                        glow::STATIC_DRAW,
+                        gl::STATIC_DRAW,
                     );
 
                     GlStrokeBackend {
@@ -297,7 +228,7 @@ derive_loop::pmb_loop!(
 
         unsafe {
             gl.clear_color(sketch.bg_color[0], sketch.bg_color[1], sketch.bg_color[2], 1.);
-            gl.clear(glow::COLOR_BUFFER_BIT);
+            gl.clear(gl::COLOR_BUFFER_BIT);
         }
 
         sketch.visible_strokes().for_each(|stroke| unsafe {
@@ -315,7 +246,7 @@ derive_loop::pmb_loop!(
                 line_vao, line_len, ..
             } = stroke.backend().unwrap();
             gl.bind_vertex_array(Some(*line_vao));
-            gl.draw_arrays(glow::LINE_STRIP, 0, *line_len);
+            gl.draw_arrays(gl::LINE_STRIP, 0, *line_len);
 
             if stroke.draw_tesselated {
                 gl.use_program(Some(mesh_strokes_program));
@@ -331,7 +262,7 @@ derive_loop::pmb_loop!(
                     mesh_vao, mesh_len, ..
                 } = stroke.backend().unwrap();
                 gl.bind_vertex_array(Some(*mesh_vao));
-                gl.draw_elements(glow::TRIANGLES, *mesh_len, glow::UNSIGNED_SHORT, 0);
+                gl.draw_elements(gl::TRIANGLES, *mesh_len, gl::UNSIGNED_SHORT, 0);
             }
         });
 
@@ -339,7 +270,7 @@ derive_loop::pmb_loop!(
             unsafe {
                 gl.use_program(Some(pen_cursor_program));
                 gl.bind_vertex_array(Some(cursor_vao));
-                gl.bind_buffer(glow::ARRAY_BUFFER, Some(cursor_buffer));
+                gl.bind_buffer(gl::ARRAY_BUFFER, Some(cursor_buffer));
 
                 gl.uniform_1_f32(
                     Some(&pen_cursor_erasing),
@@ -367,11 +298,11 @@ derive_loop::pmb_loop!(
                     &view.to_cols_array(),
                 );
 
-                gl.draw_arrays(glow::LINES, 0, 50 * 2);
+                gl.draw_arrays(gl::LINES, 0, 50 * 2);
             }
         }
 
         egui_glow.paint(&window);
-        surface.swap_buffers(&context).unwrap();
+        gl.swap_buffers().unwrap();
     },
 );

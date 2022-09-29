@@ -1,4 +1,4 @@
-use glow::HasContext;
+use ezgl::{gl, gl::HasContext};
 use powdermilk_biscuits::{
     event::{ElementState, Keycode, MouseButton, PenInfo, Touch, TouchPhase},
     graphics::{PixelPos, StrokePoint},
@@ -37,9 +37,9 @@ impl powdermilk_biscuits::CoordinateSystem for GlCoords {
 
 #[derive(Debug)]
 pub struct GlStrokeBackend {
-    pub line_vao: glow::VertexArray,
+    pub line_vao: gl::VertexArray,
     pub line_len: i32,
-    pub mesh_vao: glow::VertexArray,
+    pub mesh_vao: gl::VertexArray,
     pub mesh_len: i32,
     pub dirty: bool,
 }
@@ -191,10 +191,10 @@ impl Display for GlPos {
 
 #[allow(clippy::missing_safety_doc)]
 pub unsafe fn compile_shader(
-    gl: &glow::Context,
+    gl: &gl::Context,
     shader_type: u32,
     source: &'static str,
-) -> glow::NativeShader {
+) -> gl::NativeShader {
     let shader = gl.create_shader(shader_type).unwrap();
     gl.shader_source(shader, source);
     gl.compile_shader(shader);
@@ -208,14 +208,14 @@ pub unsafe fn compile_shader(
 
 #[allow(clippy::missing_safety_doc)]
 pub unsafe fn compile_program(
-    gl: &glow::Context,
+    gl: &gl::Context,
     vert_src: &'static str,
     frag_src: &'static str,
-) -> glow::NativeProgram {
+) -> gl::NativeProgram {
     let program = gl.create_program().unwrap();
 
-    let vert = compile_shader(gl, glow::VERTEX_SHADER, vert_src);
-    let frag = compile_shader(gl, glow::FRAGMENT_SHADER, frag_src);
+    let vert = compile_shader(gl, gl::VERTEX_SHADER, vert_src);
+    let frag = compile_shader(gl, gl::FRAGMENT_SHADER, frag_src);
 
     gl.attach_shader(program, vert);
     gl.attach_shader(program, frag);
