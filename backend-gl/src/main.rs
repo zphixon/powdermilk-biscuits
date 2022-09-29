@@ -5,11 +5,11 @@ use ezgl::{gl, gl::HasContext, Ezgl};
 use powdermilk_biscuits::bytemuck;
 
 fn no_winit_ezgl(window: &winit::window::Window, size: winit::dpi::PhysicalSize<u32>) -> Ezgl {
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "macos")))]
     let reg = Some(Box::new(winit::platform::x11::register_xlib_error_hook)
         as ezgl::glutin::api::glx::XlibErrorHookRegistrar);
 
-    #[cfg(not(unix))]
+    #[cfg(not(all(unix, not(target_os = "macos"))))]
     let reg = None;
 
     Ezgl::new(&window, size.width, size.height, reg).unwrap()

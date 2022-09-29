@@ -765,7 +765,7 @@ dependencies = [
 [[package]]
 name = "ezgl"
 version = "0.1.0"
-source = "git+https://github.com/zphixon/ezgl#a0ecb0ace519c7394c982dccf19fcabae1c136f4"
+source = "git+https://github.com/zphixon/ezgl#dbfd8809728df2499838dcef8133ecb381ba654e"
 dependencies = [
  "glow",
  "glutin",
