@@ -1,13 +1,14 @@
 #![cfg_attr(all(windows, feature = "pmb-release"), windows_subsystem = "windows")]
 
-use backend_gl::GlStrokeBackend;
-use ezgl::{gl, gl::HasContext, Ezgl};
-use powdermilk_biscuits::{bytemuck, winit};
+use ezgl::Ezgl;
+use powdermilk_biscuits::winit::{dpi::PhysicalSize, window::Window};
 
-fn no_winit_ezgl(window: &winit::window::Window, size: winit::dpi::PhysicalSize<u32>) -> Ezgl {
+fn no_winit_ezgl(window: &Window, size: PhysicalSize<u32>) -> Ezgl {
     #[cfg(all(unix, not(target_os = "macos")))]
-    let reg = Some(Box::new(winit::platform::x11::register_xlib_error_hook)
-        as ezgl::glutin::api::glx::XlibErrorHookRegistrar);
+    let reg = Some(
+        Box::new(powdermilk_biscuits::winit::platform::x11::register_xlib_error_hook)
+            as ezgl::glutin::api::glx::XlibErrorHookRegistrar,
+    );
 
     #[cfg(not(all(unix, not(target_os = "macos"))))]
     let reg = None;
@@ -30,98 +31,16 @@ derive_loop::pmb_loop!(
 
     bindings:
         window = { builder.build(&ev).unwrap() }
-
         gl = { no_winit_ezgl(&window, window.inner_size()) }
-
+        renderer = { backend_gl::Renderer::new(&gl) }
         egui_glow = mut {
             egui_glow::EguiGlow::new(&ev, gl.glow_context(), None)
-        }
+        };
 
-        line_strokes_program = no_init
-        mesh_strokes_program = no_init
-        pen_cursor_program = no_init
-
-        strokes_view = no_init
-        strokes_color = no_init
-
-        pen_cursor_view = no_init
-        pen_cursor_erasing = no_init
-        pen_cursor_pen_down = no_init
-
-        cursor_vao = no_init
-        cursor_buffer = no_init;
-
-    graphics_setup:
-        _nada = {unsafe {
-            gl.enable(gl::SRGB8_ALPHA8);
-            gl.enable(gl::FRAMEBUFFER_SRGB);
-            gl.enable(gl::MULTISAMPLE);
-            gl.enable(gl::VERTEX_PROGRAM_POINT_SIZE);
-            gl.enable(gl::DEBUG_OUTPUT);
-            gl.disable(gl::CULL_FACE);
-            gl.clear_color(0.0, 0.0, 0.0, 1.0);
-
-            pen_cursor_program = backend_gl::compile_program(
-                &gl,
-                include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/cursor.vert")),
-                include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/cursor.frag")),
-            );
-            gl.use_program(Some(pen_cursor_program));
-
-            pen_cursor_erasing = gl
-                .get_uniform_location(pen_cursor_program, "erasing")
-                .unwrap();
-            pen_cursor_pen_down = gl
-                .get_uniform_location(pen_cursor_program, "penDown")
-                .unwrap();
-            pen_cursor_view = gl.get_uniform_location(pen_cursor_program, "view").unwrap();
-            gl.uniform_1_f32(Some(&pen_cursor_erasing), 0.0);
-            gl.uniform_1_f32(Some(&pen_cursor_pen_down), 0.0);
-            gl.uniform_matrix_4_f32_slice(
-                Some(&pen_cursor_view),
-                false,
-                &glam::Mat4::IDENTITY.to_cols_array(),
-            );
-
-            line_strokes_program = backend_gl::compile_program(
-                &gl,
-                include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/stroke_line.vert")),
-                include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/stroke_line.frag")),
-            );
-
-            mesh_strokes_program = backend_gl::compile_program(
-                &gl,
-                include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/stroke_line.vert")),
-                include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/stroke_mesh.frag")),
-            );
-
-            strokes_view = gl.get_uniform_location(line_strokes_program, "view").unwrap();
-            strokes_color = gl
-                .get_uniform_location(line_strokes_program, "strokeColor")
-                .unwrap();
-            gl.uniform_matrix_4_f32_slice(
-                Some(&strokes_view),
-                false,
-                &glam::Mat4::IDENTITY.to_cols_array(),
-            );
-
-            cursor_vao = gl.create_vertex_array().unwrap();
-            gl.bind_vertex_array(Some(cursor_vao));
-            cursor_buffer = gl.create_buffer().unwrap();
-            gl.bind_buffer(gl::ARRAY_BUFFER, Some(cursor_buffer));
-
-            let float_size = std::mem::size_of::<f32>();
-            let circle = powdermilk_biscuits::graphics::cursor_geometry(1., 50);
-            let bytes =
-                std::slice::from_raw_parts(circle.as_ptr() as *const u8, circle.len() * float_size);
-
-            gl.buffer_data_u8_slice(gl::ARRAY_BUFFER, bytes, gl::STATIC_DRAW);
-            gl.enable_vertex_attrib_array(0);
-            gl.vertex_attrib_pointer_f32(0, 2, gl::FLOAT, false, 2 * float_size as i32, 0);
-        }};
+    graphics_setup:;
 
     per_event: {
-        if let winit::event::Event::WindowEvent { event, .. } = &event {
+        if let WinitEvent::WindowEvent { event, .. } = &event {
             let response = egui_glow.on_event(event);
             if response.repaint {
                 window.request_redraw();
@@ -149,154 +68,13 @@ derive_loop::pmb_loop!(
         size = new_size;
         widget.resize(new_size.width, new_size.height, &mut sketch);
         gl.resize(new_size.width, new_size.height);
-        unsafe {
-            gl.viewport(0, 0, new_size.width as i32, new_size.height as i32);
-        }
+        renderer.resize(new_size, &gl);
         window.request_redraw();
         config.resize_window(new_size.width, new_size.height);
     },
 
     render: {
-        use std::mem::size_of;
-
-        sketch
-            .strokes
-            .values_mut()
-            .filter(|stroke| stroke.is_dirty())
-            .for_each(|stroke| {
-                log::debug!("replace stroke with {} points", stroke.points.len());
-                stroke.backend.replace(unsafe {
-                    let f32_size = size_of::<f32>() as i32;
-
-                    let line_vao = gl.create_vertex_array().unwrap();
-                    gl.bind_vertex_array(Some(line_vao));
-
-                    let points = gl.create_buffer().unwrap();
-                    gl.bind_buffer(gl::ARRAY_BUFFER, Some(points));
-                    gl.buffer_data_u8_slice(
-                        gl::ARRAY_BUFFER,
-                        bytemuck::cast_slice(&stroke.points),
-                        gl::STATIC_DRAW,
-                    );
-
-                    gl.vertex_attrib_pointer_f32(0, 2, gl::FLOAT, false, f32_size * 3, 0);
-                    gl.vertex_attrib_pointer_f32(
-                        1,
-                        1,
-                        gl::FLOAT,
-                        false,
-                        f32_size * 3,
-                        f32_size * 2,
-                    );
-                    gl.enable_vertex_attrib_array(0);
-                    gl.enable_vertex_attrib_array(1);
-
-                    let mesh_vao = gl.create_vertex_array().unwrap();
-                    gl.bind_vertex_array(Some(mesh_vao));
-                    let mesh = gl.create_buffer().unwrap();
-                    gl.bind_buffer(gl::ARRAY_BUFFER, Some(mesh));
-                    gl.buffer_data_u8_slice(
-                        gl::ARRAY_BUFFER,
-                        bytemuck::cast_slice(&stroke.mesh.vertices),
-                        gl::STATIC_DRAW,
-                    );
-                    gl.vertex_attrib_pointer_f32(0, 2, gl::FLOAT, false, f32_size * 2, 0);
-                    gl.enable_vertex_attrib_array(0);
-
-                    let mesh_ebo = gl.create_buffer().unwrap();
-                    gl.bind_buffer(gl::ELEMENT_ARRAY_BUFFER, Some(mesh_ebo));
-                    gl.buffer_data_u8_slice(
-                        gl::ELEMENT_ARRAY_BUFFER,
-                        bytemuck::cast_slice(&stroke.mesh.indices),
-                        gl::STATIC_DRAW,
-                    );
-
-                    GlStrokeBackend {
-                        line_vao,
-                        line_len: stroke.points.len() as i32,
-                        mesh_vao,
-                        mesh_len: stroke.mesh.indices.len() as i32,
-                        dirty: false,
-                    }
-                });
-            });
-
-        unsafe {
-            gl.clear_color(sketch.bg_color[0], sketch.bg_color[1], sketch.bg_color[2], 1.);
-            gl.clear(gl::COLOR_BUFFER_BIT);
-        }
-
-        sketch.visible_strokes().for_each(|stroke| unsafe {
-            gl.use_program(Some(line_strokes_program));
-            let view = backend_gl::view_matrix(sketch.zoom, sketch.zoom, size, sketch.origin);
-            gl.uniform_matrix_4_f32_slice(Some(&strokes_view), false, &view.to_cols_array());
-            gl.uniform_3_f32(
-                Some(&strokes_color),
-                stroke.color[0],
-                stroke.color[1],
-                stroke.color[2],
-            );
-
-            let GlStrokeBackend {
-                line_vao, line_len, ..
-            } = stroke.backend().unwrap();
-            gl.bind_vertex_array(Some(*line_vao));
-            gl.draw_arrays(gl::LINE_STRIP, 0, *line_len);
-
-            if stroke.draw_tesselated {
-                gl.use_program(Some(mesh_strokes_program));
-                gl.uniform_matrix_4_f32_slice(Some(&strokes_view), false, &view.to_cols_array());
-                gl.uniform_3_f32(
-                    Some(&strokes_color),
-                    stroke.color[0],
-                    stroke.color[1],
-                    stroke.color[2],
-                );
-
-                let GlStrokeBackend {
-                    mesh_vao, mesh_len, ..
-                } = stroke.backend().unwrap();
-                gl.bind_vertex_array(Some(*mesh_vao));
-                gl.draw_elements(gl::TRIANGLES, *mesh_len, gl::UNSIGNED_SHORT, 0);
-            }
-        });
-
-        if !cursor_visible {
-            unsafe {
-                gl.use_program(Some(pen_cursor_program));
-                gl.bind_vertex_array(Some(cursor_vao));
-                gl.bind_buffer(gl::ARRAY_BUFFER, Some(cursor_buffer));
-
-                gl.uniform_1_f32(
-                    Some(&pen_cursor_erasing),
-                    if widget.active_tool == powdermilk_biscuits::Tool::Eraser {
-                        1.0
-                    } else {
-                        0.0
-                    },
-                );
-                gl.uniform_1_f32(
-                    Some(&pen_cursor_pen_down),
-                    if widget.stylus.down() { 1.0 } else { 0.0 },
-                );
-
-                let view = backend_gl::view_matrix(
-                    sketch.zoom,
-                    widget.brush_size as f32,
-                    size,
-                    widget.stylus.point,
-                );
-
-                gl.uniform_matrix_4_f32_slice(
-                    Some(&pen_cursor_view),
-                    false,
-                    &view.to_cols_array(),
-                );
-
-                gl.draw_arrays(gl::LINES, 0, 50 * 2);
-            }
-        }
-
+        renderer.render(&gl, &mut sketch, &widget, size, cursor_visible);
         egui_glow.paint(&window);
         gl.swap_buffers().unwrap();
     },
