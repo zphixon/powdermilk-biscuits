@@ -8,7 +8,7 @@ use powdermilk_biscuits::{
         dpi::{PhysicalPosition, PhysicalSize},
         window::Window,
     },
-    Sketch, Tool,
+    CoordinateSystem, Sketch, Tool,
 };
 use std::mem::size_of;
 use wgpu::{
@@ -32,7 +32,7 @@ const NUM_SEGMENTS: usize = 50;
 #[derive(Debug, Default, Clone, Copy)]
 pub struct WgpuCoords;
 
-impl powdermilk_biscuits::CoordinateSystem for WgpuCoords {
+impl CoordinateSystem for WgpuCoords {
     type Ndc = WgpuNdc;
 
     fn pixel_to_ndc(width: u32, height: u32, pos: PixelPos) -> Self::Ndc {
@@ -57,14 +57,10 @@ impl powdermilk_biscuits::CoordinateSystem for WgpuCoords {
     }
 
     fn stroke_to_ndc(width: u32, height: u32, zoom: f32, point: StrokePoint) -> Self::Ndc {
-        stroke_to_ndc(width, height, zoom, point)
-    }
-}
-
-pub fn stroke_to_ndc(width: u32, height: u32, zoom: f32, point: StrokePoint) -> WgpuNdc {
-    WgpuNdc {
-        x: point.x * zoom / width as f32,
-        y: point.y * zoom / height as f32,
+        WgpuNdc {
+            x: point.x * zoom / width as f32,
+            y: point.y * zoom / height as f32,
+        }
     }
 }
 
@@ -75,7 +71,7 @@ pub fn view_matrix(
     origin: StrokePoint,
 ) -> glam::Mat4 {
     let PhysicalSize { width, height } = size;
-    let xform = stroke_to_ndc(width, height, zoom, origin);
+    let xform = WgpuCoords::stroke_to_ndc(width, height, zoom, origin);
     glam::Mat4::from_scale_rotation_translation(
         glam::vec3(scale / width as f32, scale / height as f32, 1.0),
         glam::Quat::IDENTITY,
