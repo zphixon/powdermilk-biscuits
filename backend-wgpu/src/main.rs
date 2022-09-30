@@ -12,12 +12,12 @@ fn main() {
         window: { &window },
         egui_ctx: { &egui_ctx },
 
-        bindings:
+        before_setup:
             window = { builder.build(&ev).unwrap() }
             egui_winit = mut { egui_winit::State::new(&ev) }
             egui_ctx = mut { powdermilk_biscuits::egui::Context::default() };
 
-        graphics_setup:
+        after_setup:
             graphics = mut {
                 let mut graphics = futures::executor::block_on(backend_wgpu::Graphics::new(&window));
                 graphics.buffer_all_strokes(&mut sketch);

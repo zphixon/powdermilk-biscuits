@@ -27,7 +27,7 @@ fn main() {
         window: { &window },
         egui_ctx: { &egui_glow.egui_ctx },
 
-        bindings:
+        before_setup:
             window = { builder.build(&ev).unwrap() }
             gl = { no_winit_ezgl(&window, window.inner_size()) }
             renderer = { backend_gl::Renderer::new(&gl) }
@@ -35,7 +35,7 @@ fn main() {
                 egui_glow::EguiGlow::new(&ev, gl.glow_context(), None)
             };
 
-        graphics_setup:;
+        after_setup:;
 
         per_event: {
             if let WinitEvent::WindowEvent { event, .. } = &event {

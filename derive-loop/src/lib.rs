@@ -11,8 +11,8 @@ struct PmbLoop {
     window: Block,
     egui_ctx: Block,
 
-    bindings: HashMap<Ident, (bool, Option<Block>)>,
-    graphics_setup: HashMap<Ident, (bool, Option<Block>)>,
+    before_setup: HashMap<Ident, (bool, Option<Block>)>,
+    after_setup: HashMap<Ident, (bool, Option<Block>)>,
 
     per_event: Block,
     resize: Block,
@@ -104,8 +104,8 @@ impl Parse for PmbLoop {
             per_event,
             resize,
             render;
-            bindings,
-            graphics_setup,
+            before_setup,
+            after_setup,
         );
 
         Ok(builder.build().unwrap())
@@ -122,14 +122,14 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         stroke_backend_name,
         window,
         egui_ctx,
-        bindings,
-        graphics_setup,
+        before_setup,
+        after_setup,
         per_event,
         resize,
         render,
     } = loop_;
 
-    let quoted_bindings = bindings
+    let quoted_before_setup = before_setup
         .into_iter()
         .map(|(name, (mutable, value))| match (mutable, value) {
             (true, Some(value)) => quote::quote!(let mut #name = #value;),
@@ -139,7 +139,7 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         })
         .collect::<Vec<_>>();
 
-    let quoted_graphics_setup = graphics_setup
+    let quoted_after_setup = after_setup
         .into_iter()
         .map(|(name, (mutable, value))| match (mutable, value) {
             (true, Some(value)) => quote::quote!(let mut #name = #value;),
@@ -229,7 +229,7 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
         let ev = EventLoop::new();
 
-        #(#quoted_bindings)*
+        #(#quoted_before_setup)*
 
         let mut widget = {
             let PhysicalSize { width, height } = #window.inner_size();
@@ -244,7 +244,7 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
         widget.force_update(&mut sketch);
 
-        #(#quoted_graphics_setup)*
+        #(#quoted_after_setup)*
 
         let mut size = #window.inner_size();
         let mut cursor_visible = true;
