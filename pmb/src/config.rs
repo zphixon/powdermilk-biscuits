@@ -49,7 +49,7 @@ config!(
     brush_decrease: Combination { Combination::from(LBracket).repeatable() },
     undo: Combination { Combination::from(LControl).repeatable() | Z },
     redo: Combination { Combination::from(LControl).repeatable() | LShift | Z },
-    save: Combination { Combination::from(LControl).repeatable() | S },
+    save: Combination { Combination::from(LControl) | S },
     reset_view: Combination { Z.into() },
     open: Combination { Combination::from(LControl) | O },
     zoom_out: Combination { Combination::from(LControl) | NumpadSubtract },
