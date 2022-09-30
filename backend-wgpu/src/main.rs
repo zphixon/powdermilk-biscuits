@@ -44,11 +44,7 @@ derive_loop::pmb_loop!(
     },
 
     resize: {
-        size = new_size;
-        widget.resize(new_size.width, new_size.height, &mut sketch);
         graphics.resize(new_size);
-        window.request_redraw();
-        config.resize_window(new_size.width, new_size.height);
     },
 
     render: {

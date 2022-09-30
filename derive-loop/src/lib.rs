@@ -458,7 +458,13 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                                 ..
                             },
                         ..
-                    } => #resize,
+                    } => {
+                        size = new_size;
+                        widget.resize(new_size.width, new_size.height, &mut sketch);
+                        config.resize_window(new_size.width, new_size.height);
+                        #resize
+                        #window.request_redraw();
+                    },
 
                     WinitEvent::MainEventsCleared => {
                         use powdermilk_biscuits::winit::event::VirtualKeyCode::*;
