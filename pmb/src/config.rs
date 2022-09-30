@@ -148,6 +148,13 @@ impl Config {
             return;
         }
 
+        let contents = self.to_ron_string();
+        if let Err(err) = std::fs::write(path, contents) {
+            PmbError::from(err).display_with(s!(CouldNotOpenConfigFile));
+        }
+    }
+
+    pub fn to_ron_string(&self) -> String {
         let contents = ron::ser::to_string_pretty(
             self,
             ron::ser::PrettyConfig::new()
@@ -157,12 +164,7 @@ impl Config {
         )
         .unwrap();
 
-        let contents =
-            format!("// this file generated automatically.\n// do not edit while pmb is running!!\n{contents}");
-
-        if let Err(err) = std::fs::write(path, contents) {
-            PmbError::from(err).display_with(s!(CouldNotOpenConfigFile));
-        }
+        format!("// this file generated automatically.\n// do not edit while pmb is running!!\n{contents}")
     }
 
     pub fn start_pos(&self) -> (Option<i32>, Option<i32>) {
