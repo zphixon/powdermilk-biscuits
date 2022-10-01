@@ -572,14 +572,18 @@ impl<C: CoordinateSystem> SketchWidget<C> {
                 S::Gesture(i)
             }
 
-            (S::Gesture(i), E::Release(_)) => {
+            (S::Gesture(i), E::Release(touch)) => {
                 #[allow(clippy::single_match)]
                 match self.active_tool {
                     Tool::Pen => {
+                        self.update_stylus_from_touch(config, sketch, touch);
                         self.end_stroke(sketch);
                     }
 
-                    // TODO
+                    Tool::Eraser => {
+                        self.update_stylus_from_touch(config, sketch, touch);
+                    }
+
                     _ => {}
                 }
 

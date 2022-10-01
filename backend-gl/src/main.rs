@@ -18,64 +18,59 @@ fn no_winit_ezgl(window: &Window, size: PhysicalSize<u32>) -> Ezgl {
 
 fn main() {
     env_logger::init();
-    pmb_loop();
-}
 
-derive_loop::pmb_loop!(
-    backend_crate_name: backend_gl,
-    coords_name: GlCoords,
-    stroke_backend_name: GlStrokeBackend,
+    derive_loop::pmb_loop!(
+        backend_crate_name: backend_gl,
+        coords_name: GlCoords,
+        stroke_backend_name: GlStrokeBackend,
 
-    window: { &window },
-    egui_ctx: { &egui_glow.egui_ctx },
+        window: { &window },
+        egui_ctx: { &egui_glow.egui_ctx },
 
-    bindings:
-        window = { builder.build(&ev).unwrap() }
-        gl = { no_winit_ezgl(&window, window.inner_size()) }
-        renderer = { backend_gl::Renderer::new(&gl) }
-        egui_glow = mut {
-            egui_glow::EguiGlow::new(&ev, gl.glow_context(), None)
-        };
+        before_setup:
+            window = { builder.build(&ev).unwrap() }
+            gl = { no_winit_ezgl(&window, window.inner_size()) }
+            renderer = { backend_gl::Renderer::new(&gl) }
+            egui_glow = mut {
+                egui_glow::EguiGlow::new(&ev, gl.glow_context(), None)
+            };
 
-    graphics_setup:;
+        after_setup:;
 
-    per_event: {
-        if let WinitEvent::WindowEvent { event, .. } = &event {
-            let response = egui_glow.on_event(event);
-            if response.repaint {
-                window.request_redraw();
+        per_event: {
+            if let WinitEvent::WindowEvent { event, .. } = &event {
+                let response = egui_glow.on_event(event);
+                if response.repaint {
+                    window.request_redraw();
+                    flow.set_poll();
+                }
+
+                if response.consumed {
+                    return;
+                }
+            }
+
+            let redraw_after = egui_glow.run(&window, |ctx| {
+                powdermilk_biscuits::ui::egui(ctx, &mut sketch, &mut widget, &mut config);
+            });
+
+            if redraw_after.is_zero() {
                 flow.set_poll();
+                window.request_redraw();
+            } else if let Some(after) = std::time::Instant::now().checked_add(redraw_after) {
+                flow.set_wait_until(after);
             }
+        },
 
-            if response.consumed {
-                return;
-            }
-        }
+        resize: {
+            gl.resize(new_size.width, new_size.height);
+            renderer.resize(new_size, &gl);
+        },
 
-        let redraw_after = egui_glow.run(&window, |ctx| {
-            powdermilk_biscuits::ui::egui(ctx, &mut sketch, &mut widget, &mut config);
-        });
-
-        if redraw_after.is_zero() {
-            flow.set_poll();
-            window.request_redraw();
-        } else if let Some(after) = std::time::Instant::now().checked_add(redraw_after) {
-            flow.set_wait_until(after);
-        }
-    },
-
-    resize: {
-        size = new_size;
-        widget.resize(new_size.width, new_size.height, &mut sketch);
-        gl.resize(new_size.width, new_size.height);
-        renderer.resize(new_size, &gl);
-        window.request_redraw();
-        config.resize_window(new_size.width, new_size.height);
-    },
-
-    render: {
-        renderer.render(&gl, &mut sketch, &widget, size, cursor_visible);
-        egui_glow.paint(&window);
-        gl.swap_buffers().unwrap();
-    },
-);
+        render: {
+            renderer.render(&gl, &mut sketch, &widget, size, cursor_visible);
+            egui_glow.paint(&window);
+            gl.swap_buffers().unwrap();
+        },
+    );
+}

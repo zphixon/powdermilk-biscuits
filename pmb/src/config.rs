@@ -49,7 +49,7 @@ config!(
     brush_decrease: Combination { Combination::from(LBracket).repeatable() },
     undo: Combination { Combination::from(LControl).repeatable() | Z },
     redo: Combination { Combination::from(LControl).repeatable() | LShift | Z },
-    save: Combination { Combination::from(LControl).repeatable() | S },
+    save: Combination { Combination::from(LControl) | S },
     reset_view: Combination { Z.into() },
     open: Combination { Combination::from(LControl) | O },
     zoom_out: Combination { Combination::from(LControl) | NumpadSubtract },
@@ -148,6 +148,13 @@ impl Config {
             return;
         }
 
+        let contents = self.to_ron_string();
+        if let Err(err) = std::fs::write(path, contents) {
+            PmbError::from(err).display_with(s!(CouldNotOpenConfigFile));
+        }
+    }
+
+    pub fn to_ron_string(&self) -> String {
         let contents = ron::ser::to_string_pretty(
             self,
             ron::ser::PrettyConfig::new()
@@ -157,12 +164,7 @@ impl Config {
         )
         .unwrap();
 
-        let contents =
-            format!("// this file generated automatically.\n// do not edit while pmb is running!!\n{contents}");
-
-        if let Err(err) = std::fs::write(path, contents) {
-            PmbError::from(err).display_with(s!(CouldNotOpenConfigFile));
-        }
+        format!("// this file generated automatically.\n// do not edit while pmb is running!!\n{contents}")
     }
 
     pub fn start_pos(&self) -> (Option<i32>, Option<i32>) {
