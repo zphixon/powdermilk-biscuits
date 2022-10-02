@@ -15,6 +15,7 @@
 //! - Derive bincode::Decode for each type
 //! - Add the new version to [Version::upgrade_type] and edit the compatibility between the old and
 //!   new [Sketch]es
+//! - Add an About impl in pmb_util for the old version
 //! - Add the new version to [from], replacing the old types from the new version to the previous
 //!   version and fight for your life
 
@@ -70,7 +71,7 @@ pub fn write<S: StrokeBackend>(
     Ok(())
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum UpgradeType {
     Smooth,
     Rocky,
@@ -126,6 +127,10 @@ where
         Version::CURRENT,
         Version::upgrade_type(version)
     );
+
+    if Version::upgrade_type(version) == UpgradeType::Incompatible {
+        return Err(PmbError::new(ErrorKind::IncompatibleVersion(version)));
+    }
 
     use crate::{
         graphics::{Color, ColorExt, StrokePoint},
