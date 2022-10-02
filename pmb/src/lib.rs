@@ -100,13 +100,6 @@ pub struct Args {
     #[options(help = "Config file location")]
     pub config: Option<PathBuf>,
 
-    #[cfg(not(feature = "pmb-release"))]
-    #[cfg_attr(
-        not(feature = "pmb-release"),
-        options(help = "Print the default config file and exit", no_short)
-    )]
-    pub print_default_config: bool,
-
     #[options(free, help = "File to open")]
     pub file: Option<PathBuf>,
 }

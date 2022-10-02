@@ -158,12 +158,6 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             return;
         }
 
-        #[cfg(not(feature = "pmb-release"))]
-        if args.print_default_config {
-            println!("{}", Config::new().to_ron_string());
-            return;
-        }
-
         if cfg!(unix) {
             let var = std::env::var("WINIT_UNIX_BACKEND");
             match var.as_ref().map(|s| s.as_str()) {
