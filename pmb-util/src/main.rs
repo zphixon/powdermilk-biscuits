@@ -30,12 +30,24 @@ pub struct Args {
     )]
     pub migrate: bool,
 
+    #[options(
+        help = "Migrate in-place. Potentially dangerous. Requires -M/--migrate",
+        no_short
+    )]
+    pub migrate_in_place: bool,
+
     #[options(free, help = "File to analyze")]
     pub path: Option<PathBuf>,
 }
 
 fn main() -> Result<()> {
     let args = Args::parse_args_default_or_exit();
+
+    if !args.migrate && args.migrate_in_place {
+        return Err(anyhow::anyhow!(
+            "Invalid args: --migrate_in_place without --migrate/-M"
+        ));
+    }
 
     if args.version {
         println!(
@@ -53,10 +65,31 @@ fn main() -> Result<()> {
 
     if let Some(path) = args.path.as_ref() {
         println!("Analyzing {}", path.display());
+        let about = look_at(path)?;
 
         if args.migrate {
+            if about.version() == Version::CURRENT {
+                println!("{} already up to date", path.display());
+                return Ok(());
+            }
+
+            println!("Migrating {}", path.display());
+            let new = migrate::from::<()>(about.version(), path)?;
+
+            let write_path = if args.migrate_in_place {
+                path.clone()
+            } else {
+                let new_name = format!(
+                    "{}_v{}.pmb",
+                    path.file_stem().unwrap().to_str().unwrap(),
+                    Version::CURRENT,
+                );
+                PathBuf::from(new_name)
+            };
+
+            println!("Saving as {}", write_path.display());
+            migrate::write(write_path, &new)?;
         } else {
-            let about = look_at(path)?;
             about.show();
         }
 
