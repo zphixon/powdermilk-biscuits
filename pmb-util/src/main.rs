@@ -16,34 +16,45 @@ pub struct Args {
     help: bool,
 
     #[options(help = "Print the version", short = "V")]
-    pub version: bool,
+    version: bool,
 
-    #[options(help = "Print the default config file and exit", no_short)]
-    pub print_default_config: bool,
+    #[options(help = "Print the default config file", no_short)]
+    print_default_config: bool,
 
     #[options(
         help = "Attempt to upgrade the file to the latest version",
         short = "M"
     )]
-    pub migrate: bool,
+    migrate: bool,
 
     #[options(
         help = "Migrate in-place. Potentially dangerous. Requires -M/--migrate",
         no_short
     )]
-    pub migrate_in_place: bool,
+    migrate_in_place: bool,
+
+    #[options(
+        help = "Do not write any changes to disk. Requires -M/--migrate and not --migrate-in-place",
+        no_short
+    )]
+    dry_run: bool,
 
     #[options(free, help = "File to analyze")]
-    pub path: Option<PathBuf>,
+    path: Option<PathBuf>,
 }
 
 fn main() -> Result<()> {
     let args = Args::parse_args_default_or_exit();
 
-    if !args.migrate && args.migrate_in_place {
-        return Err(anyhow::anyhow!(
-            "Invalid args: --migrate_in_place without --migrate/-M"
-        ));
+    if 1 < [args.version, args.print_default_config, args.migrate]
+        .into_iter()
+        .fold(0, |acc, b| if b { acc + 1 } else { acc })
+        || (!args.migrate && args.migrate_in_place)
+        || (!args.migrate && args.dry_run)
+        || (args.migrate && args.migrate_in_place && args.dry_run)
+    {
+        println!("{}", Args::usage());
+        return Err(anyhow::anyhow!("Invalid usage"));
     }
 
     if args.version {
@@ -72,6 +83,11 @@ fn main() -> Result<()> {
 
             println!("Migrating {}", path.display());
             let new = migrate::from::<()>(about.version(), path)?;
+
+            if args.dry_run {
+                println!("Successful, aborting due to --dry-run");
+                return Ok(());
+            }
 
             let write_path = if args.migrate_in_place {
                 path.clone()
