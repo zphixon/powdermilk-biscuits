@@ -34,7 +34,7 @@ pub const DEFAULT_ZOOM: f32 = 50.;
 pub const MAX_ZOOM: f32 = 500.;
 pub const MIN_ZOOM: f32 = 1.;
 
-pub const DEFAULT_BRUSH: usize = 1;
+pub const DEFAULT_BRUSH: usize = 5;
 pub const MAX_BRUSH: usize = 20;
 pub const MIN_BRUSH: usize = 1;
 pub const BRUSH_DELTA: usize = 1;
@@ -127,6 +127,7 @@ pub struct Sketch<S: StrokeBackend> {
     pub zoom: f32,
     pub origin: StrokePoint,
     pub bg_color: Color,
+    pub fg_color: Color,
 }
 
 pub fn map_from_vec<S: StrokeBackend>(strokes: Vec<Stroke<S>>) -> SlotMap<DefaultKey, Stroke<S>> {
@@ -140,7 +141,7 @@ pub fn map_from_vec<S: StrokeBackend>(strokes: Vec<Stroke<S>>) -> SlotMap<Defaul
 
 impl<S: StrokeBackend> Default for Sketch<S> {
     fn default() -> Self {
-        Self::new(grid())
+        Self::empty()
     }
 }
 
@@ -150,7 +151,8 @@ impl<S: StrokeBackend> Sketch<S> {
             strokes: map_from_vec(strokes),
             zoom: crate::DEFAULT_ZOOM,
             origin: StrokePoint::default(),
-            bg_color: Color::BLACK,
+            bg_color: Color::NICE_WHITE,
+            fg_color: Color::NICE_GREY,
         }
     }
 
@@ -175,11 +177,11 @@ impl<S: StrokeBackend> Sketch<S> {
     fn to_vec(&self) -> Vec<Stroke<S>> {
         self.strokes
             .values()
+            .filter(|stroke| !stroke.erased)
             .map(|stroke| Stroke {
                 points: stroke.points.clone(),
                 color: stroke.color,
                 brush_size: stroke.brush_size,
-                erased: stroke.erased,
                 ..Default::default()
             })
             .collect()

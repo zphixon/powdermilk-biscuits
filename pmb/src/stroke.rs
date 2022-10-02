@@ -48,8 +48,8 @@ where
     pub points: Vec<StrokeElement>,
     pub color: Color,
     pub brush_size: f32,
-    pub erased: bool,
 
+    #[skip] pub erased: bool,
     #[skip] pub visible: bool,
     #[skip] pub bottom_right: StrokePos,
     #[skip] pub top_left: StrokePos,

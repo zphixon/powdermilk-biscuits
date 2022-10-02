@@ -51,7 +51,6 @@ pub struct SketchWidget<C: CoordinateSystem> {
     pub brush_size: usize,
     pub active_tool: Tool,
     pub undo_stack: UndoStack,
-    pub color: [f32; 3],
 
     pub width: u32,
     pub height: u32,
@@ -81,7 +80,6 @@ impl<C: CoordinateSystem> SketchWidget<C> {
                 .with_line_join(LineJoin::Round)
                 .with_tolerance(0.001)
                 .with_variable_line_width(0),
-            color: [1., 1., 1.],
             coords: Default::default(),
         }
     }
@@ -107,7 +105,7 @@ impl<C: CoordinateSystem> SketchWidget<C> {
         let stroke_brush_size = self.brush_size as f32 / sketch.zoom;
         let key = sketch
             .strokes
-            .insert(Stroke::new(self.color, stroke_brush_size, true));
+            .insert(Stroke::new(sketch.fg_color, stroke_brush_size, true));
         self.undo_stack.push(Action::DrawStroke(key));
     }
 

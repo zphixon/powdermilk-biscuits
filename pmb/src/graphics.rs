@@ -9,6 +9,8 @@ pub trait ColorExt {
     const NICE_RED: Color = [1., 0.65, 0.65];
     const NICE_GREEN: Color = [0.65, 1., 0.75];
     const PMB: Color = [0.314, 0.301, 0.259];
+    const NICE_WHITE: Color = [1., 0.992, 0.980];
+    const NICE_GREY: Color = [0.015686, 0.015686, 0.0196];
 
     fn grey(level: f32) -> Color {
         [level, level, level]

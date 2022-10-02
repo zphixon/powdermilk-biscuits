@@ -2,7 +2,7 @@ use anyhow::Result;
 use gumdrop::Options;
 use powdermilk_biscuits::{
     config::Config,
-    migrate::{self, v1, v2, v3, v4, v5, v6, v7, Version},
+    migrate::{self, v1, v2, v3, v4, v5, v6, v7, v8, Version},
     Sketch,
 };
 use std::{
@@ -44,6 +44,7 @@ pub struct Args {
 }
 
 fn main() -> Result<()> {
+    env_logger::init();
     let args = Args::parse_args_default_or_exit();
 
     if 1 < [args.version, args.print_default_config, args.migrate]
@@ -142,13 +143,13 @@ pub fn look_at(path: &Path) -> Result<Box<dyn About>> {
                 match version {
                     Version::CURRENT => Ok(Box::new(migrate::read::<()>(file)?)),
                     $(Version($version) => Ok(Box::new([<v $version>]::read(file)?)),)*
-                    _ => unreachable!()
+                    _ => unreachable!("missing version in read! macro call")
                 }
             }
         };
     }
 
-    read!(1, 2, 3, 4, 5, 6, 7)
+    read!(1, 2, 3, 4, 5, 6, 7, 8)
 }
 
 pub trait About {
@@ -170,9 +171,21 @@ pub trait About {
         None
     }
 
+    fn num_erased_strokes(&self) -> Option<usize> {
+        None
+    }
+
     fn show(&self) {
         println!("PMB file v{}: {}", self.version(), self.changes());
-        println!("{} strokes", self.num_strokes());
+        println!(
+            "{} strokes{}",
+            self.num_strokes(),
+            if let Some(num_erased) = self.num_erased_strokes() {
+                format!(", {} erased", num_erased)
+            } else {
+                String::new()
+            }
+        );
         println!(
             "zoomed in {:.02} at {:.02},{:.02}",
             self.zoom(),
@@ -188,12 +201,18 @@ pub trait About {
                 bg_color[0], bg_color[1], bg_color[2],
             );
         }
+        if let Some(fg_color) = self.fg_color() {
+            println!(
+                "fg color: ({:.02}, {:.02}, {:.02})",
+                fg_color[0], fg_color[1], fg_color[2],
+            );
+        }
     }
 }
 
 impl About for Sketch<()> {
     fn changes(&self) -> &'static str {
-        "Re-ordered fields"
+        "Added foreground color, removed erased strokes"
     }
 
     fn version(&self) -> Version {
@@ -210,6 +229,36 @@ impl About for Sketch<()> {
 
     fn origin(&self) -> (f32, f32) {
         (self.origin.x, self.origin.y)
+    }
+
+    fn bg_color(&self) -> Option<[f32; 3]> {
+        Some(self.bg_color)
+    }
+}
+
+impl About for v8::SketchV8 {
+    fn changes(&self) -> &'static str {
+        "Identical to v7"
+    }
+
+    fn version(&self) -> Version {
+        Version(8)
+    }
+
+    fn num_strokes(&self) -> usize {
+        self.strokes.len()
+    }
+
+    fn zoom(&self) -> f32 {
+        self.zoom
+    }
+
+    fn origin(&self) -> (f32, f32) {
+        (self.origin.x, self.origin.y)
+    }
+
+    fn num_erased_strokes(&self) -> Option<usize> {
+        Some(self.strokes.iter().filter(|stroke| stroke.erased).count())
     }
 
     fn bg_color(&self) -> Option<[f32; 3]> {
@@ -238,6 +287,10 @@ impl About for v7::SketchV7 {
         (self.origin.x, self.origin.y)
     }
 
+    fn num_erased_strokes(&self) -> Option<usize> {
+        Some(self.strokes.iter().filter(|stroke| stroke.erased).count())
+    }
+
     fn bg_color(&self) -> Option<[f32; 3]> {
         Some(self.bg_color)
     }
@@ -263,6 +316,10 @@ impl About for v6::SketchV6 {
     fn origin(&self) -> (f32, f32) {
         (self.origin.x, self.origin.y)
     }
+
+    fn num_erased_strokes(&self) -> Option<usize> {
+        Some(self.strokes.iter().filter(|stroke| stroke.erased).count())
+    }
 }
 
 impl About for v5::SketchV5 {
@@ -285,6 +342,10 @@ impl About for v5::SketchV5 {
     fn origin(&self) -> (f32, f32) {
         (self.origin.x, self.origin.y)
     }
+
+    fn num_erased_strokes(&self) -> Option<usize> {
+        Some(self.strokes.iter().filter(|stroke| stroke.erased).count())
+    }
 }
 
 impl About for v4::StateV4 {
@@ -306,6 +367,10 @@ impl About for v4::StateV4 {
 
     fn origin(&self) -> (f32, f32) {
         (self.origin.x, self.origin.y)
+    }
+
+    fn num_erased_strokes(&self) -> Option<usize> {
+        Some(self.strokes.iter().filter(|stroke| stroke.erased).count())
     }
 
     fn brush_size(&self) -> Option<usize> {
@@ -334,6 +399,10 @@ impl About for v3::StateV3 {
         (self.origin.x, self.origin.y)
     }
 
+    fn num_erased_strokes(&self) -> Option<usize> {
+        Some(self.strokes.iter().filter(|stroke| stroke.erased).count())
+    }
+
     fn brush_size(&self) -> Option<usize> {
         Some(self.brush_size)
     }
@@ -360,6 +429,10 @@ impl About for v2::StateV2 {
         (self.origin.x, self.origin.y)
     }
 
+    fn num_erased_strokes(&self) -> Option<usize> {
+        Some(self.strokes.iter().filter(|stroke| stroke.erased).count())
+    }
+
     fn brush_size(&self) -> Option<usize> {
         Some(self.brush_size)
     }
@@ -384,6 +457,10 @@ impl About for v1::StateV1 {
 
     fn origin(&self) -> (f32, f32) {
         (self.origin.x, self.origin.y)
+    }
+
+    fn num_erased_strokes(&self) -> Option<usize> {
+        Some(self.strokes.iter().filter(|stroke| stroke.erased).count())
     }
 
     fn brush_size(&self) -> Option<usize> {

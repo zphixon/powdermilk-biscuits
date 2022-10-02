@@ -1874,6 +1874,7 @@ name = "pmb-util"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "env_logger",
  "gumdrop",
  "paste",
  "powdermilk-biscuits",

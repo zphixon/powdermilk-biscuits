@@ -89,7 +89,7 @@ impl Display for Version {
 }
 
 impl Version {
-    pub const CURRENT: Self = Version(8);
+    pub const CURRENT: Self = Version(9);
 
     pub fn upgrade_type(from: Self) -> UpgradeType {
         use UpgradeType::*;
@@ -99,7 +99,7 @@ impl Version {
         }
 
         match from {
-            Version(5..=7) => Smooth,
+            Version(5..=8) => Smooth,
             Version(1..=4) => Rocky,
             _ => Incompatible,
         }
@@ -142,6 +142,44 @@ where
     match version {
         version if version == Version::CURRENT => unreachable!(),
 
+        Version(8) => {
+            let v8: v8::SketchV8 = v8::read(file)?;
+
+            let state = Sketch {
+                strokes: crate::map_from_vec(
+                    v8.strokes
+                        .into_iter()
+                        .filter(|v8| !v8.erased)
+                        .map(|v8| Stroke {
+                            points: {
+                                v8.points
+                                    .iter()
+                                    .map(|point| StrokeElement {
+                                        x: point.x,
+                                        y: point.y,
+                                        pressure: point.pressure,
+                                    })
+                                    .collect()
+                            },
+                            color: v8.color,
+                            brush_size: v8.brush_size,
+                            ..Default::default()
+                        })
+                        .collect(),
+                ),
+                zoom: v8.zoom,
+                origin: StrokePoint {
+                    x: v8.origin.x,
+                    y: v8.origin.y,
+                },
+                bg_color: v8.bg_color,
+                // previous versions had black by default
+                fg_color: Color::BLACK,
+            };
+
+            return Ok(state);
+        }
+
         Version(7) => {
             let v7: v7::SketchV7 = v7::read(file)?;
 
@@ -149,6 +187,7 @@ where
                 strokes: crate::map_from_vec(
                     v7.strokes
                         .into_iter()
+                        .filter(|v7| !v7.erased)
                         .map(|v7| Stroke {
                             points: {
                                 v7.points
@@ -162,7 +201,6 @@ where
                             },
                             color: v7.color,
                             brush_size: v7.brush_size,
-                            erased: v7.erased,
                             ..Default::default()
                         })
                         .collect(),
@@ -173,6 +211,7 @@ where
                     y: v7.origin.y,
                 },
                 bg_color: v7.bg_color,
+                fg_color: Color::BLACK,
             };
 
             return Ok(state);
@@ -185,6 +224,7 @@ where
                 strokes: crate::map_from_vec(
                     v6.strokes
                         .into_iter()
+                        .filter(|v6| !v6.erased)
                         .map(|v6| Stroke {
                             points: {
                                 v6.points
@@ -198,7 +238,6 @@ where
                             },
                             color: Color::from_u8(v6.color),
                             brush_size: v6.brush_size,
-                            erased: v6.erased,
                             ..Default::default()
                         })
                         .collect(),
@@ -221,6 +260,7 @@ where
                 strokes: crate::map_from_vec(
                     v5.strokes
                         .into_iter()
+                        .filter(|v5| !v5.erased)
                         .map(|v5| Stroke {
                             points: {
                                 v5.points
@@ -234,7 +274,6 @@ where
                             },
                             color: Color::from_u8(v5.color),
                             brush_size: v5.brush_size,
-                            erased: v5.erased,
                             ..Default::default()
                         })
                         .collect(),
@@ -257,6 +296,7 @@ where
                 strokes: crate::map_from_vec(
                     v4.strokes
                         .into_iter()
+                        .filter(|v4| !v4.erased)
                         .map(|v4| Stroke {
                             points: {
                                 v4.points
@@ -270,7 +310,6 @@ where
                             },
                             color: Color::from_u8(v4.color),
                             brush_size: v4.brush_size,
-                            erased: v4.erased,
                             ..Default::default()
                         })
                         .collect(),
@@ -293,6 +332,7 @@ where
                 strokes: crate::map_from_vec(
                     v3.strokes
                         .into_iter()
+                        .filter(|v3| !v3.erased)
                         .map(|v3| Stroke {
                             points: {
                                 v3.points
@@ -307,7 +347,6 @@ where
                             },
                             color: Color::from_u8(v3.color),
                             brush_size: v3.brush_size,
-                            erased: v3.erased,
                             ..Default::default()
                         })
                         .collect(),
@@ -330,6 +369,7 @@ where
                 strokes: crate::map_from_vec(
                     v2.strokes
                         .into_iter()
+                        .filter(|v3| !v3.erased)
                         .map(|v2| Stroke {
                             points: v2
                                 .points
@@ -342,7 +382,6 @@ where
                                 .collect(),
                             color: Color::from_u8(v2.color),
                             brush_size: v2.brush_size,
-                            erased: v2.erased,
                             ..Default::default()
                         })
                         .collect(),
@@ -365,6 +404,7 @@ where
                 strokes: crate::map_from_vec(
                     v1.strokes
                         .into_iter()
+                        .filter(|v2| !v2.erased)
                         .map(|v1| Stroke {
                             points: v1
                                 .points
@@ -377,7 +417,6 @@ where
                                 .collect(),
                             color: Color::from_u8(v1.color),
                             brush_size: v1.brush_size,
-                            erased: v1.erased,
                             ..Default::default()
                         })
                         .collect(),
@@ -394,6 +433,67 @@ where
         }
 
         _ => Err(PmbError::new(ErrorKind::UnknownVersion(version))),
+    }
+}
+
+pub mod v8 {
+    use super::*;
+
+    #[derive(bincode::Decode)]
+    pub struct StrokePointV8 {
+        pub x: f32,
+        pub y: f32,
+    }
+
+    #[derive(bincode::Decode)]
+    pub struct StrokeElementV8 {
+        pub x: f32,
+        pub y: f32,
+        pub pressure: f32,
+    }
+
+    #[derive(bincode::Decode)]
+    pub struct StrokeV8 {
+        pub points: Vec<StrokeElementV8>,
+        pub color: [f32; 3],
+        pub brush_size: f32,
+        pub erased: bool,
+    }
+
+    #[derive(bincode::Decode)]
+    pub struct SketchV8 {
+        pub zoom: f32,
+        pub origin: StrokePointV8,
+        pub bg_color: [f32; 3],
+        pub strokes: Vec<StrokeV8>,
+    }
+
+    pub fn read(mut reader: impl Read) -> Result<SketchV8, PmbError> {
+        let mut magic = [0; 3];
+        reader.read_exact(&mut magic)?;
+
+        if magic != crate::PMB_MAGIC {
+            return Err(PmbError::new(ErrorKind::MissingHeader));
+        }
+
+        let mut version_bytes = [0; std::mem::size_of::<u64>()];
+        reader.read_exact(&mut version_bytes)?;
+        let version = Version(u64::from_le_bytes(version_bytes));
+
+        log::debug!("got version {}", version);
+        if version != Version(8) {
+            unreachable!(
+                "called v8::read when you should have called v{}::read",
+                version
+            );
+        }
+
+        log::debug!("inflating");
+        let mut deflate_reader = flate2::read::DeflateDecoder::new(reader);
+        Ok(bincode::decode_from_std_read(
+            &mut deflate_reader,
+            standard(),
+        )?)
     }
 }
 
@@ -444,7 +544,7 @@ pub mod v7 {
         log::debug!("got version {}", version);
         if version != Version(7) {
             unreachable!(
-                "called v6::read when you should have called v{}::read",
+                "called v7::read when you should have called v{}::read",
                 version
             );
         }

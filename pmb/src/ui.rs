@@ -65,7 +65,7 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
         ui.label(s!(&ClearColor));
         ui.color_edit_button_rgb(&mut sketch.bg_color);
         ui.label(s!(&StrokeColor));
-        ui.color_edit_button_rgb(&mut widget.color);
+        ui.color_edit_button_rgb(&mut sketch.fg_color);
         ui.label(s!(&BrushSize));
         ui.add(egui::Slider::new(
             &mut widget.brush_size,
