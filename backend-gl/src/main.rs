@@ -20,9 +20,8 @@ fn main() {
     env_logger::init();
 
     derive_loop::pmb_loop!(
-        backend_crate_name: backend_gl,
-        coords_name: GlCoords,
-        stroke_backend_name: GlStrokeBackend,
+        coords: backend_gl::GlCoords,
+        stroke_backend: backend_gl::GlStrokeBackend,
 
         window: { &window },
         egui_ctx: { &egui_glow.egui_ctx },

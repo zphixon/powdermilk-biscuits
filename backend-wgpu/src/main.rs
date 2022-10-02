@@ -5,9 +5,8 @@ fn main() {
     env_logger::init();
 
     derive_loop::pmb_loop!(
-        backend_crate_name: backend_wgpu,
-        coords_name: WgpuCoords,
-        stroke_backend_name: WgpuStrokeBackend,
+        coords: backend_wgpu::WgpuCoords,
+        stroke_backend: backend_wgpu::WgpuStrokeBackend,
 
         window: { &window },
         egui_ctx: { &egui_ctx },

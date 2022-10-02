@@ -4,7 +4,7 @@ use powdermilk_biscuits::{
     bytemuck,
     graphics::{PixelPos, StrokePoint},
     ui::widget::SketchWidget,
-    winit::dpi::{PhysicalPosition, PhysicalSize},
+    winit::dpi::PhysicalSize,
     CoordinateSystem, Sketch,
 };
 
@@ -59,13 +59,6 @@ impl powdermilk_biscuits::StrokeBackend for GlStrokeBackend {
 
     fn is_dirty(&self) -> bool {
         self.dirty
-    }
-}
-
-pub fn physical_pos_to_pixel_pos(pos: PhysicalPosition<f64>) -> PixelPos {
-    PixelPos {
-        x: pos.x as f32,
-        y: pos.y as f32,
     }
 }
 

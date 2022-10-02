@@ -1,12 +1,11 @@
 use indexmap::{IndexMap as HashMap, IndexSet as HashSet};
 use proc_macro2::Span;
-use syn::{parse::Parse, Block, Ident, Token};
+use syn::{parse::Parse, Block, Ident, Path, Token};
 
 #[derive(derive_builder::Builder)]
 struct PmbLoop {
-    backend_crate_name: Ident,
-    coords_name: Ident,
-    stroke_backend_name: Ident,
+    coords: Path,
+    stroke_backend: Path,
 
     window: Block,
     egui_ctx: Block,
@@ -96,9 +95,8 @@ impl Parse for PmbLoop {
         }
 
         build!(
-            backend_crate_name,
-            coords_name,
-            stroke_backend_name,
+            coords,
+            stroke_backend,
             window,
             egui_ctx,
             per_event,
@@ -117,9 +115,8 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let loop_ = syn::parse_macro_input!(input as PmbLoop);
 
     let PmbLoop {
-        backend_crate_name,
-        coords_name,
-        stroke_backend_name,
+        coords,
+        stroke_backend,
         window,
         egui_ctx,
         before_setup,
@@ -239,9 +236,9 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
         let mut widget = {
             let PhysicalSize { width, height } = #window.inner_size();
-            SketchWidget::<#backend_crate_name::#coords_name>::new(width, height)
+            SketchWidget::<#coords>::new(width, height)
         };
-        let mut sketch: Sketch<#backend_crate_name::#stroke_backend_name> =
+        let mut sketch: Sketch<#stroke_backend> =
             if let Some(filename) = args.file {
                 Sketch::with_filename(&mut widget, std::path::PathBuf::from(filename))
             } else {
@@ -385,7 +382,7 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     widget.next(
                         &config,
                         &mut sketch,
-                        Event::MouseMove(#backend_crate_name::physical_pos_to_pixel_pos(position)),
+                        Event::MouseMove(position.into()),
                     );
                     widget.prev_device = powdermilk_biscuits::Device::Mouse;
 

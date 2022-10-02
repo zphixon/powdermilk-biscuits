@@ -3,11 +3,7 @@ use powdermilk_biscuits::{
     graphics::{PixelPos, StrokePoint},
     stroke::Stroke,
     ui::widget::SketchWidget,
-    winit::{
-        self,
-        dpi::{PhysicalPosition, PhysicalSize},
-        window::Window,
-    },
+    winit::{self, dpi::PhysicalSize, window::Window},
     CoordinateSystem, Sketch, Tool,
 };
 use std::mem::size_of;
@@ -96,13 +92,6 @@ impl powdermilk_biscuits::StrokeBackend for WgpuStrokeBackend {
 
     fn is_dirty(&self) -> bool {
         self.dirty
-    }
-}
-
-pub fn physical_pos_to_pixel_pos(pos: PhysicalPosition<f64>) -> PixelPos {
-    PixelPos {
-        x: pos.x as f32,
-        y: pos.y as f32,
     }
 }
 
