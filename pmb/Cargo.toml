@@ -25,6 +25,7 @@ kdl = '4.5.0'
 once_cell = '1.14.0'
 whoami = '1.2.3'
 paste = '1.0.9'
+left-right = '0.11.5'
 
 [dependencies.egui]
 git = 'https://github.com/zphixon/egui'

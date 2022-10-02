@@ -7,6 +7,7 @@ pub mod graphics;
 pub mod i18n;
 pub mod migrate;
 pub mod stroke;
+pub mod tess;
 pub mod ui;
 
 pub extern crate bytemuck;
