@@ -98,14 +98,19 @@ impl Version {
         }
 
         match from {
-            Version(7) => Smooth,
-            Version(6) => Smooth,
-            Version(5) => Smooth,
-            Version(4) => Rocky,
-            Version(3) => Smooth,
-            Version(2) => Smooth,
-            Version(1) => Smooth,
+            Version(5..=7) => Smooth,
+            Version(1..=4) => Rocky,
             _ => Incompatible,
+        }
+    }
+
+    pub fn new(number: u64) -> Result<Self, PmbError> {
+        if (1..=Version::CURRENT.0).contains(&number) {
+            Ok(Version(number))
+        } else {
+            Err(PmbError::new(ErrorKind::IncompatibleVersion(Version(
+                number,
+            ))))
         }
     }
 }
@@ -387,7 +392,7 @@ where
     }
 }
 
-mod v7 {
+pub mod v7 {
     use super::*;
 
     #[derive(bincode::Decode)]
@@ -448,7 +453,7 @@ mod v7 {
     }
 }
 
-mod v6 {
+pub mod v6 {
     use super::*;
 
     #[derive(bincode::Decode)]
@@ -508,7 +513,7 @@ mod v6 {
     }
 }
 
-mod v5 {
+pub mod v5 {
     use super::*;
 
     #[derive(bincode::Decode)]
@@ -568,7 +573,7 @@ mod v5 {
     }
 }
 
-mod v4 {
+pub mod v4 {
     use super::*;
 
     #[derive(bincode::Decode)]
@@ -627,7 +632,7 @@ mod v4 {
     }
 }
 
-mod v3 {
+pub mod v3 {
     use super::*;
 
     #[derive(bincode::Decode)]
@@ -680,7 +685,7 @@ mod v3 {
     }
 }
 
-mod v2 {
+pub mod v2 {
     use super::*;
 
     #[derive(bincode::Decode)]
@@ -740,7 +745,7 @@ mod v2 {
     }
 }
 
-mod v1 {
+pub mod v1 {
     use super::*;
 
     #[derive(bincode::Decode)]
