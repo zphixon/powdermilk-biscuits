@@ -10,7 +10,6 @@ impl<Orig, Extra> OptionExt<Orig, Extra> for Option<Orig> {
     }
 }
 
-#[proc_macro_derive(Disk, attributes(skip, custom_codec))]
 pub fn derive_disk(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let item: DeriveInput = syn::parse_macro_input!(input as DeriveInput);
 

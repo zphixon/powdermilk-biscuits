@@ -163,12 +163,12 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 name = "backend-gl"
 version = "0.1.0"
 dependencies = [
- "derive-loop",
  "egui_glow",
  "env_logger",
  "ezgl",
  "glam",
  "log",
+ "pmb-macros",
  "powdermilk-biscuits",
 ]
 
@@ -176,13 +176,13 @@ dependencies = [
 name = "backend-wgpu"
 version = "0.1.0"
 dependencies = [
- "derive-loop",
  "egui-wgpu",
  "egui-winit",
  "env_logger",
  "futures",
  "glam",
  "log",
+ "pmb-macros",
  "powdermilk-biscuits",
  "smaa",
  "wgpu",
@@ -562,26 +562,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ddfc69c5bfcbd2fc09a0f38451d2daf0e372e367986a83906d1b0dbc88134fb5"
 dependencies = [
  "darling_core 0.14.1",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "derive-disk"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "derive-loop"
-version = "0.1.0"
-dependencies = [
- "derive_builder",
- "indexmap",
- "proc-macro2",
  "quote",
  "syn",
 ]
@@ -1879,6 +1859,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1df8c4ec4b0627e53bdf214615ad287367e482558cf84b109250b37464dc03ae"
 
 [[package]]
+name = "pmb-macros"
+version = "0.1.0"
+dependencies = [
+ "derive_builder",
+ "indexmap",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "pmb-util"
 version = "0.1.0"
 dependencies = [
@@ -1906,7 +1897,6 @@ version = "0.1.1"
 dependencies = [
  "bincode",
  "bytemuck",
- "derive-disk",
  "dirs",
  "egui",
  "flate2",
@@ -1917,6 +1907,7 @@ dependencies = [
  "lyon",
  "once_cell",
  "paste",
+ "pmb-macros",
  "rfd",
  "ron",
  "serde",

@@ -19,7 +19,7 @@ fn no_winit_ezgl(window: &Window, size: PhysicalSize<u32>) -> Ezgl {
 fn main() {
     env_logger::init();
 
-    derive_loop::pmb_loop!(
+    pmb_macros::pmb_loop!(
         coords: backend_gl::GlCoords,
         stroke_backend: backend_gl::GlStrokeBackend,
 

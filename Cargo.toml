@@ -3,10 +3,9 @@ resolver = '2'
 members = [
     'pmb',
     'pmb-util',
+    'pmb-macros',
     'backend-gl',
     'backend-wgpu',
-    'derive-loop',
-    'derive-disk',
 ]
 
 [workspace.dependencies]
@@ -20,9 +19,6 @@ slotmap = '1.0.6'
 gumdrop = '0.8.1'
 env_logger = '0.9.0'
 glam = '0.21.2'
-proc-macro2 = '1.0.42'
-quote = '1.0.21'
-syn = '1.0.101'
 
 [profile.dev]
 incremental = true

@@ -120,7 +120,7 @@ pub enum Device {
     Pen,
 }
 
-#[derive(derive_disk::Disk)]
+#[derive(pmb_macros::Disk)]
 pub struct Sketch<S: StrokeBackend> {
     #[custom_codec(to_vec, map_from_vec)]
     pub strokes: SlotMap<DefaultKey, Stroke<S>>,

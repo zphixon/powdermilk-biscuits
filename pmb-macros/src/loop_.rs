@@ -103,7 +103,6 @@ impl Parse for PmbLoop {
     }
 }
 
-#[proc_macro]
 pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let loop_ = syn::parse_macro_input!(input as PmbLoop);
 

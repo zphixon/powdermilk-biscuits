@@ -25,7 +25,7 @@ whoami = '1.2.3'
 paste = '1.0.9'
 left-right = '0.11.5'
 
-derive-disk = { path = '../derive-disk' }
+pmb-macros = { path = '../pmb-macros' }
 
 lyon = { git = 'https://github.com/zphixon/lyon', branch = 'new-euclid' }
 rfd = { git = 'https://github.com/zphixon/rfd', branch = 'yes-no-cancel' }

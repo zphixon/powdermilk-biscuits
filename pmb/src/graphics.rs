@@ -81,7 +81,7 @@ pub fn circle_points(radius: f32, num_points: usize) -> Vec<f32> {
 
 macro_rules! coordinate_types {
     ($($Coord:ident),*) => {$(
-        #[derive(Default, Debug, Clone, Copy, derive_disk::Disk)]
+        #[derive(Default, Debug, Clone, Copy, pmb_macros::Disk)]
         pub struct $Coord {
             pub x: f32,
             pub y: f32,

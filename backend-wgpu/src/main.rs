@@ -4,7 +4,7 @@
 fn main() {
     env_logger::init();
 
-    derive_loop::pmb_loop!(
+    pmb_macros::pmb_loop!(
         coords: backend_wgpu::WgpuCoords,
         stroke_backend: backend_wgpu::WgpuStrokeBackend,
 

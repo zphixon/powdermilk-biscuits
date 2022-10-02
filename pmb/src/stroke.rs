@@ -11,7 +11,7 @@ use lyon::{
     path::Path,
 };
 
-#[derive(Default, Debug, Clone, Copy, derive_disk::Disk, bytemuck::Zeroable, bytemuck::Pod)]
+#[derive(Default, Debug, Clone, Copy, pmb_macros::Disk, bytemuck::Zeroable, bytemuck::Pod)]
 #[repr(C)]
 pub struct StrokeElement {
     pub x: f32,
@@ -40,7 +40,7 @@ impl std::fmt::Display for StrokeElement {
 pub type Mesh = VertexBuffers<Point, u16>;
 
 #[rustfmt::skip]
-#[derive(derive_disk::Disk)]
+#[derive(pmb_macros::Disk)]
 pub struct Stroke<S>
 where
     S: StrokeBackend,
