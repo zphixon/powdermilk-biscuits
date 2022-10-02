@@ -63,6 +63,13 @@ pub struct PmbError {
     why: Vec<String>,
 }
 
+// SAFETY: Fine because dyn Error + 'static is Send (right???)
+unsafe impl Send for PmbError {}
+
+// SAFETY: Fine because no methods on &PmbError or &PmbErrorKind mutate (probably)
+unsafe impl Sync for PmbError {}
+// really i just wanna do Version::new()? ant have it work with anyhow,, it's probalby fine;
+
 impl PmbError {
     pub fn new(kind: ErrorKind) -> Self {
         PmbError {
@@ -92,7 +99,7 @@ impl Error for PmbError {
 pub enum ErrorKind {
     MissingHeader,
     IoError(std::io::Error),
-    EncodeDecode(Box<dyn std::error::Error>),
+    EncodeDecode(Box<dyn std::error::Error + 'static>),
     VersionMismatch(Version),
     UnknownVersion(Version),
     IncompatibleVersion(Version),
