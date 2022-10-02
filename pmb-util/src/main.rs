@@ -18,9 +18,6 @@ pub struct Args {
     #[options(help = "Print the version", short = "V")]
     pub version: bool,
 
-    #[options(help = "Config file location")]
-    pub config: Option<PathBuf>,
-
     #[options(help = "Print the default config file and exit", no_short)]
     pub print_default_config: bool,
 
