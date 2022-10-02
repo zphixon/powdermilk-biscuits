@@ -23,18 +23,14 @@ fn main() {
         coords: backend_gl::GlCoords,
         stroke_backend: backend_gl::GlStrokeBackend,
 
-        window: { &window },
         egui_ctx: { &egui_glow.egui_ctx },
 
-        before_setup:
-            window = { builder.build(&ev).unwrap() }
+        setup:
             gl = { no_winit_ezgl(&window, window.inner_size()) }
             renderer = { backend_gl::Renderer::new(&gl) }
             egui_glow = mut {
                 egui_glow::EguiGlow::new(&ev, gl.glow_context(), None)
             };
-
-        after_setup:;
 
         per_event: {
             if let WinitEvent::WindowEvent { event, .. } = &event {

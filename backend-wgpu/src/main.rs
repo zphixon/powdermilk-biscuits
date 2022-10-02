@@ -8,15 +8,11 @@ fn main() {
         coords: backend_wgpu::WgpuCoords,
         stroke_backend: backend_wgpu::WgpuStrokeBackend,
 
-        window: { &window },
         egui_ctx: { &egui_ctx },
 
-        before_setup:
-            window = { builder.build(&ev).unwrap() }
+        setup:
             egui_winit = mut { egui_winit::State::new(&ev) }
-            egui_ctx = mut { powdermilk_biscuits::egui::Context::default() };
-
-        after_setup:
+            egui_ctx = mut { powdermilk_biscuits::egui::Context::default() }
             graphics = mut {
                 let mut graphics = futures::executor::block_on(backend_wgpu::Graphics::new(&window));
                 graphics.buffer_all_strokes(&mut sketch);

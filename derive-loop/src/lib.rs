@@ -6,13 +6,8 @@ use syn::{parse::Parse, Block, Ident, Path, Token};
 struct PmbLoop {
     coords: Path,
     stroke_backend: Path,
-
-    window: Block,
     egui_ctx: Block,
-
-    before_setup: HashMap<Ident, (bool, Option<Block>)>,
-    after_setup: HashMap<Ident, (bool, Option<Block>)>,
-
+    setup: HashMap<Ident, (bool, Option<Block>)>,
     per_event: Block,
     resize: Block,
     render: Block,
@@ -97,13 +92,11 @@ impl Parse for PmbLoop {
         build!(
             coords,
             stroke_backend,
-            window,
             egui_ctx,
             per_event,
             resize,
             render;
-            before_setup,
-            after_setup,
+            setup,
         );
 
         Ok(builder.build().unwrap())
@@ -117,26 +110,14 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let PmbLoop {
         coords,
         stroke_backend,
-        window,
         egui_ctx,
-        before_setup,
-        after_setup,
+        setup,
         per_event,
         resize,
         render,
     } = loop_;
 
-    let quoted_before_setup = before_setup
-        .into_iter()
-        .map(|(name, (mutable, value))| match (mutable, value) {
-            (true, Some(value)) => quote::quote!(let mut #name = #value;),
-            (false, Some(value)) => quote::quote!(let #name = #value;),
-            (true, None) => quote::quote!(let mut #name;),
-            (false, None) => quote::quote!(let #name;),
-        })
-        .collect::<Vec<_>>();
-
-    let quoted_after_setup = after_setup
+    let quoted_setup = setup
         .into_iter()
         .map(|(name, (mutable, value))| match (mutable, value) {
             (true, Some(value)) => quote::quote!(let mut #name = #value;),
@@ -231,11 +212,10 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
 
         let ev = EventLoop::new();
-
-        #(#quoted_before_setup)*
+        let window = builder.build(&ev).unwrap();
 
         let mut widget = {
-            let PhysicalSize { width, height } = #window.inner_size();
+            let PhysicalSize { width, height } = window.inner_size();
             SketchWidget::<#coords>::new(width, height)
         };
         let mut sketch: Sketch<#stroke_backend> =
@@ -247,12 +227,12 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
         widget.force_update(&mut sketch);
 
-        #(#quoted_after_setup)*
+        #(#quoted_setup)*;
 
-        let mut size = #window.inner_size();
+        let mut size = window.inner_size();
         let mut cursor_visible = true;
 
-        if let Ok(pos) = #window.outer_position() {
+        if let Ok(pos) = window.outer_position() {
             config.move_window(pos.x, pos.y);
         }
         config.resize_window(size.width, size.height);
@@ -332,7 +312,7 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         size.width,
                         size.height,
                     );
-                    #window.request_redraw();
+                    window.request_redraw();
                 }
 
                 WinitEvent::WindowEvent {
@@ -348,7 +328,7 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         }
                     }
 
-                    #window.request_redraw();
+                    window.request_redraw();
                 }
 
                 WinitEvent::WindowEvent {
@@ -372,7 +352,7 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     }
 
                     widget.prev_device = powdermilk_biscuits::Device::Mouse;
-                    #window.request_redraw();
+                    window.request_redraw();
                 }
 
                 WinitEvent::WindowEvent {
@@ -387,11 +367,11 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     widget.prev_device = powdermilk_biscuits::Device::Mouse;
 
                     if config.use_mouse_for_pen {
-                        #window.request_redraw();
+                        window.request_redraw();
                     }
 
                     if widget.state.redraw() {
-                        #window.request_redraw();
+                        window.request_redraw();
                     }
                 }
 
@@ -416,7 +396,7 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
                     widget.prev_device = powdermilk_biscuits::Device::Pen;
 
-                    #window.request_redraw();
+                    window.request_redraw();
                 }
 
                 WinitEvent::WindowEvent {
@@ -442,7 +422,7 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
                     widget.prev_device = powdermilk_biscuits::Device::Touch;
 
-                    #window.request_redraw();
+                    window.request_redraw();
                 }
 
                 WinitEvent::WindowEvent {
@@ -465,7 +445,7 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     widget.resize(new_size.width, new_size.height, &mut sketch);
                     config.resize_window(new_size.width, new_size.height);
                     #resize
-                    #window.request_redraw();
+                    window.request_redraw();
                 },
 
                 WinitEvent::MainEventsCleared => {
@@ -474,16 +454,16 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     match (widget.path.as_ref(), widget.modified) {
                         (Some(path), true) => {
                             let title = format!("{} (modified)", path.display());
-                            #window.set_title(title.as_str());
+                            window.set_title(title.as_str());
                         }
-                        (Some(path), false) => #window.set_title(&path.display().to_string()),
-                        (None, true) => #window.set_title(powdermilk_biscuits::TITLE_MODIFIED),
-                        (None, false) => #window.set_title(powdermilk_biscuits::TITLE_UNMODIFIED),
+                        (Some(path), false) => window.set_title(&path.display().to_string()),
+                        (None, true) => window.set_title(powdermilk_biscuits::TITLE_MODIFIED),
+                        (None, false) => window.set_title(powdermilk_biscuits::TITLE_UNMODIFIED),
                     }
 
                     if #egui_ctx.wants_pointer_input() {
                         if !cursor_visible {
-                            #window.set_cursor_visible(true);
+                            window.set_cursor_visible(true);
                             cursor_visible = true;
                         }
                     } else {
@@ -492,7 +472,7 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                             || (widget.prev_device == Device::Mouse
                                 && !config.use_mouse_for_pen);
                         if cursor_visible != next_visible {
-                            #window.set_cursor_visible(next_visible);
+                            window.set_cursor_visible(next_visible);
                             cursor_visible = next_visible;
                         }
                     }
