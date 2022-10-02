@@ -1,6 +1,7 @@
 [package]
 name = 'backend-wgpu'
 version = '0.1.0'
+rust-version = '1.64.0'
 edition = '2021'
 build = 'build.rs'
 
@@ -9,14 +10,16 @@ default = []
 pmb-release = ['powdermilk-biscuits/pmb-release']
 
 [dependencies]
-env_logger = '0.9.0'
-log = '*'
-glam = { version = '0.21.2', features = ['bytemuck'] }
+env_logger.workspace = true
+log.workspace = true
+glam.workspace = true
+
 wgpu = '0.13.1'
 futures = '0.3.21'
+smaa = '0.7.0'
+
 powdermilk-biscuits = { path = '../pmb' }
 derive-loop = { path = '../derive-loop' }
-smaa = '0.7.0'
 
 [dependencies.egui-winit]
 git = 'https://github.com/zphixon/egui'

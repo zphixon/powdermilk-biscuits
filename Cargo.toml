@@ -9,6 +9,18 @@ members = [
     'derive-disk',
 ]
 
+[workspace.dependencies]
+log = '0.4.17'
+bincode = '2.0.0-rc.1'
+flate2 = '1.0.24'
+bytemuck = { version = '*', features = ['derive'] }
+serde = { version = '1.0.144', features = ['derive'] }
+ron = '0.8.0'
+slotmap = '1.0.6'
+gumdrop = '0.8.1'
+env_logger = '0.9.0'
+glam = '0.21.2'
+
 [profile.dev]
 incremental = true
 
