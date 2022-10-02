@@ -69,6 +69,12 @@ jobs:
           name: backend-wgpu-linux
           path: target/release/backend-wgpu
 
+      - name: util artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: util-linux
+          path: target/release/pmb-util
+
   windows:
     runs-on: windows-latest
     steps:
@@ -115,14 +121,20 @@ jobs:
       - name: gl backend artifact
         uses: actions/upload-artifact@v3
         with:
-          name: backend-gl-win-msvc.exe
+          name: backend-gl-win.exe
           path: target/release/backend-gl.exe
 
       - name: wgpu backend artifact
         uses: actions/upload-artifact@v3
         with:
-          name: backend-wgpu-win-msvc.exe
+          name: backend-wgpu-win.exe
           path: target/release/backend-wgpu.exe
+
+      - name: util artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: util-windows.exe
+          path: target/release/pmb-util.exe
 
   macos:
     runs-on: macos-latest
@@ -180,15 +192,32 @@ jobs:
           name: backend-wgpu-macos
           path: target/release/backend-wgpu
 
+      - name: util artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: util-macos
+          path: target/release/pmb-util
+
   package:
     needs: [windows, linux, macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v3
       - run: |
-          7z a windows.zip backend-gl-win-msvc.exe backend-wgpu-win-msvc.exe
-          7z a linux.zip backend-gl-linux backend-wgpu-linux
-          7z a macos.zip backend-gl-macos backend-wgpu-macos
+          mv backend-gl-win.exe backend-gl.exe
+          mv backend-wgpu-win.exe backend-wgpu.exe
+          mv util-windows.exe util.exe
+          7z a windows.zip backend-gl.exe backend-wgpu.exe util.exe
+
+          mv backend-gl-linux backend-gl
+          mv backend-wgpu-linux backend-wgpu
+          mv util-linux util
+          7z a linux.zip backend-gl backend-wgpu util
+
+          mv backend-gl-macos backend-gl
+          mv backend-wgpu-macos backend-wgpu
+          mv util-macos util
+          7z a macos.zip backend-gl backend-wgpu util
 
       - uses: softprops/action-gh-release@v1
         with:
