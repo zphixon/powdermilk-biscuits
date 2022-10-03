@@ -4,11 +4,8 @@ use crate::{
     StrokeBackend,
 };
 use lyon::{
-    lyon_tessellation::{
-        geometry_builder::simple_builder, StrokeOptions, StrokeTessellator, VertexBuffers,
-    },
+    lyon_tessellation::{StrokeOptions, StrokeTessellator, VertexBuffers},
     math::Point,
-    path::Path,
 };
 
 #[derive(Default, Debug, Clone, Copy, pmb_macros::Disk, bytemuck::Zeroable, bytemuck::Pod)]
@@ -54,7 +51,7 @@ where
     #[skip] pub bottom_right: StrokePos,
     #[skip] pub top_left: StrokePos,
     #[skip] pub draw_tesselated: bool,
-    #[skip] pub mesh: Mesh,
+    #[skip] pub meshes: Vec<Mesh>,
     #[skip] pub backend: Option<S>,
     #[skip] pub done: bool,
 }
@@ -73,7 +70,7 @@ where
             bottom_right: StrokePos::default(),
             top_left: StrokePos::default(),
             draw_tesselated: true,
-            mesh: Mesh::new(),
+            meshes: vec![Mesh::new()],
             backend: None,
             done: false,
         }
@@ -158,7 +155,7 @@ where
         let mut right = f32::NEG_INFINITY;
         let mut left = f32::INFINITY;
 
-        for point in self.mesh.vertices.iter() {
+        for point in self.vertices() {
             if point.x < left {
                 left = point.x;
             }
@@ -249,33 +246,18 @@ where
         should_be_split
     }
 
+    pub fn vertices(&self) -> impl Iterator<Item = &Point> {
+        self.meshes.iter().flat_map(|mesh| mesh.vertices.iter())
+    }
+
     pub fn rebuild_mesh(
         &mut self,
         tesselator: &mut StrokeTessellator,
         options: &StrokeOptions,
     ) -> Result<(), PmbError> {
-        use lyon::geom::point as point2d;
-        let mut path = Path::builder_with_attributes(1);
-        if let Some(first) = self.points.first() {
-            path.begin(
-                point2d(first.x, first.y),
-                &[first.pressure * self.brush_size * 2.],
-            );
-        }
-        self.points.iter().skip(1).for_each(|point| {
-            path.line_to(
-                point2d(point.x, point.y),
-                &[point.pressure * self.brush_size * 2.],
-            );
-        });
-        path.end(false);
-        let path = path.build();
-        let mut mesh = VertexBuffers::new();
-        let mut builder = simple_builder(&mut mesh);
-
-        tesselator.tessellate_path(&path, options, &mut builder)?;
-
-        self.mesh = mesh;
+        // TODO handle splitting here instead
+        let mesh = crate::tess::tessellate(tesselator, options, self.brush_size, self.points())?;
+        self.meshes[0] = mesh;
         self.update_bounding_box();
 
         Ok(())

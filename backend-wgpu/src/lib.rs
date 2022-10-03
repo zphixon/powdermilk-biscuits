@@ -79,9 +79,9 @@ pub fn view_matrix(
 pub struct WgpuStrokeBackend {
     pub points: Buffer,
     pub points_len: usize,
-    pub mesh: Buffer,
-    pub indices: Buffer,
-    pub num_indices: usize,
+    pub meshes: Vec<Buffer>,
+    pub indices: Vec<Buffer>,
+    pub num_indices: Vec<usize>,
     pub dirty: bool,
 }
 
@@ -363,14 +363,19 @@ impl StrokeRenderer {
                 );
 
                 let WgpuStrokeBackend {
-                    mesh,
+                    meshes,
                     indices,
                     num_indices,
                     ..
                 } = stroke.backend().unwrap();
-                pass.set_vertex_buffer(0, mesh.slice(..));
-                pass.set_index_buffer(indices.slice(..), IndexFormat::Uint16);
-                pass.draw_indexed(0..(*num_indices as u32), 0, 0..1);
+
+                for (mesh, (indices, num_indices)) in
+                    meshes.iter().zip(indices.iter().zip(num_indices.iter()))
+                {
+                    pass.set_vertex_buffer(0, mesh.slice(..));
+                    pass.set_index_buffer(indices.slice(..), IndexFormat::Uint16);
+                    pass.draw_indexed(0..(*num_indices as u32), 0, 0..1);
+                }
             }
         });
     }
@@ -689,6 +694,28 @@ impl Graphics {
 
     pub fn buffer_stroke(&mut self, stroke: &mut Stroke<WgpuStrokeBackend>) {
         stroke.backend.replace({
+            let (meshes, (indices, num_indices)) = stroke
+                .meshes
+                .iter()
+                .map(|mesh| {
+                    (
+                        self.device.create_buffer_init(&BufferInitDescriptor {
+                            label: Some("mesh buffer"),
+                            contents: bytemuck::cast_slice(&mesh.vertices),
+                            usage: BufferUsages::VERTEX,
+                        }),
+                        (
+                            self.device.create_buffer_init(&BufferInitDescriptor {
+                                label: Some("index buffer"),
+                                contents: bytemuck::cast_slice(&mesh.indices),
+                                usage: BufferUsages::INDEX,
+                            }),
+                            mesh.indices.len(),
+                        ),
+                    )
+                })
+                .unzip();
+
             WgpuStrokeBackend {
                 points: self.device.create_buffer_init(&BufferInitDescriptor {
                     label: Some("points buffer"),
@@ -696,17 +723,9 @@ impl Graphics {
                     usage: BufferUsages::VERTEX,
                 }),
                 points_len: stroke.points.len(),
-                mesh: self.device.create_buffer_init(&BufferInitDescriptor {
-                    label: Some("mesh buffer"),
-                    contents: bytemuck::cast_slice(&stroke.mesh.vertices),
-                    usage: BufferUsages::VERTEX,
-                }),
-                indices: self.device.create_buffer_init(&BufferInitDescriptor {
-                    label: Some("index buffer"),
-                    contents: bytemuck::cast_slice(&stroke.mesh.indices),
-                    usage: BufferUsages::INDEX,
-                }),
-                num_indices: stroke.mesh.indices.len(),
+                meshes,
+                indices,
+                num_indices,
                 dirty: false,
             }
         });

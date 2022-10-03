@@ -48,7 +48,7 @@ pub struct GlStrokeBackend {
     pub line_vao: gl::VertexArray,
     pub line_len: i32,
     pub mesh_vao: gl::VertexArray,
-    pub mesh_len: i32,
+    pub mesh_len: Vec<i32>,
     pub dirty: bool,
 }
 
@@ -288,29 +288,35 @@ impl Renderer {
 
                     let mesh_vao = gl.create_vertex_array().unwrap();
                     gl.bind_vertex_array(Some(mesh_vao));
-                    let mesh = gl.create_buffer().unwrap();
-                    gl.bind_buffer(gl::ARRAY_BUFFER, Some(mesh));
-                    gl.buffer_data_u8_slice(
-                        gl::ARRAY_BUFFER,
-                        bytemuck::cast_slice(&stroke.mesh.vertices),
-                        gl::STATIC_DRAW,
-                    );
-                    gl.vertex_attrib_pointer_f32(0, 2, gl::FLOAT, false, f32_size * 2, 0);
-                    gl.enable_vertex_attrib_array(0);
 
-                    let mesh_ebo = gl.create_buffer().unwrap();
-                    gl.bind_buffer(gl::ELEMENT_ARRAY_BUFFER, Some(mesh_ebo));
-                    gl.buffer_data_u8_slice(
-                        gl::ELEMENT_ARRAY_BUFFER,
-                        bytemuck::cast_slice(&stroke.mesh.indices),
-                        gl::STATIC_DRAW,
-                    );
+                    let mut mesh_len = Vec::new();
+                    for mesh in stroke.meshes.iter() {
+                        let mesh_vbo = gl.create_buffer().unwrap();
+                        gl.bind_buffer(gl::ARRAY_BUFFER, Some(mesh_vbo));
+                        gl.buffer_data_u8_slice(
+                            gl::ARRAY_BUFFER,
+                            bytemuck::cast_slice(&mesh.vertices),
+                            gl::STATIC_DRAW,
+                        );
+                        gl.vertex_attrib_pointer_f32(0, 2, gl::FLOAT, false, f32_size * 2, 0);
+                        gl.enable_vertex_attrib_array(0);
+
+                        let mesh_ebo = gl.create_buffer().unwrap();
+                        gl.bind_buffer(gl::ELEMENT_ARRAY_BUFFER, Some(mesh_ebo));
+                        gl.buffer_data_u8_slice(
+                            gl::ELEMENT_ARRAY_BUFFER,
+                            bytemuck::cast_slice(&mesh.indices),
+                            gl::STATIC_DRAW,
+                        );
+
+                        mesh_len.push(mesh.indices.len() as i32);
+                    }
 
                     GlStrokeBackend {
                         line_vao,
                         line_len: stroke.points.len() as i32,
                         mesh_vao,
-                        mesh_len: stroke.mesh.indices.len() as i32,
+                        mesh_len,
                         dirty: false,
                     }
                 });
@@ -361,7 +367,9 @@ impl Renderer {
                     mesh_vao, mesh_len, ..
                 } = stroke.backend().unwrap();
                 gl.bind_vertex_array(Some(*mesh_vao));
-                gl.draw_elements(gl::TRIANGLES, *mesh_len, gl::UNSIGNED_SHORT, 0);
+                for mesh_len in mesh_len.iter() {
+                    gl.draw_elements(gl::TRIANGLES, *mesh_len, gl::UNSIGNED_SHORT, 0);
+                }
             }
         });
 

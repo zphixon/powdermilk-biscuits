@@ -15,6 +15,35 @@ use std::{
     thread::JoinHandle,
 };
 
+pub fn tessellate(
+    tessellator: &mut StrokeTessellator,
+    stroke_options: &StrokeOptions,
+    brush_size: f32,
+    points: &[StrokeElement],
+) -> Result<Mesh, TessellationError> {
+    use lyon::geom::point as point2d;
+    let mut path = Path::builder_with_attributes(1);
+    if let Some(first) = points.first() {
+        path.begin(
+            point2d(first.x, first.y),
+            &[first.pressure * brush_size * 2.],
+        );
+    }
+    points.iter().skip(1).for_each(|point| {
+        path.line_to(
+            point2d(point.x, point.y),
+            &[point.pressure * brush_size * 2.],
+        );
+    });
+    path.end(false);
+    let path = path.build();
+    let mut new_mesh = VertexBuffers::new();
+    let mut builder = lyon::lyon_tessellation::geometry_builder::simple_builder(&mut new_mesh);
+
+    tessellator.tessellate_path(&path, stroke_options, &mut builder)?;
+    Ok(new_mesh)
+}
+
 pub enum TessResult {
     Mesh(Mesh),
     Error,
@@ -57,38 +86,12 @@ pub fn tessellator() -> Tessellator {
         let mut brush_size = crate::DEFAULT_BRUSH as f32;
         let mut points = Vec::new();
 
-        let mut tesselator = StrokeTessellator::new();
+        let mut tessellator = StrokeTessellator::new();
         let stroke_options = StrokeOptions::default()
             .with_line_cap(LineCap::Round)
             .with_line_join(LineJoin::Round)
             .with_tolerance(0.001)
             .with_variable_line_width(0);
-
-        let mut tessellate =
-            |brush_size: f32, points: &[StrokeElement]| -> Result<Mesh, TessellationError> {
-                use lyon::geom::point as point2d;
-                let mut path = Path::builder_with_attributes(1);
-                if let Some(first) = points.first() {
-                    path.begin(
-                        point2d(first.x, first.y),
-                        &[first.pressure * brush_size * 2.],
-                    );
-                }
-                points.iter().skip(1).for_each(|point| {
-                    path.line_to(
-                        point2d(point.x, point.y),
-                        &[point.pressure * brush_size * 2.],
-                    );
-                });
-                path.end(false);
-                let path = path.build();
-                let mut new_mesh = VertexBuffers::new();
-                let mut builder =
-                    lyon::lyon_tessellation::geometry_builder::simple_builder(&mut new_mesh);
-
-                tesselator.tessellate_path(&path, &stroke_options, &mut builder)?;
-                Ok(new_mesh)
-            };
 
         while let Ok(msg) = rx.recv() {
             match msg {
@@ -100,7 +103,7 @@ pub fn tessellator() -> Tessellator {
                 TessMess::AddPoint(point) => {
                     points.push(point);
 
-                    match tessellate(brush_size, &points) {
+                    match tessellate(&mut tessellator, &stroke_options, brush_size, &points) {
                         Ok(new_mesh) => {
                             result.write().unwrap().add(TessResult::Mesh(new_mesh));
                         }
@@ -151,7 +154,7 @@ impl Tessellator {
 
 #[test]
 fn test() {
-    fn x(x: f32) -> StrokeElement {
+    fn _x(x: f32) -> StrokeElement {
         StrokeElement {
             x,
             y: 1.,

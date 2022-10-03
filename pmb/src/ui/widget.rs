@@ -172,7 +172,7 @@ impl<C: CoordinateSystem> SketchWidget<C> {
             })
             .for_each(|(key, stroke)| {
                 // TODO lyon_path::builder::Flattened?
-                if stroke.mesh.vertices.iter().any(|point| {
+                if stroke.vertices().any(|point| {
                     let point_pix = C::pos_to_pixel(
                         self.width,
                         self.height,
@@ -636,7 +636,7 @@ impl<C: CoordinateSystem> SketchWidget<C> {
                 println!(
                     "{} points, {} vertices, {} size, {} visible, {:?} color, {} top left, {} bottom right",
                     stroke.points().len(),
-                    stroke.mesh.vertices.len(),
+                    stroke.vertices().count(),
                     stroke.brush_size(),
                     stroke.visible,
                     stroke.color(),
