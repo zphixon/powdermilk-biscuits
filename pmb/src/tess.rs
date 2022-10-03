@@ -1,3 +1,58 @@
+// what should happen (a simplified overview):
+//
+// - the ideal case (unlikely)
+//   input:   1           4
+//   render:           3
+//   tess:      [2--]
+//
+//   1. the tt (tessellator thread) gets a new point
+//   2. calculates the mesh very quickly
+//   3. it's finished by the time it needs to be rendered
+//   4. all of this happens before the next point comes in
+//
+// - the common case
+//   input:   1   4   6
+//   render:    2   5   7
+//   tess:      [3----]
+//   1. a point comes in
+//   2. immediately after the renderer renders an empty screen
+//   3. the tt receives the point
+//   4. another point comes in, gets put in the mpsc queue
+//   5. another empty screen
+//   6. another point into the mpsc queue
+//   7. the tt is finally finished and the stroke can be rendered
+//
+// - the common case, extended
+//   input:  1   4   5   8   10
+//   render:   2   3   6   9   11
+//   tess:     [3-----][7-------]
+//   1. a point
+//   2. an empty frame
+//   3. at the same time mesh calculation starts
+//   4-5. empty frames, un-tessellated points
+//   6. finally the stroke is rendered
+//   7. work begins on the stroke with points 1, 4 AND 5
+//   8. etc etc
+//
+// - the worst case
+//   input:  1   4   5   8   10     14    17
+//   render:   2   3   6   9    12     15    18  20
+//   tess:   ---------][7------11![13---][16---][19---]
+//   1-6. stale frames are rendered and un-tessellated points are queued as the tessellator
+//        thread works on the previous stroke
+//   7. work starts on the previously queued points 1, 4 and 5
+//   8-10. more points get queued* as the tessellator splits the previously queued points and
+//         re-tessellates the new mesh, and stale frames get rendered
+//   11. the resulting mesh has too many vertices
+//   13-16. the tt has to start again on half of the previously queued points
+//   19. the tt can start on 8,10,14,17
+//   20. the two split strokes can be rendered
+//
+// * theoretically it could queue up too many for the tessellator to handle and it would run
+//   away splitting strokes forever and never really finishing as in 11. but in practice you'd
+//   have to draw faster than a human can to have that happen. (TODO determine how many points
+//   it usually would take to cause a split to occur)
+
 use crate::stroke::{MeshBuffer, StrokeElement};
 use lyon::{
     lyon_algorithms::path::Path,
@@ -150,71 +205,4 @@ impl Tessellator {
     pub fn queue(&self) -> RwLockReadGuard<MeshQueue> {
         self.rw.read().unwrap()
     }
-}
-
-#[test]
-fn test() {
-    fn _x(x: f32) -> StrokeElement {
-        StrokeElement {
-            x,
-            y: 1.,
-            pressure: 1.,
-        }
-    }
-
-    // what should happen (a simplified overview):
-    //
-    // - the ideal case (unlikely)
-    //   input:   1           4
-    //   render:           3
-    //   tess:      [2--]
-    //
-    //   1. the tt (tessellator thread) gets a new point
-    //   2. calculates the mesh very quickly
-    //   3. it's finished by the time it needs to be rendered
-    //   4. all of this happens before the next point comes in
-    //
-    // - the common case
-    //   input:   1   4   6
-    //   render:    2   5   7
-    //   tess:      [3----]
-    //   1. a point comes in
-    //   2. immediately after the renderer renders an empty screen
-    //   3. the tt receives the point
-    //   4. another point comes in, gets put in the mpsc queue
-    //   5. another empty screen
-    //   6. another point into the mpsc queue
-    //   7. the tt is finally finished and the stroke can be rendered
-    //
-    // - the common case, extended
-    //   input:  1   4   5   8   10
-    //   render:   2   3   6   9   11
-    //   tess:     [3-----][7-------]
-    //   1. a point
-    //   2. an empty frame
-    //   3. at the same time mesh calculation starts
-    //   4-5. empty frames, un-tessellated points
-    //   6. finally the stroke is rendered
-    //   7. work begins on the stroke with points 1, 4 AND 5
-    //   8. etc etc
-    //
-    // - the worst case
-    //   input:  1   4   5   8   10     14    17
-    //   render:   2   3   6   9    12     15    18  20
-    //   tess:   ---------][7------11![13---][16---][19---]
-    //   1-6. stale frames are rendered and un-tessellated points are queued as the tessellator
-    //        thread works on the previous stroke
-    //   7. work starts on the previously queued points 1, 4 and 5
-    //   8-10. more points get queued* as the tessellator splits the previously queued points and
-    //         re-tessellates the new mesh, and stale frames get rendered
-    //   11. the resulting mesh has too many vertices
-    //   13-16. the tt has to start again on half of the previously queued points
-    //   19. the tt can start on 8,10,14,17
-    //   20. the two split strokes can be rendered
-    //
-    // * theoretically it could queue up too many for the tessellator to handle and it would run
-    //   away splitting strokes forever and never really finishing as in 11. but in practice you'd
-    //   have to draw faster than a human can to have that happen. (TODO determine how many points
-    //   it usually would take to cause a split to occur)
-    todo!();
 }
