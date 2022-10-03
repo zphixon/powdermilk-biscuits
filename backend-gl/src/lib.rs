@@ -295,7 +295,7 @@ impl Renderer {
                         gl.bind_buffer(gl::ARRAY_BUFFER, Some(mesh_vbo));
                         gl.buffer_data_u8_slice(
                             gl::ARRAY_BUFFER,
-                            bytemuck::cast_slice(&mesh.vertices),
+                            bytemuck::cast_slice(&mesh.vertices()),
                             gl::STATIC_DRAW,
                         );
                         gl.vertex_attrib_pointer_f32(0, 2, gl::FLOAT, false, f32_size * 2, 0);
@@ -305,11 +305,11 @@ impl Renderer {
                         gl.bind_buffer(gl::ELEMENT_ARRAY_BUFFER, Some(mesh_ebo));
                         gl.buffer_data_u8_slice(
                             gl::ELEMENT_ARRAY_BUFFER,
-                            bytemuck::cast_slice(&mesh.indices),
+                            bytemuck::cast_slice(&mesh.indices()),
                             gl::STATIC_DRAW,
                         );
 
-                        mesh_len.push(mesh.indices.len() as i32);
+                        mesh_len.push(mesh.indices().len() as i32);
                     }
 
                     GlStrokeBackend {

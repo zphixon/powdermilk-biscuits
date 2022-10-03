@@ -701,16 +701,16 @@ impl Graphics {
                     (
                         self.device.create_buffer_init(&BufferInitDescriptor {
                             label: Some("mesh buffer"),
-                            contents: bytemuck::cast_slice(&mesh.vertices),
+                            contents: bytemuck::cast_slice(&mesh.vertices()),
                             usage: BufferUsages::VERTEX,
                         }),
                         (
                             self.device.create_buffer_init(&BufferInitDescriptor {
                                 label: Some("index buffer"),
-                                contents: bytemuck::cast_slice(&mesh.indices),
+                                contents: bytemuck::cast_slice(&mesh.indices()),
                                 usage: BufferUsages::INDEX,
                             }),
-                            mesh.indices.len(),
+                            mesh.indices().len(),
                         ),
                     )
                 })

@@ -3,7 +3,9 @@ use crate::{
     StrokeBackend,
 };
 use lyon::{
-    lyon_tessellation::{StrokeOptions, StrokeTessellator, VertexBuffers},
+    lyon_tessellation::{
+        GeometryBuilderError, StrokeOptions, StrokeTessellator, TessellationError, VertexBuffers,
+    },
     math::Point,
 };
 
@@ -35,6 +37,22 @@ impl std::fmt::Display for StrokeElement {
 
 pub type MeshBuffer = VertexBuffers<Point, u16>;
 
+pub struct Mesh {
+    pub buffer: MeshBuffer,
+    from: usize,
+    to: usize,
+}
+
+impl Mesh {
+    pub fn vertices(&self) -> &[Point] {
+        &self.buffer.vertices
+    }
+
+    pub fn indices(&self) -> &[u16] {
+        &self.buffer.indices
+    }
+}
+
 #[rustfmt::skip]
 #[derive(pmb_macros::Disk)]
 pub struct Stroke<S>
@@ -50,7 +68,7 @@ where
     #[skip] pub bottom_right: StrokePos,
     #[skip] pub top_left: StrokePos,
     #[skip] pub draw_tesselated: bool,
-    #[skip] pub meshes: Vec<MeshBuffer>,
+    #[skip] pub meshes: Vec<Mesh>,
     #[skip] pub backend: Option<S>,
     #[skip] pub done: bool,
 }
@@ -69,7 +87,7 @@ where
             bottom_right: StrokePos::default(),
             top_left: StrokePos::default(),
             draw_tesselated: true,
-            meshes: vec![MeshBuffer::new()],
+            meshes: Vec::new(),
             backend: None,
             done: false,
         }
@@ -219,7 +237,7 @@ where
         });
 
         if self.points.len() >= 2 {
-            self.rebuild_mesh(tesselator, options);
+            self.rebuild_partial_mesh(tesselator, options);
         }
 
         if self.points.len() == 1 {
@@ -233,31 +251,28 @@ where
     }
 
     pub fn vertices(&self) -> impl Iterator<Item = &Point> {
-        self.meshes.iter().flat_map(|mesh| mesh.vertices.iter())
+        self.meshes.iter().flat_map(|mesh| mesh.vertices().iter())
     }
 
-    pub fn rebuild_mesh(&mut self, tessellator: &mut StrokeTessellator, options: &StrokeOptions) {
-        use lyon::lyon_tessellation::{GeometryBuilderError, TessellationError};
-        fn is_tmv(err: &TessellationError) -> bool {
-            matches!(
-                err,
-                TessellationError::GeometryBuilder(GeometryBuilderError::TooManyVertices)
-            )
-        }
-
-        match crate::tess::tessellate(tessellator, options, self.brush_size, self.points()) {
-            Ok(mesh) => {
-                self.meshes.clear();
-                self.meshes.push(mesh);
-            }
+    pub fn rebuild_entire_mesh(
+        &mut self,
+        tessellator: &mut StrokeTessellator,
+        stroke_options: &StrokeOptions,
+    ) {
+        match crate::tess::tessellate(tessellator, stroke_options, self.brush_size, self.points()) {
+            Ok(buffer) => self.meshes.push(Mesh {
+                buffer,
+                from: 0,
+                to: self.points.len(),
+            }),
 
             Err(err) if is_tmv(&err) => {
-                log::warn!("have to split stroke");
+                log::warn!("have to split stroke (entire mesh)");
                 self.meshes.clear();
 
                 // start with two segments
                 let mut num_segments = 2;
-                loop {
+                'with_more_segments: loop {
                     // split the points into num_breaks segments
                     let per_segment = self.points.len() / num_segments;
                     log::info!(
@@ -267,25 +282,33 @@ where
                     );
 
                     let mut meshes = Vec::new();
-                    for (i, subset) in (0..num_segments)
+                    for (i, (from, to, subset)) in (0..num_segments)
                         .map(|offset| {
-                            &self.points[per_segment * offset..per_segment * (offset + 1)]
+                            let from = per_segment * offset;
+                            let to = per_segment * (offset + 1);
+                            (from, to, &self.points[from..to])
                         })
                         .enumerate()
                     {
                         // try tessellating the segment
-                        match crate::tess::tessellate(tessellator, options, self.brush_size, subset)
-                        {
+                        match crate::tess::tessellate(
+                            tessellator,
+                            stroke_options,
+                            self.brush_size,
+                            subset,
+                        ) {
                             // if it works, hooray
-                            Ok(mesh) => {
+                            Ok(buffer) => {
                                 log::debug!("got segment {}/{}", i, num_segments);
-                                meshes.push(mesh);
+                                meshes.push(Mesh { buffer, from, to });
                             }
 
                             // if it's too many, try again with more segments
                             Err(err) if is_tmv(&err) => {
+                                log::debug!("it didn't work ({}/{})", i, num_segments);
+                                meshes.clear();
                                 num_segments += 1;
-                                continue;
+                                continue 'with_more_segments;
                             }
 
                             Err(err) => {
@@ -303,10 +326,78 @@ where
             }
 
             Err(err) => {
-                log::error!("{}", err);
-                return;
+                log::error!("couldn't build mesh: {}", err,);
             }
-        };
+        }
+
+        self.update_bounding_box();
+    }
+
+    pub fn rebuild_partial_mesh(
+        &mut self,
+        tessellator: &mut StrokeTessellator,
+        options: &StrokeOptions,
+    ) {
+        let mut to_add = None;
+        match self.meshes.last_mut() {
+            Some(subset) => match crate::tess::tessellate(
+                tessellator,
+                options,
+                self.brush_size,
+                &self.points[subset.from..],
+            ) {
+                Ok(buffer) => {
+                    subset.buffer = buffer;
+                    subset.to = self.points.len();
+                }
+
+                Err(err) if is_tmv(&err) => {
+                    log::warn!("have to split after {}..{}", subset.from, subset.to);
+
+                    match crate::tess::tessellate(
+                        tessellator,
+                        options,
+                        self.brush_size,
+                        &self.points[subset.to..],
+                    ) {
+                        Ok(buffer) => {
+                            to_add = Some(Mesh {
+                                buffer,
+                                from: subset.to,
+                                to: self.points.len(),
+                            });
+                        }
+
+                        Err(err) => {
+                            log::error!(
+                                "couldn't tessellate last part {}..{}: {}",
+                                subset.to,
+                                self.points.len(),
+                                err,
+                            );
+                        }
+                    }
+                }
+
+                Err(err) => {
+                    log::error!(
+                        "couldn't tessellate {}..{}: {}",
+                        subset.from,
+                        subset.to,
+                        err,
+                    );
+                }
+            },
+
+            None => {
+                log::warn!("didn't have any meshes, rebuilding entire thing");
+                self.rebuild_entire_mesh(tessellator, options);
+            }
+        }
+
+        if let Some(to_add) = to_add {
+            self.meshes.push(to_add);
+        }
 
         self.update_bounding_box();
     }
@@ -314,4 +405,11 @@ where
     pub fn finish(&mut self) {
         self.done = true;
     }
+}
+
+fn is_tmv(err: &TessellationError) -> bool {
+    matches!(
+        err,
+        TessellationError::GeometryBuilder(GeometryBuilderError::TooManyVertices)
+    )
 }
