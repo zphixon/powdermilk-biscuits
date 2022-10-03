@@ -700,6 +700,12 @@ impl<C: CoordinateSystem> SketchWidget<C> {
                 .display();
         }
 
+        if self.input.combo_just_pressed(&config.new) {
+            super::new_file(self, sketch)
+                .problem(s!(CouldNotSaveFile))
+                .display();
+        }
+
         if self.input.combo_just_pressed(&config.zoom_out) {
             sketch.update_zoom::<C>(self.width, self.height, sketch.zoom - 4.25);
         }

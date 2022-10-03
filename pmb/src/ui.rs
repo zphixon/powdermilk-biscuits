@@ -212,6 +212,7 @@ pub fn read_file<S: StrokeBackend, C: CoordinateSystem>(
     Ok(())
 }
 
+/// returns whether you should continue with whatever state-destroying operation you want to do
 pub fn ask_to_save_then_save<S: StrokeBackend, C: CoordinateSystem>(
     widget: &mut widget::SketchWidget<C>,
     sketch: &Sketch<S>,
@@ -271,5 +272,20 @@ fn save_file<C: CoordinateSystem, S: StrokeBackend>(
     }
 
     log::info!("saved file as {}", widget.path.as_ref().unwrap().display());
+    Ok(())
+}
+
+fn new_file<C: CoordinateSystem, S: StrokeBackend>(
+    widget: &mut widget::SketchWidget<C>,
+    sketch: &mut Sketch<S>,
+) -> Result<(), PmbError> {
+    if widget.modified && !ask_to_save_then_save(widget, sketch, s!(&AskToSaveBeforeOpening))? {
+        return Ok(());
+    }
+
+    *sketch = Sketch::empty();
+    widget.path = None;
+    widget.modified = false;
+
     Ok(())
 }
