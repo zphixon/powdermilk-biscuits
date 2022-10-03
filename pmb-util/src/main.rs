@@ -234,6 +234,10 @@ impl About for Sketch<()> {
     fn bg_color(&self) -> Option<[f32; 3]> {
         Some(self.bg_color)
     }
+
+    fn fg_color(&self) -> Option<[f32; 3]> {
+        Some(self.fg_color)
+    }
 }
 
 impl About for v8::SketchV8 {
