@@ -33,7 +33,7 @@ impl std::fmt::Display for StrokeElement {
     }
 }
 
-pub type Mesh = VertexBuffers<Point, u16>;
+pub type MeshBuffer = VertexBuffers<Point, u16>;
 
 #[rustfmt::skip]
 #[derive(pmb_macros::Disk)]
@@ -50,7 +50,7 @@ where
     #[skip] pub bottom_right: StrokePos,
     #[skip] pub top_left: StrokePos,
     #[skip] pub draw_tesselated: bool,
-    #[skip] pub meshes: Vec<Mesh>,
+    #[skip] pub meshes: Vec<MeshBuffer>,
     #[skip] pub backend: Option<S>,
     #[skip] pub done: bool,
 }
@@ -69,7 +69,7 @@ where
             bottom_right: StrokePos::default(),
             top_left: StrokePos::default(),
             draw_tesselated: true,
-            meshes: vec![Mesh::new()],
+            meshes: vec![MeshBuffer::new()],
             backend: None,
             done: false,
         }

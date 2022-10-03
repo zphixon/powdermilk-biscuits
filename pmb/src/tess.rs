@@ -1,4 +1,4 @@
-use crate::stroke::{Mesh, StrokeElement};
+use crate::stroke::{MeshBuffer, StrokeElement};
 use lyon::{
     lyon_algorithms::path::Path,
     lyon_tessellation::{
@@ -20,7 +20,7 @@ pub fn tessellate(
     stroke_options: &StrokeOptions,
     brush_size: f32,
     points: &[StrokeElement],
-) -> Result<Mesh, TessellationError> {
+) -> Result<MeshBuffer, TessellationError> {
     use lyon::geom::point as point2d;
     let mut path = Path::builder_with_attributes(1);
     if let Some(first) = points.first() {
@@ -45,7 +45,7 @@ pub fn tessellate(
 }
 
 pub enum TessResult {
-    Mesh(Mesh),
+    Mesh(MeshBuffer),
     Error,
 }
 
