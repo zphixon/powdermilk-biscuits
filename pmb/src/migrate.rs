@@ -173,8 +173,7 @@ where
                     y: v8.origin.y,
                 },
                 bg_color: v8.bg_color,
-                // previous versions had black by default
-                fg_color: Color::BLACK,
+                fg_color: Color::WHITE,
             };
 
             return Ok(state);
@@ -211,7 +210,7 @@ where
                     y: v7.origin.y,
                 },
                 bg_color: v7.bg_color,
-                fg_color: Color::BLACK,
+                fg_color: Color::WHITE,
             };
 
             return Ok(state);
@@ -247,7 +246,8 @@ where
                     x: v6.origin.x,
                     y: v6.origin.y,
                 },
-                ..Default::default()
+                bg_color: Color::BLACK,
+                fg_color: Color::WHITE,
             };
 
             return Ok(state);
@@ -283,7 +283,8 @@ where
                     x: v5.origin.x,
                     y: v5.origin.y,
                 },
-                ..Default::default()
+                bg_color: Color::BLACK,
+                fg_color: Color::WHITE,
             };
 
             return Ok(state);
@@ -319,7 +320,8 @@ where
                     x: v4.origin.x,
                     y: v4.origin.y,
                 },
-                ..Default::default()
+                bg_color: Color::BLACK,
+                fg_color: Color::WHITE,
             };
 
             return Ok(state);
@@ -356,7 +358,8 @@ where
                     x: v3.origin.x,
                     y: v3.origin.y,
                 },
-                ..Default::default()
+                bg_color: Color::BLACK,
+                fg_color: Color::WHITE,
             };
 
             return Ok(state);
@@ -391,7 +394,8 @@ where
                     x: v2.origin.x,
                     y: v2.origin.y,
                 },
-                ..Default::default()
+                bg_color: Color::BLACK,
+                fg_color: Color::WHITE,
             };
 
             return Ok(state);
@@ -426,7 +430,8 @@ where
                     x: v1.origin.x,
                     y: v1.origin.y,
                 },
-                ..Default::default()
+                bg_color: Color::BLACK,
+                fg_color: Color::WHITE,
             };
 
             return Ok(state);
