@@ -1,5 +1,4 @@
 use crate::{
-    error::PmbError,
     graphics::{Color, ColorExt, StrokePos},
     StrokeBackend,
 };
@@ -209,8 +208,7 @@ where
         stylus: &crate::Stylus,
         tesselator: &mut StrokeTessellator,
         options: &StrokeOptions,
-    ) -> bool {
-        let mut should_be_split = false;
+    ) {
         let x = stylus.pos.x;
         let y = stylus.pos.y;
 
@@ -221,17 +219,7 @@ where
         });
 
         if self.points.len() >= 2 {
-            use crate::error::ErrorKind;
-            use lyon::lyon_tessellation::{GeometryBuilderError, TessellationError};
-            should_be_split = matches!(
-                self.rebuild_mesh(tesselator, options),
-                Err(PmbError {
-                    kind: ErrorKind::Tessellator(TessellationError::GeometryBuilder(
-                        GeometryBuilderError::TooManyVertices,
-                    )),
-                    ..
-                })
-            );
+            self.rebuild_mesh(tesselator, options);
         }
 
         if self.points.len() == 1 {
@@ -242,25 +230,85 @@ where
         if let Some(backend) = self.backend_mut() {
             backend.make_dirty();
         }
-
-        should_be_split
     }
 
     pub fn vertices(&self) -> impl Iterator<Item = &Point> {
         self.meshes.iter().flat_map(|mesh| mesh.vertices.iter())
     }
 
-    pub fn rebuild_mesh(
-        &mut self,
-        tesselator: &mut StrokeTessellator,
-        options: &StrokeOptions,
-    ) -> Result<(), PmbError> {
-        // TODO handle splitting here instead
-        let mesh = crate::tess::tessellate(tesselator, options, self.brush_size, self.points())?;
-        self.meshes[0] = mesh;
-        self.update_bounding_box();
+    pub fn rebuild_mesh(&mut self, tessellator: &mut StrokeTessellator, options: &StrokeOptions) {
+        use lyon::lyon_tessellation::{GeometryBuilderError, TessellationError};
+        fn is_tmv(err: &TessellationError) -> bool {
+            matches!(
+                err,
+                TessellationError::GeometryBuilder(GeometryBuilderError::TooManyVertices)
+            )
+        }
 
-        Ok(())
+        match crate::tess::tessellate(tessellator, options, self.brush_size, self.points()) {
+            Ok(mesh) => {
+                self.meshes.clear();
+                self.meshes.push(mesh);
+            }
+
+            Err(err) if is_tmv(&err) => {
+                log::warn!("have to split stroke");
+                self.meshes.clear();
+
+                // start with two segments
+                let mut num_segments = 2;
+                loop {
+                    // split the points into num_breaks segments
+                    let per_segment = self.points.len() / num_segments;
+                    log::info!(
+                        "trying {} segments, {} points per segment",
+                        num_segments,
+                        per_segment,
+                    );
+
+                    let mut meshes = Vec::new();
+                    for (i, subset) in (0..num_segments)
+                        .map(|offset| {
+                            &self.points[per_segment * offset..per_segment * (offset + 1)]
+                        })
+                        .enumerate()
+                    {
+                        // try tessellating the segment
+                        match crate::tess::tessellate(tessellator, options, self.brush_size, subset)
+                        {
+                            // if it works, hooray
+                            Ok(mesh) => {
+                                log::debug!("got segment {}/{}", i, num_segments);
+                                meshes.push(mesh);
+                            }
+
+                            // if it's too many, try again with more segments
+                            Err(err) if is_tmv(&err) => {
+                                num_segments += 1;
+                                continue;
+                            }
+
+                            Err(err) => {
+                                log::error!("{}", err);
+                                return;
+                            }
+                        }
+                    }
+
+                    // all the segments were tessellable (sp.?)
+                    log::info!("tessellated with {} segments", num_segments);
+                    self.meshes = meshes;
+                    break;
+                }
+            }
+
+            Err(err) => {
+                log::error!("{}", err);
+                return;
+            }
+        };
+
+        self.update_bounding_box();
     }
 
     pub fn finish(&mut self) {

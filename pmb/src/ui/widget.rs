@@ -112,11 +112,7 @@ impl<C: CoordinateSystem> SketchWidget<C> {
     fn continue_stroke<S: StrokeBackend>(&mut self, sketch: &mut Sketch<S>) {
         if let Action::DrawStroke(key) = self.undo_stack.last().expect("empty undo stack") {
             let stroke = sketch.strokes.get_mut(key).unwrap();
-            if stroke.add_point(&self.stylus, &mut self.tesselator, &self.stroke_options) {
-                log::info!("had to split stroke");
-                self.end_stroke(sketch);
-                self.start_stroke(sketch);
-            };
+            stroke.add_point(&self.stylus, &mut self.tesselator, &self.stroke_options);
         } else {
             panic!("last action not draw stroke in continue stroke");
         }
