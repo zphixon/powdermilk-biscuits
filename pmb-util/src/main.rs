@@ -50,9 +50,8 @@ fn main() -> Result<()> {
     if 1 < [args.version, args.print_default_config, args.migrate]
         .into_iter()
         .fold(0, |acc, b| if b { acc + 1 } else { acc })
-        || (!args.migrate && args.migrate_in_place)
-        || (!args.migrate && args.dry_run)
-        || (args.migrate && args.migrate_in_place && args.dry_run)
+        || (!args.migrate && (args.migrate_in_place || args.dry_run))
+        || (args.migrate_in_place && args.dry_run)
     {
         println!("{}", Args::usage());
         return Err(anyhow::anyhow!("Invalid usage"));
