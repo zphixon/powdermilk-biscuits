@@ -1,6 +1,6 @@
 # Powdermilk Biscuits
 
-![Screenshot of the text "Powdermilk Biscuits" handwritten on a tablet using this program. Each stroke is a different color, and the strokes are rendered with line segments whose stroke width correspond to the pressure of the pen.](pmb.png)
+![Screenshot of the text "Powdermilk Biscuits" handwritten on a tablet using this program. The pen strokes are rendered with stroke weight corresponding to the pressure of the pen.](pmb.png)
 
 Heavens, it's tasty.
 
@@ -16,17 +16,21 @@ The build has visited the local mage and is no longer cursed. Just `git clone` a
 ## Todo:
 
 - Gui
-  - Layers?
-  - Modify all the ui state stuff in egui
-  - i18n
-    - We have mappings between messages and languages but we're still passing strings around
-    - Also investigate [fluent](https://projectfluent.org/)
+  - Investigate [fluent](https://projectfluent.org/)
+    - The current solution is naive A.F.
+  - Bookmark system
+    - Click a button and it zooms you to the bookmark's location
+  - Color palette
+    - Customizable per-file
+  - All kinds of UI customization
+  - Text input?
 - Good finger gestures
+  - Correct handling of multitouch
 - Stroke rendering revamp
   - Infinite scroll, chunks
   - Correct handling of color space (wgpu impl)
 - Fully commit to either WGPU or OpenGL for rendering
 - Config system
-  - Maybe more sophisticated device handling
+  - More sophisticated device configuration
 - Better architecture
-  - multithreaded or actors
+  - Tessellation in another thread
