@@ -218,8 +218,6 @@ pub fn pmb_loop(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 Sketch::default()
             };
 
-        widget.force_update(&mut sketch);
-
         #(#quoted_setup)*;
 
         let mut size = window.inner_size();

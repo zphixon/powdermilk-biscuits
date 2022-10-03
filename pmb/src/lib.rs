@@ -261,6 +261,7 @@ impl<S: StrokeBackend> Sketch<S> {
         tessellator: &mut StrokeTessellator,
         options: &StrokeOptions,
     ) {
+        log::info!("forcing update");
         self.strokes
             .values_mut()
             .flat_map(|stroke| {
