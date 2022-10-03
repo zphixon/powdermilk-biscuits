@@ -127,6 +127,8 @@ impl MeshQueue {
         self.queue.push_back(result);
     }
 
+    // TODO replace basically everything in this file
+    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> Option<TessResult> {
         self.queue.pop_front()
     }
