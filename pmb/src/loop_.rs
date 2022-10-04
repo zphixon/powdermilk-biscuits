@@ -4,6 +4,7 @@ use crate::{
     config::Config,
     event::Event,
     gumdrop::Options,
+    s,
     ui::widget::SketchWidget,
     winit::{
         self,
@@ -90,7 +91,7 @@ where
         config_path
     } else if cfg!(feature = "pmb-release") {
         use crate::error::PmbErrorExt;
-        match Config::config_path().problem(format!("Couldn't open config dir")) {
+        match Config::config_path().problem(s!(CouldNotOpenConfigFile)) {
             Ok(path) => path,
             Err(e) => {
                 e.display();
@@ -168,7 +169,7 @@ where
                     if crate::ui::ask_to_save_then_save(
                         &mut widget,
                         &sketch,
-                        crate::s!(&AskToSaveBeforeClosing),
+                        s!(&AskToSaveBeforeClosing),
                     )
                     .unwrap_or(false)
                     {
@@ -355,7 +356,7 @@ where
             WinitEvent::MainEventsCleared => {
                 match (widget.path.as_ref(), widget.modified) {
                     (Some(path), true) => {
-                        let title = format!("{} (modified)", path.display());
+                        let title = format!("{} ({})", path.display(), s!(&Modified));
                         window.set_title(title.as_str());
                     }
                     (Some(path), false) => window.set_title(&path.display().to_string()),
