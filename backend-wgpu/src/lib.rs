@@ -780,19 +780,6 @@ impl Graphics {
                     );
                 }
 
-                for (id, image) in &egui_textures.set {
-                    egui_painter.update_texture(&self.device, &self.queue, *id, image);
-                }
-                let sd = egui_wgpu::renderer::ScreenDescriptor {
-                    size_in_pixels: [size.width, size.height],
-                    pixels_per_point: 1.,
-                };
-                egui_painter.update_buffers(&self.device, &self.queue, egui_tris, &sd);
-                egui_painter.render(&mut encoder, $frame, egui_tris, &sd, None);
-                for id in &egui_textures.free {
-                    egui_painter.free_texture(id);
-                }
-
                 self.queue.submit(Some(encoder.finish()));
             };
         }
@@ -813,6 +800,25 @@ impl Graphics {
         } else {
             render!(&surface_view);
         }
+
+        let mut encoder = self
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("encoder"),
+            });
+        for (id, image) in &egui_textures.set {
+            egui_painter.update_texture(&self.device, &self.queue, *id, image);
+        }
+        let sd = egui_wgpu::renderer::ScreenDescriptor {
+            size_in_pixels: [size.width, size.height],
+            pixels_per_point: 1.,
+        };
+        egui_painter.update_buffers(&self.device, &self.queue, egui_tris, &sd);
+        egui_painter.render(&mut encoder, &surface_view, egui_tris, &sd, None);
+        for id in &egui_textures.free {
+            egui_painter.free_texture(id);
+        }
+        self.queue.submit(Some(encoder.finish()));
 
         output.present();
 
