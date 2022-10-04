@@ -208,16 +208,19 @@ jobs:
           mv backend-wgpu-win.exe backend-wgpu.exe
           mv util-windows.exe util.exe
           7z a windows.zip backend-gl.exe backend-wgpu.exe util.exe
+          rm *.exe
 
           mv backend-gl-linux backend-gl
           mv backend-wgpu-linux backend-wgpu
           mv util-linux util
           7z a linux.zip backend-gl backend-wgpu util
+          rm backend-gl backend-wgpu util
 
           mv backend-gl-macos backend-gl
           mv backend-wgpu-macos backend-wgpu
           mv util-macos util
           7z a macos.zip backend-gl backend-wgpu util
+          rm backend-gl backend-wgpu util
 
       - uses: softprops/action-gh-release@v1
         with:
