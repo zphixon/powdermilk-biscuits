@@ -390,7 +390,6 @@ where
             },
 
             None => {
-                log::warn!("didn't have any meshes, rebuilding entire thing");
                 self.rebuild_entire_mesh(tessellator, options);
             }
         }
