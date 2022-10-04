@@ -57,23 +57,14 @@ jobs:
       - name: build
         run: cargo build --release --features pmb-release
 
-      - name: gl backend artifact
+      - name: upload artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: backend-gl-linux
-          path: target/release/backend-gl
-
-      - name: wgpu backend artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: backend-wgpu-linux
-          path: target/release/backend-wgpu
-
-      - name: util artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: util-linux
-          path: target/release/pmb-util
+          name: linux
+          path: |
+            target/release/backend-gl
+            target/release/backend-wgpu
+            target/release/pmb-util
 
   windows:
     runs-on: windows-latest
@@ -118,23 +109,14 @@ jobs:
         run: |
           cargo build --release --features pmb-release
 
-      - name: gl backend artifact
+      - name: upload artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: backend-gl-win.exe
-          path: target/release/backend-gl.exe
-
-      - name: wgpu backend artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: backend-wgpu-win.exe
-          path: target/release/backend-wgpu.exe
-
-      - name: util artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: util-windows.exe
-          path: target/release/pmb-util.exe
+          name: windows
+          path: |
+            target/release/backend-gl.exe
+            target/release/backend-wgpu.exe
+            target/release/pmb-util.exe
 
   macos:
     runs-on: macos-latest
@@ -180,23 +162,14 @@ jobs:
       - name: build
         run: cargo build --release --features pmb-release
 
-      - name: gl backend artifact
+      - name: upload artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: backend-gl-macos
-          path: target/release/backend-gl
-
-      - name: wgpu backend artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: backend-wgpu-macos
-          path: target/release/backend-wgpu
-
-      - name: util artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: util-macos
-          path: target/release/pmb-util
+          name: macos
+          path: |
+            target/release/backend-gl
+            target/release/backend-wgpu
+            target/release/pmb-util
 
   package:
     needs: [windows, linux, macos]
@@ -204,23 +177,10 @@ jobs:
     steps:
       - uses: actions/download-artifact@v3
       - run: |
-          mv backend-gl-win.exe backend-gl.exe
-          mv backend-wgpu-win.exe backend-wgpu.exe
-          mv util-windows.exe util.exe
-          7z a windows.zip backend-gl.exe backend-wgpu.exe util.exe
-          rm *.exe
-
-          mv backend-gl-linux backend-gl
-          mv backend-wgpu-linux backend-wgpu
-          mv util-linux util
-          7z a linux.zip backend-gl backend-wgpu util
-          rm backend-gl backend-wgpu util
-
-          mv backend-gl-macos backend-gl
-          mv backend-wgpu-macos backend-wgpu
-          mv util-macos util
-          7z a macos.zip backend-gl backend-wgpu util
-          rm backend-gl backend-wgpu util
+          7z a windows.zip windows/backend-gl.exe windows/backend-wgpu.exe windows/pmb-util.exe
+          7z a linux.zip linux/backend-gl linux/backend-wgpu linux/pmb-util
+          7z a macos.zip macos/backend-gl macos/backend-wgpu macos/pmb-util
+          rm -r windows linux macos
 
       - uses: softprops/action-gh-release@v1
         with:
