@@ -11,7 +11,7 @@ use crate::{
         dpi::{PhysicalPosition, PhysicalSize},
         event::{
             ElementState, Event as WinitEvent, KeyboardInput, MouseScrollDelta, Touch, TouchPhase,
-            VirtualKeyCode, WindowEvent,
+            WindowEvent,
         },
         event_loop::EventLoop,
         window::WindowBuilder,
@@ -189,7 +189,7 @@ where
                         input:
                             KeyboardInput {
                                 state: ElementState::Pressed,
-                                virtual_keycode: Some(VirtualKeyCode::Escape),
+                                virtual_keycode: Some(winit::event::VirtualKeyCode::Escape),
                                 ..
                             },
                         ..
