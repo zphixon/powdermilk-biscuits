@@ -82,15 +82,16 @@ checksum = "98161a4e3e2184da77bb14f02184cdd111e83bbbcc9979dfee3c44b9a85f5602"
 
 [[package]]
 name = "arboard"
-version = "2.1.1"
+version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc120354d1b5ec6d7aaf4876b602def75595937b5e15d356eb554ab5177e08bb"
+checksum = "79e8af4eff708b72e371acd4625ad3d01a88c946b9e8d6868cb5bb6e4d0d923c"
 dependencies = [
  "clipboard-win",
  "log",
  "objc",
  "objc-foundation",
  "objc_id",
+ "once_cell",
  "parking_lot",
  "thiserror",
  "winapi",
@@ -194,18 +195,19 @@ checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 
 [[package]]
 name = "bincode"
-version = "2.0.0-rc.1"
+version = "2.0.0-rc.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f609ceb2c41b0d0277314a789ef0e7eb14593d5485f7c67320bed3924ebb1b33"
+checksum = "7bb50c5a2ef4b9b1e7ae73e3a73b52ea24b20312d629f9c4df28260b7ad2c3c4"
 dependencies = [
  "bincode_derive",
+ "serde",
 ]
 
 [[package]]
 name = "bincode_derive"
-version = "2.0.0-rc.1"
+version = "2.0.0-rc.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "913287a8f3e00db4c7ae1b87e9b9b8cebd6b89217eaadfc281fa5c897da35dc3"
+checksum = "0a45a23389446d2dd25dc8e73a7a3b3c43522b630cac068927f0649d43d719d2"
 dependencies = [
  "virtue",
 ]
@@ -311,7 +313,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a22a6a8f622f797120d452c630b0ab12e1331a1a753e2039ce7868d4ac77b4ee"
 dependencies = [
  "log",
- "nix 0.24.2",
+ "nix",
  "slotmap",
  "thiserror",
  "vec_map",
@@ -648,7 +650,7 @@ checksum = "9ea835d29036a4087793836fa931b08837ad5e957da9e23886b29586fb9b6650"
 [[package]]
 name = "egui"
 version = "0.19.0"
-source = "git+https://github.com/zphixon/egui?branch=unadulterated#2ea76a75491ecf6c783fec72c492b601eefbb1c1"
+source = "git+https://github.com/zphixon/egui?branch=unadulterated#4cc79439494b6e7f33045ae802bc4ec9b14552e2"
 dependencies = [
  "ahash 0.8.0",
  "epaint",
@@ -659,7 +661,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.19.0"
-source = "git+https://github.com/zphixon/egui?branch=unadulterated#2ea76a75491ecf6c783fec72c492b601eefbb1c1"
+source = "git+https://github.com/zphixon/egui?branch=unadulterated#4cc79439494b6e7f33045ae802bc4ec9b14552e2"
 dependencies = [
  "bytemuck",
  "document-features",
@@ -672,7 +674,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.19.0"
-source = "git+https://github.com/zphixon/egui?branch=unadulterated#2ea76a75491ecf6c783fec72c492b601eefbb1c1"
+source = "git+https://github.com/zphixon/egui?branch=unadulterated#4cc79439494b6e7f33045ae802bc4ec9b14552e2"
 dependencies = [
  "arboard",
  "egui",
@@ -686,7 +688,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.19.0"
-source = "git+https://github.com/zphixon/egui?branch=unadulterated#2ea76a75491ecf6c783fec72c492b601eefbb1c1"
+source = "git+https://github.com/zphixon/egui?branch=unadulterated#4cc79439494b6e7f33045ae802bc4ec9b14552e2"
 dependencies = [
  "bytemuck",
  "egui",
@@ -701,7 +703,7 @@ dependencies = [
 [[package]]
 name = "emath"
 version = "0.19.0"
-source = "git+https://github.com/zphixon/egui?branch=unadulterated#2ea76a75491ecf6c783fec72c492b601eefbb1c1"
+source = "git+https://github.com/zphixon/egui?branch=unadulterated#4cc79439494b6e7f33045ae802bc4ec9b14552e2"
 dependencies = [
  "bytemuck",
 ]
@@ -722,7 +724,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.19.0"
-source = "git+https://github.com/zphixon/egui?branch=unadulterated#2ea76a75491ecf6c783fec72c492b601eefbb1c1"
+source = "git+https://github.com/zphixon/egui?branch=unadulterated#4cc79439494b6e7f33045ae802bc4ec9b14552e2"
 dependencies = [
  "ab_glyph",
  "ahash 0.8.0",
@@ -1376,7 +1378,7 @@ dependencies = [
 [[package]]
 name = "lyon"
 version = "1.0.0"
-source = "git+https://github.com/zphixon/lyon?branch=new-euclid#cf78c2e079be2b9a6d5b4c177755965a65436dd7"
+source = "git+https://github.com/zphixon/lyon?branch=new-euclid#5217ee758eed692843e6a6227458e74fe4b5a17e"
 dependencies = [
  "lyon_algorithms",
  "lyon_tessellation",
@@ -1385,7 +1387,7 @@ dependencies = [
 [[package]]
 name = "lyon_algorithms"
 version = "1.0.1"
-source = "git+https://github.com/zphixon/lyon?branch=new-euclid#cf78c2e079be2b9a6d5b4c177755965a65436dd7"
+source = "git+https://github.com/zphixon/lyon?branch=new-euclid#5217ee758eed692843e6a6227458e74fe4b5a17e"
 dependencies = [
  "lyon_path",
 ]
@@ -1393,7 +1395,7 @@ dependencies = [
 [[package]]
 name = "lyon_geom"
 version = "1.0.1"
-source = "git+https://github.com/zphixon/lyon?branch=new-euclid#cf78c2e079be2b9a6d5b4c177755965a65436dd7"
+source = "git+https://github.com/zphixon/lyon?branch=new-euclid#5217ee758eed692843e6a6227458e74fe4b5a17e"
 dependencies = [
  "arrayvec 0.7.2",
  "euclid",
@@ -1403,7 +1405,7 @@ dependencies = [
 [[package]]
 name = "lyon_path"
 version = "1.0.1"
-source = "git+https://github.com/zphixon/lyon?branch=new-euclid#cf78c2e079be2b9a6d5b4c177755965a65436dd7"
+source = "git+https://github.com/zphixon/lyon?branch=new-euclid#5217ee758eed692843e6a6227458e74fe4b5a17e"
 dependencies = [
  "lyon_geom",
 ]
@@ -1411,7 +1413,7 @@ dependencies = [
 [[package]]
 name = "lyon_tessellation"
 version = "1.0.4"
-source = "git+https://github.com/zphixon/lyon?branch=new-euclid#cf78c2e079be2b9a6d5b4c177755965a65436dd7"
+source = "git+https://github.com/zphixon/lyon?branch=new-euclid#5217ee758eed692843e6a6227458e74fe4b5a17e"
 dependencies = [
  "float_next_after",
  "lyon_path",
@@ -1547,26 +1549,13 @@ dependencies = [
 
 [[package]]
 name = "ndk"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2032c77e030ddee34a6787a64166008da93f6a352b629261d0fee232b8742dd4"
-dependencies = [
- "bitflags",
- "jni-sys",
- "ndk-sys 0.3.0",
- "num_enum",
- "thiserror",
-]
-
-[[package]]
-name = "ndk"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "451422b7e4718271c8b5b3aadf5adedba43dc76312454b387e98fae0fc951aa0"
 dependencies = [
  "bitflags",
  "jni-sys",
- "ndk-sys 0.4.0",
+ "ndk-sys",
  "num_enum",
  "raw-window-handle 0.5.0",
  "thiserror",
@@ -1580,31 +1569,16 @@ checksum = "27b02d87554356db9e9a873add8782d4ea6e3e58ea071a9adb9a2e8ddb884a8b"
 
 [[package]]
 name = "ndk-glue"
-version = "0.6.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d0c4a7b83860226e6b4183edac21851f05d5a51756e97a1144b7f5a6b63e65f"
-dependencies = [
- "lazy_static",
- "libc",
- "log",
- "ndk 0.6.0",
- "ndk-context",
- "ndk-macro",
- "ndk-sys 0.3.0",
-]
-
-[[package]]
-name = "ndk-glue"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0434fabdd2c15e0aab768ca31d5b7b333717f03cf02037d5a0a3ff3c278ed67f"
 dependencies = [
  "libc",
  "log",
- "ndk 0.7.0",
+ "ndk",
  "ndk-context",
  "ndk-macro",
- "ndk-sys 0.4.0",
+ "ndk-sys",
  "once_cell",
  "parking_lot",
 ]
@@ -1624,33 +1598,11 @@ dependencies = [
 
 [[package]]
 name = "ndk-sys"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e5a6ae77c8ee183dcbbba6150e2e6b9f3f4196a7666c02a715a95692ec1fa97"
-dependencies = [
- "jni-sys",
-]
-
-[[package]]
-name = "ndk-sys"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "21d83ec9c63ec5bf950200a8e508bdad6659972187b625469f58ef8c08e29046"
 dependencies = [
  "jni-sys",
-]
-
-[[package]]
-name = "nix"
-version = "0.22.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4916f159ed8e5de0082076562152a76b7a1f64a01fd9d1e0fea002c37624faf"
-dependencies = [
- "bitflags",
- "cc",
- "cfg-if",
- "libc",
- "memoffset",
 ]
 
 [[package]]
@@ -2183,9 +2135,9 @@ dependencies = [
 
 [[package]]
 name = "smallvec"
-version = "1.9.0"
+version = "1.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2fd0db749597d91ff862fd1d55ea87f7855a744a8425a64695b6fca237d1dad1"
+checksum = "a507befe795404456341dfab10cef66ead4c041f62b8b11bbb92bffe5d0953e0"
 
 [[package]]
 name = "smithay-client-toolkit"
@@ -2199,7 +2151,7 @@ dependencies = [
  "lazy_static",
  "log",
  "memmap2",
- "nix 0.24.2",
+ "nix",
  "pkg-config",
  "wayland-client",
  "wayland-cursor",
@@ -2496,9 +2448,9 @@ checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 
 [[package]]
 name = "virtue"
-version = "0.0.7"
+version = "0.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "757cfbfe0d17ee6f22fe97e536d463047d451b47cf9d11e2b7d1398b0ef274dd"
+checksum = "7b60dcd6a64dd45abf9bd426970c9843726da7fc08f44cd6fcebf68c21220a63"
 
 [[package]]
 name = "walkdir"
@@ -2592,7 +2544,7 @@ dependencies = [
  "bitflags",
  "downcast-rs",
  "libc",
- "nix 0.24.2",
+ "nix",
  "scoped-tls",
  "wayland-commons",
  "wayland-scanner",
@@ -2605,7 +2557,7 @@ version = "0.29.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8691f134d584a33a6606d9d717b95c4fa20065605f798a3f350d78dced02a902"
 dependencies = [
- "nix 0.24.2",
+ "nix",
  "once_cell",
  "smallvec",
  "wayland-sys 0.29.5",
@@ -2617,7 +2569,7 @@ version = "0.29.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6865c6b66f13d6257bef1cd40cbfe8ef2f150fb8ebbdb1e8e873455931377661"
 dependencies = [
- "nix 0.24.2",
+ "nix",
  "wayland-client",
  "xcursor",
 ]
@@ -2680,12 +2632,14 @@ dependencies = [
 
 [[package]]
 name = "webbrowser"
-version = "0.7.1"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc6a3cffdb686fbb24d9fb8f03a213803277ed2300f11026a3afe1f108dc021b"
+checksum = "01d62aa75495ab67cdc273d0b95cc76bcedfea2ba28338a4cf9b4137949dfac5"
 dependencies = [
  "jni",
- "ndk-glue 0.6.2",
+ "ndk-glue",
+ "objc",
+ "raw-window-handle 0.5.0",
  "url",
  "web-sys",
  "widestring",
@@ -2799,9 +2753,9 @@ dependencies = [
 
 [[package]]
 name = "widestring"
-version = "0.5.1"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17882f045410753661207383517a6f62ec3dbeb6a4ed2acce01f0728238d1983"
+checksum = "653f141f39ec16bba3c5abe400a0c60da7468261cc2cbf36805022876bc721a8"
 
 [[package]]
 name = "winapi"
@@ -2985,8 +2939,8 @@ dependencies = [
  "libc",
  "log",
  "mio",
- "ndk 0.7.0",
- "ndk-glue 0.7.0",
+ "ndk",
+ "ndk-glue",
  "objc2",
  "once_cell",
  "percent-encoding",
@@ -3016,14 +2970,24 @@ dependencies = [
 
 [[package]]
 name = "x11rb"
-version = "0.9.0"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e99be55648b3ae2a52342f9a870c0e138709a3493261ce9b469afe6e4df6d8a"
+checksum = "592b4883219f345e712b3209c62654ebda0bb50887f330cbd018d0f654bfd507"
 dependencies = [
  "gethostname",
- "nix 0.22.3",
+ "nix",
  "winapi",
  "winapi-wsapoll",
+ "x11rb-protocol",
+]
+
+[[package]]
+name = "x11rb-protocol"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56b245751c0ac9db0e006dc812031482784e434630205a93c73cfefcaabeac67"
+dependencies = [
+ "nix",
 ]
 
 [[package]]
