@@ -5,6 +5,7 @@ pub mod error;
 pub mod event;
 pub mod graphics;
 pub mod i18n;
+pub mod loop_;
 pub mod migrate;
 pub mod stroke;
 pub mod tess;

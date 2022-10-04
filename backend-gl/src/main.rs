@@ -1,7 +1,16 @@
 #![cfg_attr(all(windows, feature = "pmb-release"), windows_subsystem = "windows")]
 
+use backend_gl::{GlCoords, GlStrokeBackend, Renderer};
+use egui_glow::EguiGlow;
 use ezgl::Ezgl;
-use powdermilk_biscuits::winit::{dpi::PhysicalSize, window::Window};
+use powdermilk_biscuits::{
+    config::Config,
+    egui::Context as EguiContext,
+    loop_::{loop_, LoopContext, PerEvent},
+    ui::widget::SketchWidget,
+    winit::{dpi::PhysicalSize, event::Event as WinitEvent, event_loop::EventLoop, window::Window},
+    Sketch,
+};
 
 fn no_winit_ezgl(window: &Window, size: PhysicalSize<u32>) -> Ezgl {
     #[cfg(all(unix, not(target_os = "macos")))]
@@ -17,55 +26,69 @@ fn no_winit_ezgl(window: &Window, size: PhysicalSize<u32>) -> Ezgl {
 }
 
 fn main() {
-    env_logger::init();
+    loop_::<GlStrokeBackend, GlCoords, GlLoop>();
+}
 
-    pmb_macros::pmb_loop!(
-        coords: backend_gl::GlCoords,
-        stroke_backend: backend_gl::GlStrokeBackend,
+struct GlLoop {
+    gl: Ezgl,
+    renderer: Renderer,
+    egui_glow: EguiGlow,
+}
 
-        egui_ctx: { &egui_glow.egui_ctx },
+impl LoopContext<GlStrokeBackend, GlCoords> for GlLoop {
+    fn setup(ev: &EventLoop<()>, window: &Window, _: &mut Sketch<GlStrokeBackend>) -> Self {
+        let gl = no_winit_ezgl(window, window.inner_size());
+        GlLoop {
+            renderer: Renderer::new(&gl),
+            egui_glow: EguiGlow::new(ev, gl.glow_context(), None),
+            gl,
+        }
+    }
 
-        setup:
-            gl = { no_winit_ezgl(&window, window.inner_size()) }
-            renderer = { backend_gl::Renderer::new(&gl) }
-            egui_glow = mut {
-                egui_glow::EguiGlow::new(&ev, gl.glow_context(), None)
-            };
+    fn per_event(
+        &mut self,
+        event: &WinitEvent<()>,
+        window: &Window,
+        sketch: &mut Sketch<GlStrokeBackend>,
+        widget: &mut SketchWidget<GlCoords>,
+        config: &mut Config,
+    ) -> PerEvent {
+        if let WinitEvent::WindowEvent { event, .. } = &event {
+            let response = self.egui_glow.on_event(event);
 
-        per_event: {
-            if let WinitEvent::WindowEvent { event, .. } = &event {
-                let response = egui_glow.on_event(event);
-                if response.repaint {
-                    window.request_redraw();
-                    flow.set_poll();
-                }
-
-                if response.consumed {
-                    return;
-                }
+            if response.consumed {
+                return PerEvent::ConsumedByEgui(response.repaint);
             }
+        }
 
-            let redraw_after = egui_glow.run(&window, |ctx| {
-                powdermilk_biscuits::ui::egui(ctx, &mut sketch, &mut widget, &mut config);
-            });
+        let _redraw_after = self.egui_glow.run(window, |ctx| {
+            powdermilk_biscuits::ui::egui(ctx, sketch, widget, config);
+        });
 
-            if redraw_after.is_zero() {
-                flow.set_poll();
-                window.request_redraw();
-            } else if let Some(after) = std::time::Instant::now().checked_add(redraw_after) {
-                flow.set_wait_until(after);
-            }
-        },
+        PerEvent::Nothing
+    }
 
-        resize: {
-            gl.resize(new_size.width, new_size.height);
-            renderer.resize(new_size, &gl);
-        },
+    fn egui_ctx(&self) -> &EguiContext {
+        &self.egui_glow.egui_ctx
+    }
 
-        render: {
-            renderer.render(&gl, &mut sketch, &widget, size, cursor_visible);
-            egui_glow.paint(&window);
-            gl.swap_buffers().unwrap();
-        },
-    );
+    fn resize(&mut self, new_size: PhysicalSize<u32>) {
+        self.gl.resize(new_size.width, new_size.height);
+        self.renderer.resize(new_size, &self.gl);
+    }
+
+    fn render(
+        &mut self,
+        window: &Window,
+        sketch: &mut Sketch<GlStrokeBackend>,
+        widget: &mut SketchWidget<GlCoords>,
+        _: &mut Config,
+        size: PhysicalSize<u32>,
+        cursor_visible: bool,
+    ) {
+        self.renderer
+            .render(&self.gl, sketch, widget, size, cursor_visible);
+        self.egui_glow.paint(window);
+        self.gl.swap_buffers().unwrap();
+    }
 }

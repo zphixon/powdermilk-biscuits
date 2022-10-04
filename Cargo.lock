@@ -168,7 +168,6 @@ dependencies = [
  "ezgl",
  "glam",
  "log",
- "pmb-macros",
  "powdermilk-biscuits",
 ]
 
@@ -182,7 +181,6 @@ dependencies = [
  "futures",
  "glam",
  "log",
- "pmb-macros",
  "powdermilk-biscuits",
  "smaa",
  "wgpu",
@@ -1900,6 +1898,7 @@ dependencies = [
  "bytemuck",
  "dirs",
  "egui",
+ "env_logger",
  "flate2",
  "gumdrop",
  "kdl",
