@@ -51,6 +51,13 @@ messages!(
     Modified,
     TitleUnmodifiedNoFile,
     TitleModifiedNoFile,
+    FileMenu,
+    FileNew,
+    FileOpen,
+    FileSave,
+    EditMenu,
+    EditUndo,
+    EditRedo,
 );
 
 #[macro_export]

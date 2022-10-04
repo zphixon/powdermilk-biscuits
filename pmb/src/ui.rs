@@ -62,6 +62,23 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
 ) {
     use egui::{Color32, ComboBox, Grid, Id, Sense, SidePanel, Slider, TopBottomPanel};
 
+    TopBottomPanel::top("menu bar")
+        .resizable(false)
+        .show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.heading(s!(&RealHotItem));
+                ui.menu_button(s!(&FileMenu), |ui| {
+                    let _ = ui.button(s!(&FileSave));
+                    let _ = ui.button(s!(&FileOpen));
+                    let _ = ui.button(s!(&FileNew));
+                });
+                ui.menu_button(s!(&EditMenu), |ui| {
+                    let _ = ui.button(s!(&EditUndo));
+                    let _ = ui.button(s!(&EditRedo));
+                });
+            });
+        });
+
     SidePanel::left("side").resizable(false).show(ctx, |ui| {
         Grid::new("colors").show(ui, |ui| {
             ui.label(s!(&ClearColor));
@@ -95,7 +112,7 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
         }
     });
 
-    TopBottomPanel::top("top").show(ctx, |ui| {
+    TopBottomPanel::top("top").resizable(false).show(ctx, |ui| {
         ui.horizontal(|ui| {
             ui.radio_value(&mut widget.active_tool, Tool::Pen, s!(&Pen));
             ui.radio_value(&mut widget.active_tool, Tool::Eraser, s!(&Eraser));
