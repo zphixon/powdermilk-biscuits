@@ -13,20 +13,9 @@ pmb-release = ['powdermilk-biscuits/pmb-release']
 env_logger.workspace = true
 log.workspace = true
 glam.workspace = true
-
-wgpu = '0.13.1'
-futures = '0.3.21'
-smaa = '0.7.0'
-
-powdermilk-biscuits = { path = '../pmb' }
-
-[dependencies.egui-winit]
-git = 'https://github.com/zphixon/egui'
-branch = 'unadulterated'
-package = 'egui-winit'
-
-[dependencies.egui-wgpu]
-git = 'https://github.com/zphixon/egui'
-branch = 'unadulterated'
-package = 'egui-wgpu'
-features = ['document-features']
+wgpu.workspace = true
+futures.workspace = true
+smaa.workspace = true
+powdermilk-biscuits.workspace = true
+egui-winit.workspace = true
+egui-wgpu.workspace = true

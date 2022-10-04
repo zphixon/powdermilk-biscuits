@@ -6,10 +6,9 @@ edition = '2021'
 [lib]
 proc-macro = true
 
-
 [dependencies]
-proc-macro2 = '1.0.42'
-quote = '1.0.21'
-syn = '1.0.101'
-derive_builder = '0.11.2'
-indexmap = '1.9.1'
+proc-macro2.workspace = true
+quote.workspace = true
+syn.workspace = true
+derive_builder.workspace = true
+indexmap.workspace = true

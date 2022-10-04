@@ -13,13 +13,6 @@ pmb-release = ['powdermilk-biscuits/pmb-release']
 env_logger.workspace = true
 log.workspace = true
 glam.workspace = true
-
-ezgl = { git = 'https://github.com/zphixon/ezgl' }
-
-powdermilk-biscuits = { path = '../pmb' }
-
-[dependencies.egui_glow]
-git = 'https://github.com/zphixon/egui'
-branch = 'unadulterated'
-package = 'egui_glow'
-features = [ 'winit' ]
+ezgl.workspace = true
+egui_glow.workspace = true
+powdermilk-biscuits.workspace = true

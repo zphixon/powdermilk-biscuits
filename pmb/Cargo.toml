@@ -18,30 +18,14 @@ serde.workspace = true
 ron.workspace = true
 slotmap.workspace = true
 gumdrop.workspace = true
-
-dirs = '4.0.0'
-kdl = '4.5.0'
-once_cell = '1.14.0'
-whoami = '1.2.3'
-paste = '1.0.9'
-left-right = '0.11.5'
-
-pmb-macros = { path = '../pmb-macros' }
-
-lyon = { git = 'https://github.com/zphixon/lyon', branch = 'new-euclid' }
-rfd = { git = 'https://github.com/zphixon/rfd', branch = 'yes-no-cancel' }
-
-[dependencies.egui]
-git = 'https://github.com/zphixon/egui'
-branch = 'unadulterated'
-package = 'egui'
-
-[target.'cfg(windows)'.dependencies.winit]
-git = 'https://github.com/zphixon/winit'
-branch = 'pen-info2'
-features = ['serde']
-
-[target.'cfg(unix)'.dependencies.winit]
-git = 'https://github.com/zphixon/winit'
-branch = 'pen-info2'
-features = ['x11', 'serde']
+dirs.workspace = true
+kdl.workspace = true
+once_cell.workspace = true
+whoami.workspace = true
+paste.workspace = true
+left-right.workspace = true
+pmb-macros.workspace = true
+lyon.workspace = true
+rfd.workspace = true
+egui.workspace = true
+winit.workspace = true
