@@ -60,14 +60,18 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
     widget: &mut widget::SketchWidget<C>,
     config: &mut Config,
 ) {
-    use egui::{Color32, ComboBox, Id, Sense, SidePanel, Slider, TopBottomPanel};
+    use egui::{Color32, ComboBox, Grid, Id, Sense, SidePanel, Slider, TopBottomPanel};
 
-    SidePanel::left("side").show(ctx, |ui| {
-        ui.heading(s!(&RealHotItem));
-        ui.label(s!(&ClearColor));
-        ui.color_edit_button_rgb(&mut sketch.bg_color);
-        ui.label(s!(&StrokeColor));
-        ui.color_edit_button_rgb(&mut sketch.fg_color);
+    SidePanel::left("side").resizable(false).show(ctx, |ui| {
+        Grid::new("colors").show(ui, |ui| {
+            ui.label(s!(&ClearColor));
+            ui.color_edit_button_rgb(&mut sketch.bg_color);
+            ui.end_row();
+            ui.label(s!(&StrokeColor));
+            ui.color_edit_button_rgb(&mut sketch.fg_color);
+            ui.end_row();
+        });
+
         ui.label(s!(&BrushSize));
 
         let brush_size_slider = ui.add(Slider::new(
