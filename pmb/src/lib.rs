@@ -27,8 +27,6 @@ use lyon::lyon_tessellation::{StrokeOptions, StrokeTessellator};
 use slotmap::{DefaultKey, SlotMap};
 use std::path::PathBuf;
 
-pub const TITLE_UNMODIFIED: &str = "hi! <3";
-pub const TITLE_MODIFIED: &str = "hi! <3 (modified)";
 pub const PMB_MAGIC: [u8; 3] = [b'P', b'M', b'B'];
 
 pub const DEFAULT_ZOOM: f32 = 50.;

@@ -105,7 +105,7 @@ where
     let mut config = Config::from_disk(&config_path);
     let mut builder = WindowBuilder::new()
         .with_maximized(config.window_maximized)
-        .with_title(crate::TITLE_UNMODIFIED);
+        .with_title(s!(&TitleModifiedNoFile));
 
     if let (Some(x), Some(y)) = config.start_pos() {
         builder = builder.with_position(PhysicalPosition { x, y });
@@ -360,8 +360,8 @@ where
                         window.set_title(title.as_str());
                     }
                     (Some(path), false) => window.set_title(&path.display().to_string()),
-                    (None, true) => window.set_title(crate::TITLE_MODIFIED),
-                    (None, false) => window.set_title(crate::TITLE_UNMODIFIED),
+                    (None, true) => window.set_title(s!(&TitleModifiedNoFile)),
+                    (None, false) => window.set_title(s!(&TitleUnmodifiedNoFile)),
                 }
 
                 if ctx.egui_ctx().wants_pointer_input() {

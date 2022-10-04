@@ -49,6 +49,8 @@ messages!(
     Zoom,
     BrushSize,
     Modified,
+    TitleUnmodifiedNoFile,
+    TitleModifiedNoFile,
 );
 
 #[macro_export]

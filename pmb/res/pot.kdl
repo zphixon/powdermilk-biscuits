@@ -26,9 +26,11 @@ Proceed?"
   Zoom "Zoom"
   BrushSize "Brush size"
   Modified "modified"
+  TitleUnmodifiedNoFile "hi! <3"
+  TitleModifiedNoFile "hi! <3 (modified)"
 }
 
-/-es {
+es {
   MigrateWarningTitle "(es) Migrate version"
   MigrateWarningMessage "(es) Significant internal changes have been made to Powdermilk Biscuits since you last opened this file. Although it has not been marked as significantly incompatible with the current version, you may still experience data loss by attempting to upgrade this file to the most recent version.
 
@@ -53,4 +55,9 @@ Proceed?"
   Eraser "(es) Eraser"
   UseMouseForPen "(es) Use mouse for pen"
   ToolForGesture1 "(es) Tool for one-finger touch"
+  Modified "(es) modified"
+  Zoom "(es) Zoom"
+  BrushSize "(es) Brush size"
+  TitleUnmodifiedNoFile "¡hola! <3"
+  TitleModifiedNoFile "¡hola! <3 ((es) modified)"
 }
