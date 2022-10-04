@@ -60,27 +60,45 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
     widget: &mut widget::SketchWidget<C>,
     config: &mut Config,
 ) {
-    egui::SidePanel::left("side").show(ctx, |ui| {
+    use egui::{Color32, ComboBox, Id, Sense, SidePanel, Slider, TopBottomPanel};
+
+    SidePanel::left("side").show(ctx, |ui| {
         ui.heading(s!(&RealHotItem));
         ui.label(s!(&ClearColor));
         ui.color_edit_button_rgb(&mut sketch.bg_color);
         ui.label(s!(&StrokeColor));
         ui.color_edit_button_rgb(&mut sketch.fg_color);
         ui.label(s!(&BrushSize));
-        ui.add(egui::Slider::new(
+
+        let brush_size_slider = ui.add(Slider::new(
             &mut widget.brush_size,
             crate::MIN_BRUSH..=crate::MAX_BRUSH,
         ));
+
+        if brush_size_slider.hovered() || brush_size_slider.is_pointer_button_down_on() {
+            egui::show_tooltip(ui.ctx(), Id::new("tt"), |ui| {
+                let size = widget.brush_size as f32;
+                let (_id, space) = ui.allocate_exact_size(egui::vec2(size, size), Sense::hover());
+                ui.painter().circle_stroke(
+                    space.rect.center(),
+                    size / 2.,
+                    egui::Stroke {
+                        width: 0.5,
+                        color: Color32::WHITE,
+                    },
+                );
+            });
+        }
     });
 
-    egui::TopBottomPanel::top("top").show(ctx, |ui| {
+    TopBottomPanel::top("top").show(ctx, |ui| {
         ui.horizontal(|ui| {
             ui.radio_value(&mut widget.active_tool, Tool::Pen, s!(&Pen));
             ui.radio_value(&mut widget.active_tool, Tool::Eraser, s!(&Eraser));
             ui.radio_value(&mut widget.active_tool, Tool::Pan, s!(&Pan));
             ui.checkbox(&mut config.use_mouse_for_pen, s!(&UseMouseForPen));
 
-            egui::ComboBox::from_label(s!(&ToolForGesture1))
+            ComboBox::from_label(s!(&ToolForGesture1))
                 .selected_text(match config.tool_for_gesture_1 {
                     Tool::Pen => s!(&Pen), // TODO helper for this?
                     Tool::Pan => s!(&Pan),
@@ -92,8 +110,8 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
                     ui.selectable_value(&mut config.tool_for_gesture_1, Tool::Pan, s!(&Pan));
                 });
 
-            let slider = egui::Slider::new(&mut sketch.zoom, crate::MIN_ZOOM..=crate::MAX_ZOOM)
-                .text(s!(&Zoom));
+            let slider =
+                Slider::new(&mut sketch.zoom, crate::MIN_ZOOM..=crate::MAX_ZOOM).text(s!(&Zoom));
 
             if ui.add(slider).changed() {
                 sketch.update_visible_strokes::<C>(widget.width, widget.height);
