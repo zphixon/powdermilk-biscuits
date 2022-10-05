@@ -654,11 +654,29 @@ impl<C: CoordinateSystem> SketchWidget<C> {
             self.modified = true;
         }
 
-        if self.input.combo_just_pressed(&config.debug_print_strokes)
-            && !self
-                .input
-                .combo_just_pressed(&config.debug_dirty_all_strokes)
+        if self
+            .input
+            .combo_just_pressed(&config.debug_print_stroke_info)
         {
+            for stroke in sketch.strokes.values() {
+                println!(
+                    "{} points, {} vertices, {} size, {} visible, {:?} color, {} top left, {} bottom right",
+                    stroke.points().len(),
+                    stroke.vertices().count(),
+                    stroke.brush_size(),
+                    stroke.visible,
+                    stroke.color(),
+                    stroke.top_left,
+                    stroke.bottom_right,
+                );
+            }
+            println!("brush={}", self.brush_size);
+            println!("zoom={:.02}", sketch.zoom);
+            println!("origin={}", sketch.origin);
+            println!("undo_stack={:?}", self.undo_stack);
+        }
+
+        if self.input.combo_just_pressed(&config.debug_print_strokes) {
             for stroke in sketch.strokes.values() {
                 println!("stroke");
                 for point in stroke.points().iter() {

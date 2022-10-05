@@ -70,6 +70,7 @@ config!(
     debug_toggle_use_mouse_for_pen: Combination { Combination::INACTIVE },
     debug_toggle_use_finger_for_pen: Combination { Combination::INACTIVE },
     debug_clear_strokes: Combination { Combination::INACTIVE },
+    debug_print_stroke_info: Combination { Combination::INACTIVE },
     debug_print_strokes: Combination { Combination::INACTIVE },
     debug_dirty_all_strokes: Combination { Combination::INACTIVE },
 );
@@ -99,7 +100,8 @@ impl Config {
             debug_toggle_use_mouse_for_pen: M.into(),
             debug_toggle_use_finger_for_pen: F.into(),
             debug_clear_strokes: C.into(),
-            debug_print_strokes: D.into(),
+            debug_print_stroke_info: D.into(),
+            debug_print_strokes: Combination::from(LShift) | D,
             debug_dirty_all_strokes: Combination::from(LControl) | D,
             ..Config::new()
         }
