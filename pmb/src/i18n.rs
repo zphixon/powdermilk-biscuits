@@ -55,6 +55,7 @@ messages!(
     FileNew,
     FileOpen,
     FileSave,
+    FileSettings,
     EditMenu,
     EditUndo,
     EditRedo,

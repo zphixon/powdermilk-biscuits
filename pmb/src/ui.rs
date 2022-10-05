@@ -66,9 +66,11 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
         ui.horizontal(|ui| {
             ui.heading(s!(&RealHotItem));
             ui.menu_button(s!(&FileMenu), |ui| {
-                let _ = ui.button(s!(&FileSave));
-                let _ = ui.button(s!(&FileOpen));
                 let _ = ui.button(s!(&FileNew));
+                let _ = ui.button(s!(&FileOpen));
+                let _ = ui.button(s!(&FileSave));
+                ui.separator();
+                let _ = ui.button(s!(&FileSettings));
             });
             ui.menu_button(s!(&EditMenu), |ui| {
                 let _ = ui.button(s!(&EditUndo));
