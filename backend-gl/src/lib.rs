@@ -47,8 +47,8 @@ impl CoordinateSystem for GlCoords {
 pub struct GlStrokeBackend {
     pub line_vao: gl::VertexArray,
     pub line_len: i32,
-    pub mesh_vao: gl::VertexArray,
-    pub mesh_len: Vec<i32>,
+    pub mesh_vaos: Vec<gl::VertexArray>,
+    pub mesh_lens: Vec<i32>,
     pub dirty: bool,
 }
 
@@ -286,11 +286,12 @@ impl Renderer {
                     gl.enable_vertex_attrib_array(0);
                     gl.enable_vertex_attrib_array(1);
 
-                    let mesh_vao = gl.create_vertex_array().unwrap();
-                    gl.bind_vertex_array(Some(mesh_vao));
-
-                    let mut mesh_len = Vec::new();
+                    let mut mesh_vaos = Vec::new();
+                    let mut mesh_lens = Vec::new();
                     for mesh in stroke.meshes.iter() {
+                        let mesh_vao = gl.create_vertex_array().unwrap();
+                        gl.bind_vertex_array(Some(mesh_vao));
+
                         let mesh_vbo = gl.create_buffer().unwrap();
                         gl.bind_buffer(gl::ARRAY_BUFFER, Some(mesh_vbo));
                         gl.buffer_data_u8_slice(
@@ -309,14 +310,15 @@ impl Renderer {
                             gl::STATIC_DRAW,
                         );
 
-                        mesh_len.push(mesh.indices().len() as i32);
+                        mesh_vaos.push(mesh_vao);
+                        mesh_lens.push(mesh.indices().len() as i32);
                     }
 
                     GlStrokeBackend {
                         line_vao,
                         line_len: stroke.points.len() as i32,
-                        mesh_vao,
-                        mesh_len,
+                        mesh_vaos,
+                        mesh_lens,
                         dirty: false,
                     }
                 });
@@ -364,10 +366,12 @@ impl Renderer {
                 );
 
                 let GlStrokeBackend {
-                    mesh_vao, mesh_len, ..
+                    mesh_vaos,
+                    mesh_lens,
+                    ..
                 } = stroke.backend().unwrap();
-                gl.bind_vertex_array(Some(*mesh_vao));
-                for mesh_len in mesh_len.iter() {
+                for (mesh_vao, mesh_len) in mesh_vaos.iter().zip(mesh_lens.iter()) {
+                    gl.bind_vertex_array(Some(*mesh_vao));
                     gl.draw_elements(gl::TRIANGLES, *mesh_len, gl::UNSIGNED_SHORT, 0);
                 }
             }
