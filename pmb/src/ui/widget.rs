@@ -115,25 +115,31 @@ impl<C: CoordinateSystem> SketchWidget<C> {
         sketch: &mut Sketch<S>,
         max_points: Option<usize>,
     ) {
-        if let Action::DrawStroke(key) = self.undo_stack.last().expect("empty undo stack") {
-            let stroke = sketch.strokes.get_mut(key).unwrap();
-            stroke.add_point(
-                &self.stylus,
-                &mut self.tesselator,
-                &self.stroke_options,
-                max_points,
-            );
+        if let Some(Action::DrawStroke(key)) = self.undo_stack.last() {
+            if let Some(stroke) = sketch.strokes.get_mut(key) {
+                stroke.add_point(
+                    &self.stylus,
+                    &mut self.tesselator,
+                    &self.stroke_options,
+                    max_points,
+                );
+            } else {
+                log::error!("no stroke for key of last action");
+            }
         } else {
-            panic!("last action not draw stroke in continue stroke");
+            log::error!("last action not draw stroke in continue stroke or empty undo stack");
         }
     }
 
     fn end_stroke<S: StrokeBackend>(&mut self, sketch: &mut Sketch<S>) {
-        if let Action::DrawStroke(key) = self.undo_stack.last().expect("empty undo stack") {
-            let stroke = sketch.strokes.get_mut(key).unwrap();
-            stroke.finish();
+        if let Some(Action::DrawStroke(key)) = self.undo_stack.last() {
+            if let Some(stroke) = sketch.strokes.get_mut(key) {
+                stroke.finish();
+            } else {
+                log::error!("no stroke for key of last action");
+            }
         } else {
-            panic!("last action not draw stroke in end stroke");
+            log::error!("last action not draw stroke in end stroke or empty undo stack");
         }
     }
 
