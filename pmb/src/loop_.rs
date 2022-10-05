@@ -1,4 +1,4 @@
-use winit::window::Window;
+use winit::{event_loop::DeviceEventFilter, window::Window};
 
 use crate::{
     config::Config,
@@ -118,6 +118,7 @@ where
 
     let ev = EventLoop::new();
     let window = builder.build(&ev).unwrap();
+    ev.set_device_event_filter(DeviceEventFilter::Always);
 
     let mut widget = {
         let PhysicalSize { width, height } = window.inner_size();
@@ -278,11 +279,7 @@ where
                 widget.next(&config, &mut sketch, Event::MouseMove(position.into()));
                 widget.prev_device = crate::Device::Mouse;
 
-                if config.use_mouse_for_pen {
-                    window.request_redraw();
-                }
-
-                if widget.state.redraw() {
+                if config.use_mouse_for_pen || widget.state.redraw() {
                     window.request_redraw();
                 }
             }
