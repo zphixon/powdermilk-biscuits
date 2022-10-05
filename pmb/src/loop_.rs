@@ -21,6 +21,7 @@ use crate::{
 
 pub enum PerEvent {
     ConsumedByEgui(bool),
+    JustRedraw,
     Nothing,
 }
 
@@ -143,14 +144,20 @@ where
 
         log::trace!("{:?} {:?}", widget.state, event);
 
-        if let PerEvent::ConsumedByEgui(redraw) =
-            ctx.per_event(&event, &window, &mut sketch, &mut widget, &mut config)
-        {
-            if redraw {
+        match ctx.per_event(&event, &window, &mut sketch, &mut widget, &mut config) {
+            PerEvent::ConsumedByEgui(redraw) => {
+                if redraw {
+                    window.request_redraw();
+                }
+
+                return;
+            }
+
+            PerEvent::JustRedraw => {
                 window.request_redraw();
             }
 
-            return;
+            _ => {}
         }
 
         match event {

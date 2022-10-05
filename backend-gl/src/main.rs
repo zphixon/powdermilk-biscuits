@@ -61,11 +61,15 @@ impl LoopContext<GlStrokeBackend, GlCoords> for GlLoop {
             }
         }
 
-        let _redraw_after = self.egui_glow.run(window, |ctx| {
+        let redraw_after = self.egui_glow.run(window, |ctx| {
             powdermilk_biscuits::ui::egui(ctx, sketch, widget, config);
         });
 
-        PerEvent::Nothing
+        if redraw_after.is_zero() {
+            PerEvent::JustRedraw
+        } else {
+            PerEvent::Nothing
+        }
     }
 
     fn egui_ctx(&self) -> &EguiContext {
