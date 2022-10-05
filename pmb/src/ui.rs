@@ -68,7 +68,13 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
             ui.menu_button(s!(&FileMenu), |ui| {
                 let _ = ui.button(s!(&FileNew));
                 let _ = ui.button(s!(&FileOpen));
-                let _ = ui.button(s!(&FileSave));
+
+                if widget.path.is_none() {
+                    let _ = ui.button(s!(&FileSaveUnnamed));
+                } else {
+                    let _ = ui.button(s!(&FileSave));
+                }
+
                 ui.separator();
                 let _ = ui.button(s!(&FileSettings));
             });
