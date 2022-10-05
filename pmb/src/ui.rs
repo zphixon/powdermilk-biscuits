@@ -62,22 +62,47 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
 ) {
     use egui::{Color32, ComboBox, Grid, Id, Sense, SidePanel, Slider, TopBottomPanel};
 
-    TopBottomPanel::top("menu bar")
-        .resizable(false)
-        .show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.heading(s!(&RealHotItem));
-                ui.menu_button(s!(&FileMenu), |ui| {
-                    let _ = ui.button(s!(&FileSave));
-                    let _ = ui.button(s!(&FileOpen));
-                    let _ = ui.button(s!(&FileNew));
-                });
-                ui.menu_button(s!(&EditMenu), |ui| {
-                    let _ = ui.button(s!(&EditUndo));
-                    let _ = ui.button(s!(&EditRedo));
-                });
+    TopBottomPanel::top("top").resizable(false).show(ctx, |ui| {
+        ui.horizontal(|ui| {
+            ui.heading(s!(&RealHotItem));
+            ui.menu_button(s!(&FileMenu), |ui| {
+                let _ = ui.button(s!(&FileSave));
+                let _ = ui.button(s!(&FileOpen));
+                let _ = ui.button(s!(&FileNew));
             });
+            ui.menu_button(s!(&EditMenu), |ui| {
+                let _ = ui.button(s!(&EditUndo));
+                let _ = ui.button(s!(&EditRedo));
+            });
+
+            ui.separator();
+
+            ui.radio_value(&mut widget.active_tool, Tool::Pen, s!(&Pen));
+            ui.radio_value(&mut widget.active_tool, Tool::Eraser, s!(&Eraser));
+            ui.radio_value(&mut widget.active_tool, Tool::Pan, s!(&Pan));
+            ui.checkbox(&mut config.use_mouse_for_pen, s!(&UseMouseForPen));
+
+            ComboBox::from_label(s!(&ToolForGesture1))
+                .selected_text(match config.tool_for_gesture_1 {
+                    Tool::Pen => s!(&Pen), // TODO helper for this?
+                    Tool::Pan => s!(&Pan),
+                    Tool::Eraser => s!(&Eraser),
+                })
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut config.tool_for_gesture_1, Tool::Pen, s!(&Pen));
+                    ui.selectable_value(&mut config.tool_for_gesture_1, Tool::Eraser, s!(&Eraser));
+                    ui.selectable_value(&mut config.tool_for_gesture_1, Tool::Pan, s!(&Pan));
+                });
+
+            let slider =
+                Slider::new(&mut sketch.zoom, crate::MIN_ZOOM..=crate::MAX_ZOOM).text(s!(&Zoom));
+
+            if ui.add(slider).changed() {
+                sketch.update_visible_strokes::<C>(widget.width, widget.height);
+                sketch.update_stroke_primitive();
+            };
         });
+    });
 
     SidePanel::left("side").resizable(false).show(ctx, |ui| {
         Grid::new("colors").show(ui, |ui| {
@@ -110,35 +135,6 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
                 );
             });
         }
-    });
-
-    TopBottomPanel::top("top").resizable(false).show(ctx, |ui| {
-        ui.horizontal(|ui| {
-            ui.radio_value(&mut widget.active_tool, Tool::Pen, s!(&Pen));
-            ui.radio_value(&mut widget.active_tool, Tool::Eraser, s!(&Eraser));
-            ui.radio_value(&mut widget.active_tool, Tool::Pan, s!(&Pan));
-            ui.checkbox(&mut config.use_mouse_for_pen, s!(&UseMouseForPen));
-
-            ComboBox::from_label(s!(&ToolForGesture1))
-                .selected_text(match config.tool_for_gesture_1 {
-                    Tool::Pen => s!(&Pen), // TODO helper for this?
-                    Tool::Pan => s!(&Pan),
-                    Tool::Eraser => s!(&Eraser),
-                })
-                .show_ui(ui, |ui| {
-                    ui.selectable_value(&mut config.tool_for_gesture_1, Tool::Pen, s!(&Pen));
-                    ui.selectable_value(&mut config.tool_for_gesture_1, Tool::Eraser, s!(&Eraser));
-                    ui.selectable_value(&mut config.tool_for_gesture_1, Tool::Pan, s!(&Pan));
-                });
-
-            let slider =
-                Slider::new(&mut sketch.zoom, crate::MIN_ZOOM..=crate::MAX_ZOOM).text(s!(&Zoom));
-
-            if ui.add(slider).changed() {
-                sketch.update_visible_strokes::<C>(widget.width, widget.height);
-                sketch.update_stroke_primitive();
-            };
-        });
     });
 }
 
