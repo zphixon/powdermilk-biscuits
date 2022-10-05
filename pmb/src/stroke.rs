@@ -259,6 +259,12 @@ where
         self.meshes.iter().flat_map(|mesh| mesh.vertices().iter())
     }
 
+    pub(crate) fn num_indices(&self) -> usize {
+        self.meshes
+            .iter()
+            .fold(0, |acc, mesh| acc + mesh.indices().len())
+    }
+
     pub fn rebuild_entire_mesh(
         &mut self,
         tessellator: &mut StrokeTessellator,

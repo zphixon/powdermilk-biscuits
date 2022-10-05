@@ -675,9 +675,11 @@ impl<C: CoordinateSystem> SketchWidget<C> {
         {
             for stroke in sketch.strokes.values() {
                 println!(
-                    "{} points, {} vertices, {} size, {} visible, {:?} color, {} top left, {} bottom right",
+                    "{} points, {} meshes ({} vertices, {} indices), {} size, {} visible, {:?} color, {} top left, {} bottom right",
                     stroke.points().len(),
+                    stroke.meshes.len(),
                     stroke.vertices().count(),
+                    stroke.num_indices(),
                     stroke.brush_size(),
                     stroke.visible,
                     stroke.color(),
@@ -698,9 +700,11 @@ impl<C: CoordinateSystem> SketchWidget<C> {
                     println!("{},{},{}", point.x, point.y, point.pressure);
                 }
                 println!(
-                    "{} points, {} vertices, {} size, {} visible, {:?} color, {} top left, {} bottom right",
+                    "{} points, {} meshes ({} vertices, {} indices), {} size, {} visible, {:?} color, {} top left, {} bottom right",
                     stroke.points().len(),
+                    stroke.meshes.len(),
                     stroke.vertices().count(),
+                    stroke.num_indices(),
                     stroke.brush_size(),
                     stroke.visible,
                     stroke.color(),
