@@ -19,7 +19,6 @@ pub extern crate lyon;
 pub extern crate winit;
 
 use crate::{
-    error::PmbErrorExt,
     graphics::{Color, ColorExt, PixelPos, StrokePoint, StrokePos},
     stroke::{Stroke, StrokeElement},
 };
@@ -166,9 +165,7 @@ impl<S: StrokeBackend> Sketch<S> {
         log::info!("create State from {}", path.as_ref().display());
 
         let mut this = Sketch::empty();
-        ui::read_file(widget, Some(path), &mut this)
-            .problem(s!(CouldNotOpenFile))
-            .display();
+        ui::read_file(widget, Some(path), &mut this);
 
         this
     }

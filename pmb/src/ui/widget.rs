@@ -1,10 +1,11 @@
 use crate::{
     config::Config,
-    error::PmbErrorExt,
     event::{Event, InputHandler},
     graphics::{PixelPos, StrokePos},
-    s,
-    ui::undo::{Action, UndoStack},
+    ui::{
+        undo::{Action, UndoStack},
+        MenuButton,
+    },
     CoordinateSystem, Device, Sketch, Stroke, StrokeBackend, Stylus, StylusPosition, StylusState,
     Tool,
 };
@@ -192,6 +193,32 @@ impl<C: CoordinateSystem> SketchWidget<C> {
             });
     }
 
+    pub fn undo<S: StrokeBackend>(&mut self, sketch: &mut Sketch<S>) {
+        match self.undo_stack.undo() {
+            Some(Action::DrawStroke(stroke)) => sketch.strokes[stroke].erase(),
+            Some(Action::EraseStroke(stroke)) => {
+                sketch.strokes[stroke].erased = false;
+                sketch.update_visible_strokes::<C>(self.width, self.height);
+            }
+            None => {}
+        }
+
+        self.modified = !self.undo_stack.at_saved_state();
+    }
+
+    pub fn redo<S: StrokeBackend>(&mut self, sketch: &mut Sketch<S>) {
+        match self.undo_stack.redo() {
+            Some(Action::DrawStroke(stroke)) => {
+                sketch.strokes[stroke].erased = false;
+                sketch.update_visible_strokes::<C>(self.width, self.height);
+            }
+            Some(Action::EraseStroke(stroke)) => sketch.strokes[stroke].erase(),
+            None => {}
+        }
+
+        self.modified = !self.undo_stack.at_saved_state();
+    }
+
     fn update_stylus_from_mouse<S: StrokeBackend>(
         &mut self,
         config: &Config,
@@ -287,6 +314,17 @@ impl<C: CoordinateSystem> SketchWidget<C> {
         self.brush_size = self.brush_size.clamp(crate::MIN_BRUSH, crate::MAX_BRUSH);
 
         log::debug!("decrease brush {}", self.brush_size);
+    }
+
+    pub fn menu_button<S: StrokeBackend>(&mut self, button: MenuButton, sketch: &mut Sketch<S>) {
+        match button {
+            MenuButton::FileNew => super::new_file(self, sketch),
+            MenuButton::FileOpen => super::read_file(self, None::<&str>, sketch),
+            MenuButton::FileSave => super::save_file(self, sketch),
+            MenuButton::FileSettings => {} // ?
+            MenuButton::EditUndo => self.undo(sketch),
+            MenuButton::EditRedo => self.redo(sketch),
+        }
     }
 
     pub fn next<S: StrokeBackend>(
@@ -592,15 +630,12 @@ impl<C: CoordinateSystem> SketchWidget<C> {
         };
     }
 
-    // TODO move this to InputHandler?
     pub fn handle_key<S: StrokeBackend>(
         &mut self,
         config: &mut Config,
         sketch: &mut Sketch<S>,
         key: Keycode,
         state: ElementState,
-        width: u32,
-        height: u32,
     ) {
         log::debug!("handle key {key:?} {state:?}");
         self.input.handle_key(key, state);
@@ -647,38 +682,15 @@ impl<C: CoordinateSystem> SketchWidget<C> {
         }
 
         if self.input.combo_just_pressed(&config.undo) {
-            match self.undo_stack.undo() {
-                Some(Action::DrawStroke(stroke)) => sketch.strokes[stroke].erase(),
-                Some(Action::EraseStroke(stroke)) => {
-                    sketch.strokes[stroke].erased = false;
-                    sketch.update_visible_strokes::<C>(width, height);
-                }
-                None => {}
-            }
-
-            self.modified = !self.undo_stack.at_saved_state();
+            self.undo(sketch);
         }
 
         if self.input.combo_just_pressed(&config.redo) {
-            match self.undo_stack.redo() {
-                Some(Action::DrawStroke(stroke)) => {
-                    sketch.strokes[stroke].erased = false;
-                    sketch.update_visible_strokes::<C>(width, height);
-                }
-                Some(Action::EraseStroke(stroke)) => sketch.strokes[stroke].erase(),
-                None => {}
-            }
-
-            self.modified = !self.undo_stack.at_saved_state();
+            self.redo(sketch);
         }
 
         if self.input.combo_just_pressed(&config.save) {
-            super::save_file(self, sketch)
-                .problem(s!(CouldNotSaveFile))
-                .map(|_| {
-                    self.undo_stack.set_saved_state();
-                })
-                .display();
+            super::save_file(self, sketch);
         }
 
         if self.input.combo_just_pressed(&config.reset_view) {
@@ -695,15 +707,11 @@ impl<C: CoordinateSystem> SketchWidget<C> {
         }
 
         if self.input.combo_just_pressed(&config.open) {
-            super::read_file(self, None::<&str>, sketch)
-                .problem(s!(CouldNotOpenFile))
-                .display();
+            super::read_file(self, None::<&str>, sketch);
         }
 
         if self.input.combo_just_pressed(&config.new) {
-            super::new_file(self, sketch)
-                .problem(s!(CouldNotSaveFile))
-                .display();
+            super::new_file(self, sketch);
         }
 
         if self.input.combo_just_pressed(&config.zoom_out) {

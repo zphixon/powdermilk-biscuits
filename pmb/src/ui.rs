@@ -54,33 +54,57 @@ pub fn open_dialog() -> Option<PathBuf> {
         .pick_file()
 }
 
+pub enum MenuButton {
+    FileNew,
+    FileOpen,
+    FileSave,
+    FileSettings,
+    EditUndo,
+    EditRedo,
+}
+
 pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
     ctx: &egui::Context,
     sketch: &mut Sketch<S>,
     widget: &mut widget::SketchWidget<C>,
     config: &mut Config,
-) {
+) -> Option<MenuButton> {
     use egui::{Color32, ComboBox, Grid, Id, Sense, SidePanel, Slider, TopBottomPanel};
+
+    // XXX NASTY NASTY
+    let mut menu = None;
 
     TopBottomPanel::top("top").resizable(false).show(ctx, |ui| {
         ui.horizontal(|ui| {
             ui.heading(s!(&RealHotItem));
             ui.menu_button(s!(&FileMenu), |ui| {
-                let _ = ui.button(s!(&FileNew));
-                let _ = ui.button(s!(&FileOpen));
+                if ui.button(s!(&FileNew)).clicked() {
+                    menu = Some(MenuButton::FileNew);
+                }
+                if ui.button(s!(&FileOpen)).clicked() {
+                    menu = Some(MenuButton::FileOpen);
+                }
 
-                if widget.path.is_none() {
-                    let _ = ui.button(s!(&FileSaveUnnamed));
+                if if widget.path.is_none() {
+                    ui.button(s!(&FileSaveUnnamed)).clicked()
                 } else {
-                    let _ = ui.button(s!(&FileSave));
+                    ui.button(s!(&FileSave)).clicked()
+                } {
+                    menu = Some(MenuButton::FileSave);
                 }
 
                 ui.separator();
-                let _ = ui.button(s!(&FileSettings));
+                if ui.button(s!(&FileSettings)).clicked() {
+                    menu = Some(MenuButton::FileSettings);
+                }
             });
             ui.menu_button(s!(&EditMenu), |ui| {
-                let _ = ui.button(s!(&EditUndo));
-                let _ = ui.button(s!(&EditRedo));
+                if ui.button(s!(&EditUndo)).clicked() {
+                    menu = Some(MenuButton::EditUndo);
+                }
+                if ui.button(s!(&EditRedo)).clicked() {
+                    menu = Some(MenuButton::EditRedo);
+                }
             });
 
             ui.separator();
@@ -144,13 +168,15 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
             });
         }
     });
+
+    menu
 }
 
 pub fn read_file<S: StrokeBackend, C: CoordinateSystem>(
     widget: &mut widget::SketchWidget<C>,
     path: Option<impl AsRef<std::path::Path>>,
     sketch: &mut Sketch<S>,
-) -> Result<(), PmbError> {
+) {
     use crate::{
         migrate,
         migrate::{UpgradeType, Version},
@@ -159,10 +185,16 @@ pub fn read_file<S: StrokeBackend, C: CoordinateSystem>(
     // if we are modified
     if widget.modified {
         // ask to save first
-        if !ask_to_save_then_save(widget, sketch, s!(&AskToSaveBeforeOpening))
-            .problem(s!(CouldNotSaveFile))?
+        match ask_to_save_then_save(widget, sketch, s!(&AskToSaveBeforeOpening))
+            .problem(s!(CouldNotSaveFile))
         {
-            return Ok(());
+            Ok(should_continue) => {
+                if !should_continue {
+                    return;
+                }
+            }
+
+            err => err.problem(s!(CouldNotOpenFile)).display(),
         }
     }
 
@@ -174,7 +206,7 @@ pub fn read_file<S: StrokeBackend, C: CoordinateSystem>(
     {
         Some(path) => path,
         None => {
-            return Ok(());
+            return;
         }
     };
 
@@ -186,9 +218,12 @@ pub fn read_file<S: StrokeBackend, C: CoordinateSystem>(
             // if it doesn't exist don't try to read it
             widget.path = Some(path);
             widget.modified = true;
-            return Ok(());
+            return;
         }
-        Err(err) => Err(PmbError::from(err))?,
+        Err(err) => {
+            PmbError::from(err).display();
+            return;
+        }
     };
 
     // read the new file
@@ -202,11 +237,23 @@ pub fn read_file<S: StrokeBackend, C: CoordinateSystem>(
             log::warn!("version mismatch, got {version} want {}", Version::CURRENT);
 
             match Version::upgrade_type(version) {
-                UpgradeType::Smooth => migrate::from(version, &path)?,
+                UpgradeType::Smooth => match migrate::from(version, &path) {
+                    Ok(sketch) => sketch,
+                    err => {
+                        err.display();
+                        return;
+                    }
+                },
 
                 UpgradeType::Rocky => match prompt_migrate() {
                     rfd::MessageDialogResult::Yes => {
-                        let disk = migrate::from(version, &path)?;
+                        let disk = match migrate::from(version, &path) {
+                            Ok(disk) => disk,
+                            err => {
+                                err.display();
+                                return;
+                            }
+                        };
 
                         *sketch = disk;
                         sketch.force_update::<C>(
@@ -220,19 +267,23 @@ pub fn read_file<S: StrokeBackend, C: CoordinateSystem>(
                         widget.path = None;
                         widget.modified = true;
 
-                        return Ok(());
+                        return;
                     }
 
                     _ => Sketch::default(),
                 },
 
                 UpgradeType::Incompatible => {
-                    return Err(PmbError::new(ErrorKind::IncompatibleVersion(version)));
+                    PmbError::new(ErrorKind::IncompatibleVersion(version)).display();
+                    return;
                 }
             }
         }
 
-        err => err?,
+        err => {
+            err.display();
+            return;
+        }
     };
 
     *sketch = disk;
@@ -251,8 +302,6 @@ pub fn read_file<S: StrokeBackend, C: CoordinateSystem>(
         "success, read from {}",
         widget.path.as_ref().unwrap().display()
     );
-
-    Ok(())
 }
 
 /// returns whether you should continue with whatever state-destroying operation you want to do
@@ -301,34 +350,51 @@ pub fn ask_to_save_then_save<S: StrokeBackend, C: CoordinateSystem>(
 fn save_file<C: CoordinateSystem, S: StrokeBackend>(
     widget: &mut widget::SketchWidget<C>,
     sketch: &Sketch<S>,
-) -> Result<(), PmbError> {
+) {
     use crate::migrate;
 
     if let Some(path) = widget.path.as_ref() {
-        migrate::write(path, sketch).problem(format!("{}", path.display()))?;
+        match migrate::write(path, sketch) {
+            Ok(()) => {}
+            err => {
+                err.problem(format!("{}", path.display())).display();
+                return;
+            }
+        }
         widget.modified = false;
     } else if let Some(path) = save_dialog(s!(&SaveUnnamedFile), None) {
         let problem = format!("{}", path.display());
         widget.path = Some(path);
-        migrate::write(widget.path.as_ref().unwrap(), sketch).problem(problem)?;
+        match migrate::write(widget.path.as_ref().unwrap(), sketch) {
+            Ok(()) => {}
+            err => {
+                err.problem(problem).display();
+                return;
+            }
+        }
         widget.modified = false;
     }
 
     log::info!("saved file as {}", widget.path.as_ref().unwrap().display());
-    Ok(())
 }
 
 fn new_file<C: CoordinateSystem, S: StrokeBackend>(
     widget: &mut widget::SketchWidget<C>,
     sketch: &mut Sketch<S>,
-) -> Result<(), PmbError> {
-    if widget.modified && !ask_to_save_then_save(widget, sketch, s!(&AskToSaveBeforeOpening))? {
-        return Ok(());
+) {
+    if widget.modified {
+        match ask_to_save_then_save(widget, sketch, s!(&AskToSaveBeforeOpening)) {
+            Ok(should_continue) => {
+                if !should_continue {
+                    return;
+                }
+            }
+
+            err => err.problem(s!(CouldNotSaveFile)).display(),
+        }
     }
 
     *sketch = Sketch::empty();
     widget.path = None;
     widget.modified = false;
-
-    Ok(())
 }
