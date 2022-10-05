@@ -59,6 +59,7 @@ config!(
     tool_for_gesture_2: Tool { Tool::Pan },
     tool_for_gesture_3: Tool { Tool::Pan },
     tool_for_gesture_4: Tool { Tool::Pan },
+    max_points_before_split_stroke: Option<usize> { Some(750) },
 
     window_start_x: Option<i32> { None },
     window_start_y: Option<i32> { None },

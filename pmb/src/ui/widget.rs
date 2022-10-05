@@ -110,10 +110,19 @@ impl<C: CoordinateSystem> SketchWidget<C> {
         self.undo_stack.push(Action::DrawStroke(key));
     }
 
-    fn continue_stroke<S: StrokeBackend>(&mut self, sketch: &mut Sketch<S>) {
+    fn continue_stroke<S: StrokeBackend>(
+        &mut self,
+        sketch: &mut Sketch<S>,
+        max_points: Option<usize>,
+    ) {
         if let Action::DrawStroke(key) = self.undo_stack.last().expect("empty undo stack") {
             let stroke = sketch.strokes.get_mut(key).unwrap();
-            stroke.add_point(&self.stylus, &mut self.tesselator, &self.stroke_options);
+            stroke.add_point(
+                &self.stylus,
+                &mut self.tesselator,
+                &self.stroke_options,
+                max_points,
+            );
         } else {
             panic!("last action not draw stroke in continue stroke");
         }
@@ -466,7 +475,7 @@ impl<C: CoordinateSystem> SketchWidget<C> {
 
             (S::PenDraw, E::PenMove(touch)) => {
                 self.update_stylus_from_touch(config, sketch, touch);
-                self.continue_stroke(sketch);
+                self.continue_stroke(sketch, config.max_points_before_split_stroke);
                 S::PenDraw
             }
 
@@ -501,7 +510,7 @@ impl<C: CoordinateSystem> SketchWidget<C> {
             (S::MouseDraw, E::MouseMove(location)) => {
                 self.input.handle_mouse_move(location);
                 self.update_stylus_from_mouse(config, sketch, TouchPhase::Moved);
-                self.continue_stroke(sketch);
+                self.continue_stroke(sketch, config.max_points_before_split_stroke);
                 S::MouseDraw
             }
 
@@ -570,7 +579,7 @@ impl<C: CoordinateSystem> SketchWidget<C> {
                     Tool::Pen => {
                         // TODO dedup, logic???
                         self.update_stylus_from_touch(config, sketch, touch);
-                        self.continue_stroke(sketch);
+                        self.continue_stroke(sketch, config.max_points_before_split_stroke);
                     }
 
                     Tool::Eraser => {

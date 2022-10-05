@@ -51,6 +51,10 @@ impl Mesh {
     pub fn indices(&self) -> &[u16] {
         &self.buffer.indices
     }
+
+    pub fn len(&self) -> usize {
+        self.to - self.from
+    }
 }
 
 #[rustfmt::skip]
@@ -226,6 +230,7 @@ where
         stylus: &crate::Stylus,
         tesselator: &mut StrokeTessellator,
         options: &StrokeOptions,
+        max_points: Option<usize>,
     ) {
         let x = stylus.pos.x;
         let y = stylus.pos.y;
@@ -237,7 +242,7 @@ where
         });
 
         if self.points.len() >= 2 {
-            self.rebuild_partial_mesh(tesselator, options);
+            self.rebuild_partial_mesh(tesselator, options, max_points);
         }
 
         if self.points.len() == 1 {
@@ -337,57 +342,74 @@ where
         &mut self,
         tessellator: &mut StrokeTessellator,
         options: &StrokeOptions,
+        max_points: Option<usize>,
     ) {
         let mut to_add = None;
-        match self.meshes.last_mut() {
-            Some(subset) => match crate::tess::tessellate(
-                tessellator,
-                options,
-                self.brush_size,
-                &self.points[subset.from..],
-            ) {
-                Ok(buffer) => {
-                    subset.buffer = buffer;
-                    subset.to = self.points.len();
+
+        let split =
+            |tessellator: &mut StrokeTessellator, to_add: &mut Option<Mesh>, subset: &Mesh| {
+                match crate::tess::tessellate(
+                    tessellator,
+                    options,
+                    self.brush_size,
+                    &self.points[subset.to..],
+                ) {
+                    Ok(buffer) => {
+                        *to_add = Some(Mesh {
+                            buffer,
+                            from: subset.to,
+                            to: self.points.len(),
+                        });
+                    }
+
+                    Err(err) => {
+                        log::error!(
+                            "couldn't tessellate last part {}..{}: {}",
+                            subset.to,
+                            self.points.len(),
+                            err,
+                        );
+                    }
                 }
+            };
 
-                Err(err) if is_tmv(&err) => {
-                    log::warn!("have to split after {}..{}", subset.from, subset.to);
-
+        match self.meshes.last_mut() {
+            Some(subset) => {
+                if max_points.is_some() && subset.len() > max_points.unwrap() {
+                    log::warn!(
+                        "have to split after {}..{} (max points reached)",
+                        subset.from,
+                        subset.to
+                    );
+                    split(tessellator, &mut to_add, subset);
+                } else {
                     match crate::tess::tessellate(
                         tessellator,
                         options,
                         self.brush_size,
-                        &self.points[subset.to..],
+                        &self.points[subset.from..],
                     ) {
                         Ok(buffer) => {
-                            to_add = Some(Mesh {
-                                buffer,
-                                from: subset.to,
-                                to: self.points.len(),
-                            });
+                            subset.buffer = buffer;
+                            subset.to = self.points.len();
+                        }
+
+                        Err(err) if is_tmv(&err) => {
+                            log::warn!("have to split after {}..{}", subset.from, subset.to);
+                            split(tessellator, &mut to_add, subset);
                         }
 
                         Err(err) => {
                             log::error!(
-                                "couldn't tessellate last part {}..{}: {}",
+                                "couldn't tessellate {}..{}: {}",
+                                subset.from,
                                 subset.to,
-                                self.points.len(),
                                 err,
                             );
                         }
                     }
                 }
-
-                Err(err) => {
-                    log::error!(
-                        "couldn't tessellate {}..{}: {}",
-                        subset.from,
-                        subset.to,
-                        err,
-                    );
-                }
-            },
+            }
 
             None => {
                 self.rebuild_entire_mesh(tessellator, options);
