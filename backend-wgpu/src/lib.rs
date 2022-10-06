@@ -715,6 +715,7 @@ impl Graphics {
                     )
                 })
                 .unzip();
+            stroke.meshes = vec![];
 
             WgpuStrokeBackend {
                 points: self.device.create_buffer_init(&BufferInitDescriptor {
@@ -744,7 +745,6 @@ impl Graphics {
         &mut self,
         sketch: &mut Sketch<WgpuStrokeBackend>,
         widget: &SketchWidget<WgpuCoords>,
-        size: PhysicalSize<u32>,
         cursor_visible: bool,
         egui_tris: &[egui::ClippedPrimitive],
         egui_textures: &egui::TexturesDelta,
@@ -765,7 +765,7 @@ impl Graphics {
                     $frame,
                     &mut encoder,
                     sketch,
-                    size,
+                    self.size,
                     sketch.bg_color,
                 );
 
@@ -776,7 +776,7 @@ impl Graphics {
                         &mut encoder,
                         widget,
                         sketch.zoom,
-                        size,
+                        self.size,
                     );
                 }
 
@@ -804,13 +804,13 @@ impl Graphics {
         let mut encoder = self
             .device
             .create_command_encoder(&CommandEncoderDescriptor {
-                label: Some("encoder"),
+                label: Some("egui encoder"),
             });
         for (id, image) in &egui_textures.set {
             egui_painter.update_texture(&self.device, &self.queue, *id, image);
         }
         let sd = egui_wgpu::renderer::ScreenDescriptor {
-            size_in_pixels: [size.width, size.height],
+            size_in_pixels: [self.size.width, self.size.height],
             pixels_per_point: 1.,
         };
         egui_painter.update_buffers(&self.device, &self.queue, egui_tris, &sd);

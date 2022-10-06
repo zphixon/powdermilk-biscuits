@@ -86,7 +86,6 @@ impl LoopContext<WgpuStrokeBackend, WgpuCoords> for GlLoop {
         match self.graphics.render(
             sketch,
             widget,
-            size,
             cursor_visible,
             &egui_tris,
             &egui_data.textures_delta,
