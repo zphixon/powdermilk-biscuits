@@ -46,8 +46,11 @@ impl CoordinateSystem for GlCoords {
 #[derive(Debug)]
 pub struct GlStrokeBackend {
     pub line_vao: gl::VertexArray,
+    pub line_vbo: gl::Buffer,
     pub line_len: i32,
     pub mesh_vaos: Vec<gl::VertexArray>,
+    pub mesh_vbos: Vec<gl::Buffer>,
+    pub mesh_ebos: Vec<gl::Buffer>,
     pub mesh_lens: Vec<i32>,
     pub dirty: bool,
 }
@@ -259,15 +262,30 @@ impl Renderer {
             .values_mut()
             .filter(|stroke| stroke.is_dirty())
             .for_each(|stroke| {
-                log::debug!("replace stroke with {} points", stroke.points.len());
+                if let Some(backend) = stroke.backend() {
+                    unsafe {
+                        gl.delete_buffer(backend.line_vbo);
+                        for (vao, (vbo, ebo)) in backend
+                            .mesh_vaos
+                            .iter()
+                            .zip(backend.mesh_vbos.iter().zip(backend.mesh_ebos.iter()))
+                        {
+                            gl.delete_vertex_array(*vao);
+                            gl.delete_buffer(*vbo);
+                            gl.delete_buffer(*ebo);
+                        }
+                        gl.delete_vertex_array(backend.line_vao);
+                    }
+                }
+
                 stroke.backend.replace(unsafe {
                     let f32_size = size_of::<f32>() as i32;
 
                     let line_vao = gl.create_vertex_array().unwrap();
                     gl.bind_vertex_array(Some(line_vao));
 
-                    let points = gl.create_buffer().unwrap();
-                    gl.bind_buffer(gl::ARRAY_BUFFER, Some(points));
+                    let line_vbo = gl.create_buffer().unwrap();
+                    gl.bind_buffer(gl::ARRAY_BUFFER, Some(line_vbo));
                     gl.buffer_data_u8_slice(
                         gl::ARRAY_BUFFER,
                         bytemuck::cast_slice(&stroke.points),
@@ -288,6 +306,8 @@ impl Renderer {
 
                     let mut mesh_vaos = Vec::new();
                     let mut mesh_lens = Vec::new();
+                    let mut mesh_vbos = Vec::new();
+                    let mut mesh_ebos = Vec::new();
                     for mesh in stroke.meshes.iter() {
                         let mesh_vao = gl.create_vertex_array().unwrap();
                         gl.bind_vertex_array(Some(mesh_vao));
@@ -301,6 +321,7 @@ impl Renderer {
                         );
                         gl.vertex_attrib_pointer_f32(0, 2, gl::FLOAT, false, f32_size * 2, 0);
                         gl.enable_vertex_attrib_array(0);
+                        mesh_vbos.push(mesh_vbo);
 
                         let mesh_ebo = gl.create_buffer().unwrap();
                         gl.bind_buffer(gl::ELEMENT_ARRAY_BUFFER, Some(mesh_ebo));
@@ -311,13 +332,17 @@ impl Renderer {
                         );
 
                         mesh_vaos.push(mesh_vao);
+                        mesh_ebos.push(mesh_ebo);
                         mesh_lens.push(mesh.indices().len() as i32);
                     }
 
                     GlStrokeBackend {
                         line_vao,
+                        line_vbo,
                         line_len: stroke.points.len() as i32,
                         mesh_vaos,
+                        mesh_vbos,
+                        mesh_ebos,
                         mesh_lens,
                         dirty: false,
                     }
