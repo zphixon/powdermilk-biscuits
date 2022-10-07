@@ -45,14 +45,14 @@ impl CoordinateSystem for GlCoords {
 
 #[derive(Debug)]
 pub struct GlStrokeBackend {
-    pub line_vao: gl::VertexArray,
-    pub line_vbo: gl::Buffer,
-    pub line_len: i32,
-    pub mesh_vaos: Vec<gl::VertexArray>,
-    pub mesh_vbos: Vec<gl::Buffer>,
-    pub mesh_ebos: Vec<gl::Buffer>,
-    pub mesh_lens: Vec<i32>,
-    pub dirty: bool,
+    line_vao: gl::VertexArray,
+    line_vbo: gl::Buffer,
+    line_len: i32,
+    mesh_vaos: Vec<gl::VertexArray>,
+    mesh_vbos: Vec<gl::Buffer>,
+    mesh_ebos: Vec<gl::Buffer>,
+    mesh_lens: Vec<i32>,
+    dirty: bool,
 }
 
 impl powdermilk_biscuits::StrokeBackend for GlStrokeBackend {
