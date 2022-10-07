@@ -139,6 +139,7 @@ pub unsafe fn compile_program(
 }
 
 pub struct Renderer {
+    msaa_fbo: gl::Framebuffer,
     line_strokes_program: NativeProgram,
     mesh_strokes_program: NativeProgram,
     pen_cursor_program: NativeProgram,
@@ -152,7 +153,7 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new(gl: &gl::Context) -> Self {
+    pub fn new(gl: &gl::Context, width: u32, height: u32) -> Self {
         unsafe {
             gl.enable(gl::SRGB8_ALPHA8);
             gl.enable(gl::FRAMEBUFFER_SRGB);
@@ -226,7 +227,37 @@ impl Renderer {
             gl.enable_vertex_attrib_array(0);
             gl.vertex_attrib_pointer_f32(0, 2, gl::FLOAT, false, 2 * float_size as i32, 0);
 
+            let msaa_fbo = gl.create_framebuffer().unwrap();
+            gl.bind_framebuffer(gl::FRAMEBUFFER, Some(msaa_fbo));
+
+            let tex = gl.create_texture().unwrap();
+            gl.bind_texture(gl::TEXTURE_2D_MULTISAMPLE, Some(tex));
+            gl.tex_image_2d_multisample(
+                gl::TEXTURE_2D_MULTISAMPLE,
+                4,
+                gl::RGBA8 as i32,
+                width as i32,
+                height as i32,
+                true,
+            );
+            gl.bind_texture(gl::TEXTURE_2D_MULTISAMPLE, None);
+            gl.framebuffer_texture_2d(
+                gl::FRAMEBUFFER,
+                gl::COLOR_ATTACHMENT0,
+                gl::TEXTURE_2D_MULTISAMPLE,
+                Some(tex),
+                0,
+            );
+
+            assert_eq!(
+                gl.check_framebuffer_status(gl::FRAMEBUFFER),
+                gl::FRAMEBUFFER_COMPLETE
+            );
+
+            gl.bind_framebuffer(gl::FRAMEBUFFER, None);
+
             Self {
+                msaa_fbo,
                 line_strokes_program,
                 mesh_strokes_program,
                 pen_cursor_program,
@@ -350,6 +381,7 @@ impl Renderer {
             });
 
         unsafe {
+            gl.bind_framebuffer(gl::FRAMEBUFFER, Some(self.msaa_fbo));
             gl.clear_color(
                 sketch.bg_color[0],
                 sketch.bg_color[1],
@@ -436,6 +468,23 @@ impl Renderer {
 
                 gl.draw_arrays(gl::LINES, 0, 50 * 2);
             }
+        }
+
+        unsafe {
+            gl.bind_framebuffer(gl::READ_FRAMEBUFFER, Some(self.msaa_fbo));
+            gl.bind_framebuffer(gl::DRAW_FRAMEBUFFER, None);
+            gl.blit_framebuffer(
+                0,
+                0,
+                size.width as i32,
+                size.height as i32,
+                0,
+                0,
+                size.width as i32,
+                size.height as i32,
+                gl::COLOR_BUFFER_BIT,
+                gl::NEAREST,
+            );
         }
     }
 }

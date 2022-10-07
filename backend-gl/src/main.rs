@@ -38,8 +38,9 @@ struct GlLoop {
 impl LoopContext<GlStrokeBackend, GlCoords> for GlLoop {
     fn setup(ev: &EventLoop<()>, window: &Window, _: &mut Sketch<GlStrokeBackend>) -> Self {
         let gl = no_winit_ezgl(window, window.inner_size());
+        let size = window.inner_size();
         GlLoop {
-            renderer: Renderer::new(&gl),
+            renderer: Renderer::new(&gl, size.width, size.height),
             egui_glow: EguiGlow::new(ev, gl.glow_context(), None),
             gl,
         }
