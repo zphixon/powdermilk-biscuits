@@ -270,6 +270,7 @@ where
         tessellator: &mut StrokeTessellator,
         stroke_options: &StrokeOptions,
     ) {
+        log::info!("rebuild entire mesh ({} points)", self.points.len());
         match crate::tess::tessellate(tessellator, stroke_options, self.brush_size, self.points()) {
             Ok(buffer) => self.meshes.push(Mesh {
                 buffer,

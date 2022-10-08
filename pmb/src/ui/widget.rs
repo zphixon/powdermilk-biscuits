@@ -183,7 +183,6 @@ impl<C: CoordinateSystem> SketchWidget<C> {
                     && stroke.aabb(top_left_cursor, bottom_right_cursor)
             })
             .for_each(|(key, stroke)| {
-                // TODO lyon_path::builder::Flattened?
                 if stroke.vertices().any(|point| {
                     let point_pix = C::pos_to_pixel(
                         self.width,
