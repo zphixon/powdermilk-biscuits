@@ -715,7 +715,6 @@ impl Graphics {
                     )
                 })
                 .unzip();
-            stroke.meshes = vec![];
 
             WgpuStrokeBackend {
                 points: self.device.create_buffer_init(&BufferInitDescriptor {
