@@ -8,6 +8,8 @@ use powdermilk_biscuits::{
     CoordinateSystem, Sketch,
 };
 
+pub const SAMPLE_COUNT: i32 = 4;
+
 #[derive(Debug, Default, Clone, Copy)]
 pub struct GlCoords {}
 
@@ -275,6 +277,26 @@ impl Renderer {
     pub fn resize(&self, new_size: PhysicalSize<u32>, gl: &gl::Context) {
         unsafe {
             gl.viewport(0, 0, new_size.width as i32, new_size.height as i32);
+            gl.bind_framebuffer(gl::FRAMEBUFFER, Some(self.msaa_fbo));
+
+            let tex = gl.create_texture().unwrap();
+            gl.bind_texture(gl::TEXTURE_2D_MULTISAMPLE, Some(tex));
+            gl.tex_image_2d_multisample(
+                gl::TEXTURE_2D_MULTISAMPLE,
+                4,
+                gl::RGBA8 as i32,
+                new_size.width as i32,
+                new_size.height as i32,
+                true,
+            );
+            gl.bind_texture(gl::TEXTURE_2D_MULTISAMPLE, None);
+            gl.framebuffer_texture_2d(
+                gl::FRAMEBUFFER,
+                gl::COLOR_ATTACHMENT0,
+                gl::TEXTURE_2D_MULTISAMPLE,
+                Some(tex),
+                0,
+            );
         }
     }
 

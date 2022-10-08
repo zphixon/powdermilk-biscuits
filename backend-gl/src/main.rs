@@ -22,7 +22,14 @@ fn no_winit_ezgl(window: &Window, size: PhysicalSize<u32>) -> Ezgl {
     #[cfg(not(all(unix, not(target_os = "macos"))))]
     let reg = None;
 
-    Ezgl::new(&window, size.width, size.height, reg).unwrap()
+    Ezgl::new(
+        &window,
+        size.width,
+        size.height,
+        reg,
+        Some(backend_gl::SAMPLE_COUNT as u8),
+    )
+    .unwrap()
 }
 
 fn main() {
