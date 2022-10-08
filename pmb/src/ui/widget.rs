@@ -287,11 +287,11 @@ impl<C: CoordinateSystem> SketchWidget<C> {
         &mut self,
         sketch: &Sketch<S>,
         phase: TouchPhase,
-        location: PixelPos,
+        pixel: PixelPos,
         eraser: bool,
         pressure: f64,
     ) {
-        let point = C::pixel_to_stroke(self.width, self.height, sketch.zoom, location);
+        let point = C::pixel_to_stroke(self.width, self.height, sketch.zoom, pixel);
         let pos = crate::graphics::xform_point_to_pos(sketch.origin, point);
 
         let state = match phase {
@@ -313,6 +313,7 @@ impl<C: CoordinateSystem> SketchWidget<C> {
 
         self.stylus.point = point;
         self.stylus.pos = pos;
+        self.stylus.pixel = pixel;
         self.stylus.pressure = pressure as f32;
         self.stylus.state = state;
     }
@@ -451,9 +452,9 @@ impl<C: CoordinateSystem> SketchWidget<C> {
             }
 
             (S::PenZoom, E::PenMove(touch)) => {
-                let prev = self.stylus.pos;
+                let prev = self.stylus.pixel;
                 self.update_stylus_from_touch(config, sketch, touch);
-                let next = self.stylus.pos;
+                let next = self.stylus.pixel;
 
                 let next_zoom = sketch.zoom + (prev.y - next.y);
                 sketch.update_zoom::<C>(self.width, self.height, next_zoom);

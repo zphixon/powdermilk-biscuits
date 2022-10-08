@@ -295,8 +295,12 @@ impl Default for StylusState {
 pub struct Stylus {
     pub state: StylusState,
     pub pressure: f32,
+    /// position in un-transformed stroke space, not relative to [sketch](Sketch) origin
     pub point: StrokePoint,
+    /// position in transformed stroke space, relative to [sketch](Sketch) origin
     pub pos: StrokePos,
+    /// position in screen space
+    pub pixel: PixelPos,
 }
 
 impl Stylus {
