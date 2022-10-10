@@ -141,6 +141,7 @@ where
     let mut ctx = L::setup(&ev, &window, &mut sketch);
 
     ev.run(move |event, _, flow| {
+        let mut redraw = false;
         flow.set_wait();
 
         log::trace!("{:?} {:?}", widget.state, event);
@@ -153,8 +154,9 @@ where
         }
 
         match per_event {
-            PerEvent::ConsumedByEgui(redraw) => {
-                if redraw {
+            PerEvent::ConsumedByEgui(egui_wants_redraw) => {
+                if egui_wants_redraw {
+                    // no need for redraw = true;
                     window.request_redraw();
                 }
 
@@ -162,7 +164,7 @@ where
             }
 
             PerEvent::JustRedraw => {
-                window.request_redraw();
+                redraw = true;
             }
 
             _ => {}
@@ -229,7 +231,7 @@ where
                 ..
             } => {
                 widget.handle_key(&mut config, &mut sketch, key, state);
-                window.request_redraw();
+                redraw = true;
             }
 
             WinitEvent::WindowEvent {
@@ -245,7 +247,7 @@ where
                     }
                 }
 
-                window.request_redraw();
+                redraw = true;
             }
 
             WinitEvent::WindowEvent {
@@ -269,7 +271,7 @@ where
                 }
 
                 widget.prev_device = crate::Device::Mouse;
-                window.request_redraw();
+                redraw = true;
             }
 
             WinitEvent::WindowEvent {
@@ -280,7 +282,7 @@ where
                 widget.prev_device = crate::Device::Mouse;
 
                 if config.use_mouse_for_pen || widget.state.redraw() {
-                    window.request_redraw();
+                    redraw = true;
                 }
             }
 
@@ -305,7 +307,7 @@ where
 
                 widget.prev_device = crate::Device::Pen;
 
-                window.request_redraw();
+                redraw = true;
             }
 
             WinitEvent::WindowEvent {
@@ -331,7 +333,7 @@ where
 
                 widget.prev_device = crate::Device::Touch;
 
-                window.request_redraw();
+                redraw = true;
             }
 
             WinitEvent::WindowEvent {
@@ -354,7 +356,7 @@ where
                 widget.resize(new_size.width, new_size.height, &mut sketch);
                 config.resize_window(new_size.width, new_size.height);
                 ctx.resize(new_size);
-                window.request_redraw();
+                redraw = true;
             }
 
             WinitEvent::MainEventsCleared => {
@@ -384,16 +386,22 @@ where
                 }
             }
 
-            WinitEvent::RedrawRequested(_) => ctx.render(
+            WinitEvent::RedrawRequested(_) => {
+                redraw = true;
+            }
+
+            _ => {}
+        }
+
+        if redraw {
+            ctx.render(
                 &window,
                 &mut sketch,
                 &mut widget,
                 &mut config,
                 size,
                 cursor_visible,
-            ),
-
-            _ => {}
+            );
         }
 
         log::trace!("{:?}", flow);
