@@ -7,7 +7,7 @@ use powdermilk_biscuits::{
     config::Config,
     egui::Context as EguiContext,
     loop_::{loop_, LoopContext, PerEvent},
-    ui::{widget::SketchWidget, MenuButton},
+    ui::widget::SketchWidget,
     winit::{dpi::PhysicalSize, event::Event as WinitEvent, event_loop::EventLoop, window::Window},
     Sketch,
 };
@@ -60,24 +60,23 @@ impl LoopContext<GlStrokeBackend, GlCoords> for GlLoop {
         sketch: &mut Sketch<GlStrokeBackend>,
         widget: &mut SketchWidget<GlCoords>,
         config: &mut Config,
-    ) -> (PerEvent, Option<MenuButton>) {
+    ) -> PerEvent {
         if let WinitEvent::WindowEvent { event, .. } = &event {
             let response = self.egui_glow.on_event(event);
 
             if response.consumed {
-                return (PerEvent::ConsumedByEgui(response.repaint), None);
+                return PerEvent::ConsumedByEgui(response.repaint);
             }
         }
 
-        let mut menu = None;
         let redraw_after = self.egui_glow.run(window, |ctx| {
-            menu = powdermilk_biscuits::ui::egui(ctx, sketch, widget, config);
+            powdermilk_biscuits::ui::egui(ctx, sketch, widget, config);
         });
 
         if redraw_after.is_zero() {
-            (PerEvent::JustRedraw, menu)
+            PerEvent::JustRedraw
         } else {
-            (PerEvent::Nothing, menu)
+            PerEvent::Nothing
         }
     }
 

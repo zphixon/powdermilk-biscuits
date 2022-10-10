@@ -2,10 +2,7 @@ use crate::{
     config::Config,
     event::{Event, InputHandler},
     graphics::{PixelPos, StrokePos},
-    ui::{
-        undo::{Action, UndoStack},
-        MenuButton,
-    },
+    ui::undo::{Action, UndoStack},
     CoordinateSystem, Device, Sketch, Stroke, StrokeBackend, Stylus, StylusPosition, StylusState,
     Tool,
 };
@@ -329,17 +326,6 @@ impl<C: CoordinateSystem> SketchWidget<C> {
         self.brush_size = self.brush_size.clamp(crate::MIN_BRUSH, crate::MAX_BRUSH);
 
         log::debug!("decrease brush {}", self.brush_size);
-    }
-
-    pub fn menu_button<S: StrokeBackend>(&mut self, button: MenuButton, sketch: &mut Sketch<S>) {
-        match button {
-            MenuButton::FileNew => super::new_file(self, sketch),
-            MenuButton::FileOpen => super::read_file(self, None::<&str>, sketch),
-            MenuButton::FileSave => super::save_file(self, sketch),
-            MenuButton::FileSettings => {} // ?
-            MenuButton::EditUndo => self.undo(sketch),
-            MenuButton::EditRedo => self.redo(sketch),
-        }
     }
 
     pub fn next<S: StrokeBackend>(

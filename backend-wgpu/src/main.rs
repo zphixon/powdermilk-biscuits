@@ -5,7 +5,7 @@ use powdermilk_biscuits::{
     config::Config,
     egui::Context as EguiContext,
     loop_::{loop_, LoopContext, PerEvent},
-    ui::{widget::SketchWidget, MenuButton},
+    ui::widget::SketchWidget,
     winit::{dpi::PhysicalSize, event::Event as WinitEvent, event_loop::EventLoop, window::Window},
     Sketch,
 };
@@ -45,16 +45,16 @@ impl LoopContext<WgpuStrokeBackend, WgpuCoords> for GlLoop {
         _: &mut Sketch<WgpuStrokeBackend>,
         _: &mut SketchWidget<WgpuCoords>,
         _: &mut Config,
-    ) -> (PerEvent, Option<MenuButton>) {
+    ) -> PerEvent {
         if let WinitEvent::WindowEvent { event, .. } = &event {
             let response = self.egui_winit.on_event(&self.egui_ctx, event);
 
             if response.consumed {
-                return (PerEvent::ConsumedByEgui(response.repaint), None);
+                return PerEvent::ConsumedByEgui(response.repaint);
             }
         }
 
-        (PerEvent::Nothing, None)
+        PerEvent::Nothing
     }
 
     fn resize(&mut self, new_size: PhysicalSize<u32>) {
@@ -70,16 +70,11 @@ impl LoopContext<WgpuStrokeBackend, WgpuCoords> for GlLoop {
         size: PhysicalSize<u32>,
         cursor_visible: bool,
     ) {
-        let mut menu = None;
         let egui_data = self
             .egui_ctx
             .run(self.egui_winit.take_egui_input(window), |ctx| {
-                menu = powdermilk_biscuits::ui::egui(ctx, sketch, widget, config);
+                powdermilk_biscuits::ui::egui(ctx, sketch, widget, config);
             });
-
-        if let Some(menu_button) = menu {
-            widget.menu_button(menu_button, sketch);
-        }
 
         let egui_tris = self.egui_ctx.tessellate(egui_data.shapes);
 

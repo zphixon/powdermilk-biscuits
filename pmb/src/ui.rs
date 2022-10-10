@@ -54,35 +54,23 @@ pub fn open_dialog() -> Option<PathBuf> {
         .pick_file()
 }
 
-pub enum MenuButton {
-    FileNew,
-    FileOpen,
-    FileSave,
-    FileSettings,
-    EditUndo,
-    EditRedo,
-}
-
 pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
     ctx: &egui::Context,
     sketch: &mut Sketch<S>,
     widget: &mut widget::SketchWidget<C>,
     config: &mut Config,
-) -> Option<MenuButton> {
+) {
     use egui::{Color32, ComboBox, Grid, Id, Sense, SidePanel, Slider, TopBottomPanel};
-
-    // XXX NASTY NASTY
-    let mut menu = None;
 
     TopBottomPanel::top("top").resizable(false).show(ctx, |ui| {
         ui.horizontal(|ui| {
             ui.heading(s!(&RealHotItem));
             ui.menu_button(s!(&FileMenu), |ui| {
                 if ui.button(s!(&FileNew)).clicked() {
-                    menu = Some(MenuButton::FileNew);
+                    new_file(widget, sketch);
                 }
                 if ui.button(s!(&FileOpen)).clicked() {
-                    menu = Some(MenuButton::FileOpen);
+                    read_file(widget, None::<&str>, sketch);
                 }
 
                 if if widget.path.is_none() {
@@ -90,20 +78,20 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
                 } else {
                     ui.button(s!(&FileSave)).clicked()
                 } {
-                    menu = Some(MenuButton::FileSave);
+                    save_file(widget, sketch);
                 }
 
                 ui.separator();
                 if ui.button(s!(&FileSettings)).clicked() {
-                    menu = Some(MenuButton::FileSettings);
+                    // todo
                 }
             });
             ui.menu_button(s!(&EditMenu), |ui| {
                 if ui.button(s!(&EditUndo)).clicked() {
-                    menu = Some(MenuButton::EditUndo);
+                    widget.undo(sketch);
                 }
                 if ui.button(s!(&EditRedo)).clicked() {
-                    menu = Some(MenuButton::EditRedo);
+                    widget.redo(sketch);
                 }
             });
 
@@ -168,8 +156,6 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
             });
         }
     });
-
-    menu
 }
 
 pub fn read_file<S: StrokeBackend, C: CoordinateSystem>(

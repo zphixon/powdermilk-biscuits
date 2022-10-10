@@ -5,7 +5,7 @@ use crate::{
     event::Event,
     gumdrop::Options,
     s,
-    ui::{widget::SketchWidget, MenuButton},
+    ui::widget::SketchWidget,
     winit::{
         self,
         dpi::{PhysicalPosition, PhysicalSize},
@@ -35,7 +35,7 @@ pub trait LoopContext<S: StrokeBackend, C: CoordinateSystem> {
         sketch: &mut Sketch<S>,
         widget: &mut SketchWidget<C>,
         config: &mut Config,
-    ) -> (PerEvent, Option<MenuButton>);
+    ) -> PerEvent;
 
     fn egui_ctx(&self) -> &egui::Context;
 
@@ -146,12 +146,7 @@ where
 
         log::trace!("{:?} {:?}", widget.state, event);
 
-        let (per_event, menu_button) =
-            ctx.per_event(&event, &window, &mut sketch, &mut widget, &mut config);
-
-        if let Some(button) = menu_button {
-            widget.menu_button(button, &mut sketch);
-        }
+        let per_event = ctx.per_event(&event, &window, &mut sketch, &mut widget, &mut config);
 
         match per_event {
             PerEvent::ConsumedByEgui(egui_wants_redraw) => {
