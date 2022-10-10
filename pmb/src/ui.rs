@@ -68,9 +68,11 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
             ui.menu_button(s!(&FileMenu), |ui| {
                 if ui.button(s!(&FileNew)).clicked() {
                     new_file(widget, sketch);
+                    ui.close_menu();
                 }
                 if ui.button(s!(&FileOpen)).clicked() {
                     read_file(widget, None::<&str>, sketch);
+                    ui.close_menu();
                 }
 
                 if if widget.path.is_none() {
@@ -79,17 +81,22 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
                     ui.button(s!(&FileSave)).clicked()
                 } {
                     save_file(widget, sketch);
+                    ui.close_menu();
                 }
 
                 ui.separator();
+
                 if ui.button(s!(&FileSettings)).clicked() {
                     // todo
+                    ui.close_menu();
                 }
             });
+
             ui.menu_button(s!(&EditMenu), |ui| {
                 if ui.button(s!(&EditUndo)).clicked() {
                     widget.undo(sketch);
                 }
+
                 if ui.button(s!(&EditRedo)).clicked() {
                     widget.redo(sketch);
                 }
