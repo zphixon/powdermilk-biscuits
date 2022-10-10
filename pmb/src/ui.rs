@@ -60,11 +60,19 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
     widget: &mut widget::SketchWidget<C>,
     config: &mut Config,
 ) {
-    use egui::{Color32, ComboBox, Grid, Id, Sense, SidePanel, Slider, TopBottomPanel};
+    use egui::{Color32, ComboBox, Grid, Id, Sense, Slider, TopBottomPanel, Window};
 
     TopBottomPanel::top("top").resizable(false).show(ctx, |ui| {
         ui.horizontal(|ui| {
             ui.heading(s!(&RealHotItem));
+
+            let settings_id = ui.make_persistent_id(s!(&FileSettings));
+            let mut settings_open = ui
+                .memory()
+                .data
+                .get_temp::<bool>(settings_id)
+                .unwrap_or(false);
+
             ui.menu_button(s!(&FileMenu), |ui| {
                 if ui.button(s!(&FileNew)).clicked() {
                     new_file(widget, sketch);
@@ -87,10 +95,59 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
                 ui.separator();
 
                 if ui.button(s!(&FileSettings)).clicked() {
-                    // todo
+                    settings_open = true;
                     ui.close_menu();
                 }
             });
+
+            if settings_open {
+                Window::new(s!(&SettingsWindow))
+                    .open(&mut settings_open)
+                    .show(ctx, |ui| {
+                        // if this were going to spawn a separate window, we would need an event loop
+                        // proxy to send configuration changes back to the main thread
+
+                        Grid::new("colors").show(ui, |ui| {
+                            ui.label(s!(&ToolForGesture1));
+                            ComboBox::new("tfg1", "")
+                                .selected_text(match config.tool_for_gesture_1 {
+                                    Tool::Pen => s!(&Pen), // TODO helper for this?
+                                    Tool::Pan => s!(&Pan),
+                                    Tool::Eraser => s!(&Eraser),
+                                })
+                                .show_ui(ui, |ui| {
+                                    ui.selectable_value(
+                                        &mut config.tool_for_gesture_1,
+                                        Tool::Pen,
+                                        s!(&Pen),
+                                    );
+                                    ui.selectable_value(
+                                        &mut config.tool_for_gesture_1,
+                                        Tool::Eraser,
+                                        s!(&Eraser),
+                                    );
+                                    ui.selectable_value(
+                                        &mut config.tool_for_gesture_1,
+                                        Tool::Pan,
+                                        s!(&Pan),
+                                    );
+                                });
+                            ui.end_row();
+
+                            ui.label(s!(&UseMouseForPen));
+                            ui.checkbox(&mut config.use_mouse_for_pen, "");
+                            ui.end_row();
+
+                            ui.label(s!(&ClearColor));
+                            ui.color_edit_button_rgb(&mut sketch.bg_color);
+                            ui.end_row();
+                        });
+
+                        ctx.settings_ui(ui);
+                    });
+
+                ui.memory().data.insert_temp(settings_id, settings_open);
+            }
 
             ui.menu_button(s!(&EditMenu), |ui| {
                 if ui.button(s!(&EditUndo)).clicked() {
@@ -107,19 +164,32 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
             ui.radio_value(&mut widget.active_tool, Tool::Pen, s!(&Pen));
             ui.radio_value(&mut widget.active_tool, Tool::Eraser, s!(&Eraser));
             ui.radio_value(&mut widget.active_tool, Tool::Pan, s!(&Pan));
-            ui.checkbox(&mut config.use_mouse_for_pen, s!(&UseMouseForPen));
 
-            ComboBox::from_label(s!(&ToolForGesture1))
-                .selected_text(match config.tool_for_gesture_1 {
-                    Tool::Pen => s!(&Pen), // TODO helper for this?
-                    Tool::Pan => s!(&Pan),
-                    Tool::Eraser => s!(&Eraser),
-                })
-                .show_ui(ui, |ui| {
-                    ui.selectable_value(&mut config.tool_for_gesture_1, Tool::Pen, s!(&Pen));
-                    ui.selectable_value(&mut config.tool_for_gesture_1, Tool::Eraser, s!(&Eraser));
-                    ui.selectable_value(&mut config.tool_for_gesture_1, Tool::Pan, s!(&Pan));
+            let brush_size_slider = ui.add(
+                Slider::new(&mut widget.brush_size, crate::MIN_BRUSH..=crate::MAX_BRUSH)
+                    .text(s!(&BrushSize)),
+            );
+
+            if brush_size_slider.hovered() || brush_size_slider.is_pointer_button_down_on() {
+                egui::show_tooltip(ui.ctx(), Id::new("tt"), |ui| {
+                    let size = widget.brush_size as f32;
+                    let (_id, space) =
+                        ui.allocate_exact_size(egui::vec2(size, size), Sense::hover());
+                    ui.painter().circle_stroke(
+                        space.rect.center(),
+                        size / 2.,
+                        egui::Stroke {
+                            width: 0.5,
+                            color: Color32::WHITE,
+                        },
+                    );
                 });
+            }
+
+            ui.color_edit_button_rgb(&mut sketch.fg_color);
+            ui.label(s!(&StrokeColor));
+
+            ui.separator();
 
             let slider =
                 Slider::new(&mut sketch.zoom, crate::MIN_ZOOM..=crate::MAX_ZOOM).text(s!(&Zoom));
@@ -129,39 +199,6 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
                 sketch.update_stroke_primitive();
             };
         });
-    });
-
-    SidePanel::left("side").resizable(false).show(ctx, |ui| {
-        Grid::new("colors").show(ui, |ui| {
-            ui.label(s!(&ClearColor));
-            ui.color_edit_button_rgb(&mut sketch.bg_color);
-            ui.end_row();
-            ui.label(s!(&StrokeColor));
-            ui.color_edit_button_rgb(&mut sketch.fg_color);
-            ui.end_row();
-        });
-
-        ui.label(s!(&BrushSize));
-
-        let brush_size_slider = ui.add(Slider::new(
-            &mut widget.brush_size,
-            crate::MIN_BRUSH..=crate::MAX_BRUSH,
-        ));
-
-        if brush_size_slider.hovered() || brush_size_slider.is_pointer_button_down_on() {
-            egui::show_tooltip(ui.ctx(), Id::new("tt"), |ui| {
-                let size = widget.brush_size as f32;
-                let (_id, space) = ui.allocate_exact_size(egui::vec2(size, size), Sense::hover());
-                ui.painter().circle_stroke(
-                    space.rect.center(),
-                    size / 2.,
-                    egui::Stroke {
-                        width: 0.5,
-                        color: Color32::WHITE,
-                    },
-                );
-            });
-        }
     });
 }
 

@@ -37,6 +37,7 @@ Proceed?"
   EditMenu "Edit"
   EditUndo "Undo"
   EditRedo "Redo"
+  SettingsWindow "Powdermilk Biscuits Settings"
 }
 
 es {
@@ -78,4 +79,5 @@ Proceed?"
   EditUndo "(es) Undo"
   EditRedo "(es) Redo"
   FileSettings "(es) Settings..."
+  SettingsWindow "(es) Powdermilk Biscuits Settings"
 }

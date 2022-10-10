@@ -60,6 +60,7 @@ messages!(
     EditMenu,
     EditUndo,
     EditRedo,
+    SettingsWindow,
 );
 
 #[macro_export]
