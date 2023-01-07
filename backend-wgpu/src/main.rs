@@ -4,7 +4,7 @@ use backend_wgpu::{Graphics, WgpuCoords, WgpuStrokeBackend};
 use powdermilk_biscuits::{
     config::Config,
     egui::Context as EguiContext,
-    loop_::{loop_, LoopContext, PerEvent},
+    loop_::{loop_, LoopContext, PerEvent, RenderResult},
     ui::widget::SketchWidget,
     winit::{dpi::PhysicalSize, event::Event as WinitEvent, event_loop::EventLoop, window::Window},
     Sketch,
@@ -74,7 +74,7 @@ impl LoopContext<WgpuStrokeBackend, WgpuCoords> for WgpuLoop {
         config: &mut Config,
         size: PhysicalSize<u32>,
         cursor_visible: bool,
-    ) {
+    ) -> RenderResult {
         let egui_data = self
             .egui_ctx
             .run(self.egui_winit.take_egui_input(window), |ctx| {
@@ -97,6 +97,12 @@ impl LoopContext<WgpuStrokeBackend, WgpuCoords> for WgpuLoop {
                 panic!();
             }
             _ => {}
+        }
+
+        if egui_data.repaint_after.is_zero() {
+            RenderResult::Redraw
+        } else {
+            RenderResult::Nothing
         }
     }
 

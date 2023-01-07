@@ -6,7 +6,7 @@ use ezgl::Ezgl;
 use powdermilk_biscuits::{
     config::Config,
     egui::Context as EguiContext,
-    loop_::{loop_, LoopContext, PerEvent},
+    loop_::{loop_, LoopContext, PerEvent, RenderResult},
     ui::widget::SketchWidget,
     winit::{dpi::PhysicalSize, event::Event as WinitEvent, event_loop::EventLoop, window::Window},
     Sketch,
@@ -97,10 +97,11 @@ impl LoopContext<GlStrokeBackend, GlCoords> for GlLoop {
         _: &mut Config,
         size: PhysicalSize<u32>,
         cursor_visible: bool,
-    ) {
+    ) -> RenderResult {
         self.renderer
             .render(&self.gl, sketch, widget, size, cursor_visible);
         self.egui_glow.paint(window);
         self.gl.swap_buffers().unwrap();
+        RenderResult::Nothing
     }
 }

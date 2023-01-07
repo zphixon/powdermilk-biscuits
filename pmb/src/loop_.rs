@@ -25,6 +25,11 @@ pub enum PerEvent {
     Nothing,
 }
 
+pub enum RenderResult {
+    Redraw,
+    Nothing,
+}
+
 pub trait LoopContext<S: StrokeBackend, C: CoordinateSystem> {
     fn setup(ev: &EventLoop<()>, window: &Window, sketch: &mut Sketch<S>) -> Self;
 
@@ -49,7 +54,7 @@ pub trait LoopContext<S: StrokeBackend, C: CoordinateSystem> {
         config: &mut Config,
         size: PhysicalSize<u32>,
         cursor_visible: bool,
-    );
+    ) -> RenderResult;
 }
 
 pub fn loop_<S, C, L>()
@@ -379,14 +384,20 @@ where
                 }
             }
 
-            WinitEvent::RedrawRequested(_) => ctx.render(
+            WinitEvent::RedrawRequested(_) => match ctx.render(
                 &window,
                 &mut sketch,
                 &mut widget,
                 &mut config,
                 size,
                 cursor_visible,
-            ),
+            ) {
+                RenderResult::Redraw => {
+                    window.request_redraw();
+                }
+
+                RenderResult::Nothing => {}
+            },
 
             _ => {}
         }
