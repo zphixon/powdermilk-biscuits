@@ -92,7 +92,7 @@ jobs:
       - name: download glslang/naga
         if: '!steps.cache-deps.outputs.cache-hit'
         run: |
-          Invoke-WebRequest -URI https://ci.appveyor.com/api/buildjobs/nweuuamas19eil5c/artifacts/build%2Finstall%2Fglslang-master-windows-x64-Release.zip -OutFile glslang.zip
+          Invoke-WebRequest -URI https://ci.appveyor.com/api/buildjobs/73ctb6evrl4d1r10/artifacts/build%2Finstall%2Fglslang-master-windows-x64-Release.zip -OutFile glslang.zip
           7z x glslang.zip -oC:\glslang
           cargo install naga-cli
 
