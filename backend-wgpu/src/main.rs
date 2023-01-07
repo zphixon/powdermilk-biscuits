@@ -11,26 +11,26 @@ use powdermilk_biscuits::{
 };
 
 fn main() {
-    loop_::<WgpuStrokeBackend, WgpuCoords, GlLoop>();
+    loop_::<WgpuStrokeBackend, WgpuCoords, WgpuLoop>();
 }
 
-struct GlLoop {
+struct WgpuLoop {
     egui_winit: egui_winit::State,
     egui_ctx: EguiContext,
     graphics: Graphics,
     egui_painter: egui_wgpu::Renderer,
 }
 
-impl LoopContext<WgpuStrokeBackend, WgpuCoords> for GlLoop {
+impl LoopContext<WgpuStrokeBackend, WgpuCoords> for WgpuLoop {
     fn setup(
         ev: &EventLoop<()>,
         window: &Window,
         sketch: &mut Sketch<WgpuStrokeBackend>,
-    ) -> GlLoop {
+    ) -> WgpuLoop {
         let mut graphics = futures::executor::block_on(Graphics::new(window));
         graphics.buffer_all_strokes(sketch);
 
-        GlLoop {
+        WgpuLoop {
             egui_winit: egui_winit::State::new(ev),
             egui_ctx: EguiContext::default(),
             egui_painter: egui_wgpu::Renderer::new(&graphics.device, graphics.surface_format, 1, 0),
