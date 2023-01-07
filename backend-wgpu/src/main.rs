@@ -9,7 +9,6 @@ use powdermilk_biscuits::{
     winit::{dpi::PhysicalSize, event::Event as WinitEvent, event_loop::EventLoop, window::Window},
     Sketch,
 };
-use wgpu::TextureFormat;
 
 fn main() {
     loop_::<WgpuStrokeBackend, WgpuCoords, WgpuLoop>();

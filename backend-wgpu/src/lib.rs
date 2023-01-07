@@ -16,11 +16,11 @@ use wgpu::{
     CommandEncoderDescriptor, CompositeAlphaMode, Device, DeviceDescriptor, Face, Features,
     FragmentState, FrontFace, IndexFormat, Instance, Limits, LoadOp, MultisampleState, Operations,
     PipelineLayoutDescriptor, PolygonMode, PowerPreference, PresentMode, PrimitiveState,
-    PrimitiveTopology, PushConstantRange, Queue, RenderPassColorAttachment,
-    RenderPassDepthStencilAttachment, RenderPassDescriptor, RenderPipeline,
-    RenderPipelineDescriptor, RequestAdapterOptions, ShaderStages, Surface, SurfaceConfiguration,
-    SurfaceError, TextureFormat, TextureUsages, TextureView, TextureViewDescriptor,
-    VertexAttribute, VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
+    PrimitiveTopology, PushConstantRange, Queue, RenderPassColorAttachment, RenderPassDescriptor,
+    RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, ShaderStages, Surface,
+    SurfaceConfiguration, SurfaceError, TextureFormat, TextureUsages, TextureView,
+    TextureViewDescriptor, VertexAttribute, VertexBufferLayout, VertexFormat, VertexState,
+    VertexStepMode,
 };
 
 pub type WgpuStroke = Stroke<WgpuStrokeBackend>;
