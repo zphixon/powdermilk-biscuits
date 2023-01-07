@@ -9,6 +9,7 @@ use powdermilk_biscuits::{
     winit::{dpi::PhysicalSize, event::Event as WinitEvent, event_loop::EventLoop, window::Window},
     Sketch,
 };
+use wgpu::TextureFormat;
 
 fn main() {
     loop_::<WgpuStrokeBackend, WgpuCoords, WgpuLoop>();
@@ -33,7 +34,12 @@ impl LoopContext<WgpuStrokeBackend, WgpuCoords> for WgpuLoop {
         WgpuLoop {
             egui_winit: egui_winit::State::new(ev),
             egui_ctx: EguiContext::default(),
-            egui_painter: egui_wgpu::Renderer::new(&graphics.device, graphics.surface_format, 1, 0),
+            egui_painter: egui_wgpu::Renderer::new(
+                &graphics.device,
+                graphics.surface_format,
+                None,
+                1,
+            ),
             graphics,
         }
     }

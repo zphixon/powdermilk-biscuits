@@ -1,3 +1,4 @@
+use egui_wgpu::renderer::ScreenDescriptor;
 use powdermilk_biscuits::{
     bytemuck, egui,
     graphics::{PixelPos, StrokePoint},
@@ -12,10 +13,11 @@ use wgpu::{
     Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, BindingType, BlendState, Buffer, BufferAddress, BufferBindingType,
     BufferUsages, Color as WgpuColor, ColorTargetState, ColorWrites, CommandEncoder,
-    CommandEncoderDescriptor, Device, DeviceDescriptor, Face, Features, FragmentState, FrontFace,
-    IndexFormat, Instance, Limits, LoadOp, MultisampleState, Operations, PipelineLayoutDescriptor,
-    PolygonMode, PowerPreference, PresentMode, PrimitiveState, PrimitiveTopology,
-    PushConstantRange, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline,
+    CommandEncoderDescriptor, CompositeAlphaMode, Device, DeviceDescriptor, Face, Features,
+    FragmentState, FrontFace, IndexFormat, Instance, Limits, LoadOp, MultisampleState, Operations,
+    PipelineLayoutDescriptor, PolygonMode, PowerPreference, PresentMode, PrimitiveState,
+    PrimitiveTopology, PushConstantRange, Queue, RenderPassColorAttachment,
+    RenderPassDepthStencilAttachment, RenderPassDescriptor, RenderPipeline,
     RenderPipelineDescriptor, RequestAdapterOptions, ShaderStages, Surface, SurfaceConfiguration,
     SurfaceError, TextureFormat, TextureUsages, TextureView, TextureViewDescriptor,
     VertexAttribute, VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
@@ -631,7 +633,7 @@ impl Graphics {
         };
 
         let present_mode = if surface
-            .get_supported_modes(&adapter)
+            .get_supported_present_modes(&adapter)
             .contains(&PresentMode::Immediate)
         {
             PresentMode::Immediate
@@ -644,6 +646,7 @@ impl Graphics {
             format: surface_format,
             width: size.width,
             height: size.height,
+            alpha_mode: CompositeAlphaMode::Auto,
             present_mode,
         };
 
@@ -805,18 +808,41 @@ impl Graphics {
             .create_command_encoder(&CommandEncoderDescriptor {
                 label: Some("egui encoder"),
             });
-        for (id, image) in &egui_textures.set {
-            egui_painter.update_texture(&self.device, &self.queue, *id, image);
+
+        for (id, image_delta) in egui_textures.set.iter() {
+            egui_painter.update_texture(&self.device, &self.queue, *id, image_delta);
         }
-        let sd = egui_wgpu::renderer::ScreenDescriptor {
+
+        let sd = ScreenDescriptor {
             size_in_pixels: [self.size.width, self.size.height],
             pixels_per_point: 1.,
         };
-        egui_painter.update_buffers(&self.device, &self.queue, egui_tris, &sd);
-        egui_painter.render(&mut encoder, &surface_view, egui_tris, &sd, None);
-        for id in &egui_textures.free {
+
+        for id in egui_textures.free.iter() {
             egui_painter.free_texture(id);
         }
+
+        let cmds =
+            egui_painter.update_buffers(&self.device, &self.queue, &mut encoder, egui_tris, &sd);
+
+        {
+            let mut rp = encoder.begin_render_pass(&RenderPassDescriptor {
+                label: Some("egui rpd"),
+                color_attachments: &[Some(RenderPassColorAttachment {
+                    view: &surface_view,
+                    resolve_target: None,
+                    ops: Operations {
+                        load: LoadOp::Load,
+                        store: true,
+                    },
+                })],
+                depth_stencil_attachment: None,
+            });
+
+            egui_painter.render(&mut rp, egui_tris, &sd);
+        }
+
+        self.queue.submit(cmds);
         self.queue.submit(Some(encoder.finish()));
 
         output.present();
