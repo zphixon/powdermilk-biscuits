@@ -93,7 +93,7 @@ impl LoopContext<WgpuStrokeBackend, WgpuCoords> for WgpuLoop {
         ) {
             Err(wgpu::SurfaceError::Lost) => self.graphics.resize(size),
             Err(wgpu::SurfaceError::OutOfMemory) => {
-                powdermilk_biscuits::ui::error(powdermilk_biscuits::s!(&OutOfMemory));
+                powdermilk_biscuits::ui::error(powdermilk_biscuits::s!(&MboxMessageOutOfMemory));
                 panic!();
             }
             _ => {}

@@ -131,7 +131,7 @@ impl Config {
                 return Config::default();
             }
             Err(err) => {
-                PmbError::from(err).display_with(s!(CouldNotOpenConfigFile));
+                PmbError::from(err).display_with(s!(MboxMessageCouldNotOpenConfigFile));
                 return Config::default().with_error();
             }
         };
@@ -139,7 +139,7 @@ impl Config {
         match ron::from_str(&file) {
             Ok(config) => config,
             Err(err) => {
-                PmbError::from(err).display_with(s!(CouldNotOpenConfigFile));
+                PmbError::from(err).display_with(s!(MboxMessageCouldNotOpenConfigFile));
                 Config::default().with_error()
             }
         }
@@ -156,7 +156,7 @@ impl Config {
 
         let contents = self.to_ron_string();
         if let Err(err) = std::fs::write(path, contents) {
-            PmbError::from(err).display_with(s!(CouldNotOpenConfigFile));
+            PmbError::from(err).display_with(s!(MboxMessageCouldNotOpenConfigFile));
         }
     }
 

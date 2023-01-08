@@ -12,15 +12,15 @@ pub mod widget;
 
 fn prompt_migrate() -> rfd::MessageDialogResult {
     rfd::MessageDialog::new()
-        .set_title(s!(&MigrateWarningTitle))
+        .set_title(s!(&MboxTitleMigrateWarning))
         .set_buttons(rfd::MessageButtons::YesNo)
-        .set_description(s!(&MigrateWarningMessage))
+        .set_description(s!(&MboxMessageMigrateWarning))
         .show()
 }
 
 pub fn error(text: &str) -> rfd::MessageDialogResult {
     rfd::MessageDialog::new()
-        .set_title(s!(&ErrorTitle))
+        .set_title(s!(&MboxTitleError))
         .set_description(text)
         .set_level(rfd::MessageLevel::Error)
         .set_buttons(rfd::MessageButtons::Ok)
@@ -30,7 +30,7 @@ pub fn error(text: &str) -> rfd::MessageDialogResult {
 pub fn ask_to_save(why: &str) -> rfd::MessageDialogResult {
     rfd::MessageDialog::new()
         .set_level(rfd::MessageLevel::Warning)
-        .set_title(s!(&UnsavedChangesTitle))
+        .set_title(s!(&MboxTitleUnsavedChanges))
         .set_description(why)
         .set_buttons(rfd::MessageButtons::YesNoCancel)
         .show()
@@ -51,7 +51,7 @@ pub fn save_dialog(title: &str, filename: Option<&Path>) -> Option<PathBuf> {
 
 pub fn open_dialog() -> Option<PathBuf> {
     rfd::FileDialog::new()
-        .set_title(s!(&OpenTitle))
+        .set_title(s!(&MboxTitleOpen))
         .add_filter("PMB", &["pmb"])
         .pick_file()
 }
@@ -68,27 +68,27 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
         ui.horizontal(|ui| {
             ui.heading(s!(&RealHotItem));
 
-            let settings_id = ui.make_persistent_id(s!(&FileSettings));
+            let settings_id = ui.make_persistent_id("settings window");
             let mut settings_open = ui
                 .memory()
                 .data
                 .get_temp::<bool>(settings_id)
                 .unwrap_or(false);
 
-            ui.menu_button(s!(&FileMenu), |ui| {
-                if ui.button(s!(&FileNew)).clicked() {
+            ui.menu_button(s!(&MenuLabelFile), |ui| {
+                if ui.button(s!(&MenuItemFileNew)).clicked() {
                     new_file(widget, sketch);
                     ui.close_menu();
                 }
-                if ui.button(s!(&FileOpen)).clicked() {
+                if ui.button(s!(&MenuItemFileOpen)).clicked() {
                     read_file(widget, None::<&str>, sketch);
                     ui.close_menu();
                 }
 
                 if if widget.path.is_none() {
-                    ui.button(s!(&FileSaveUnnamed)).clicked()
+                    ui.button(s!(&MenuItemFileSaveUnnamed)).clicked()
                 } else {
-                    ui.button(s!(&FileSave)).clicked()
+                    ui.button(s!(&MenuItemFileSave)).clicked()
                 } {
                     save_file(widget, sketch);
                     ui.close_menu();
@@ -96,7 +96,7 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
 
                 ui.separator();
 
-                if ui.button(s!(&FileSettings)).clicked() {
+                if ui.button(s!(&MenuItemFileSettings)).clicked() {
                     settings_open = true;
                     ui.close_menu();
                 }
@@ -105,9 +105,9 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
 
                 if ui
                     .button(if widget.modified {
-                        s!(&QuitModified)
+                        s!(&MenuItemFileQuitModified)
                     } else {
-                        s!(&Quit)
+                        s!(&MenuItemFileQuitUnmodified)
                     })
                     .clicked()
                 {
@@ -117,148 +117,148 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
             });
 
             if settings_open {
-                Window::new(s!(&SettingsWindow))
+                Window::new(s!(&WindowTitleConfig))
                     .open(&mut settings_open)
                     .show(ctx, |ui| {
                         // if this were going to spawn a separate window, we would need an event loop
                         // proxy to send configuration changes back to the main thread
 
                         Grid::new("input settings").show(ui, |ui| {
-                            ui.label(s!(&ToolForGesture1));
+                            ui.label(s!(&ConfigLabelToolForGesture1));
                             ComboBox::new("tool for gesture 1", "")
                                 .selected_text(match config.tool_for_gesture_1 {
-                                    Tool::Pen => s!(&Pen), // TODO helper for this?
-                                    Tool::Pan => s!(&Pan),
-                                    Tool::Eraser => s!(&Eraser),
+                                    Tool::Pen => s!(&RadioLabelToolPen), // TODO helper for this?
+                                    Tool::Pan => s!(&RadioLabelToolPan),
+                                    Tool::Eraser => s!(&RadioLabelToolEraser),
                                 })
                                 .show_ui(ui, |ui| {
                                     ui.selectable_value(
                                         &mut config.tool_for_gesture_1,
                                         Tool::Pen,
-                                        s!(&Pen),
+                                        s!(&RadioLabelToolPen),
                                     );
                                     ui.selectable_value(
                                         &mut config.tool_for_gesture_1,
                                         Tool::Eraser,
-                                        s!(&Eraser),
+                                        s!(&RadioLabelToolPan),
                                     );
                                     ui.selectable_value(
                                         &mut config.tool_for_gesture_1,
                                         Tool::Pan,
-                                        s!(&Pan),
+                                        s!(&RadioLabelToolEraser),
                                     );
                                 });
                             ui.end_row();
 
-                            ui.label(s!(&ToolForGesture2));
+                            ui.label(s!(&ConfigLabelToolForGesture2));
                             ComboBox::new("tool for gesture 2", "")
                                 .selected_text(match config.tool_for_gesture_2 {
-                                    Tool::Pen => s!(&Pen), // TODO helper for this?
-                                    Tool::Pan => s!(&Pan),
-                                    Tool::Eraser => s!(&Eraser),
+                                    Tool::Pen => s!(&RadioLabelToolPen), // TODO helper for this?
+                                    Tool::Pan => s!(&RadioLabelToolPan),
+                                    Tool::Eraser => s!(&RadioLabelToolEraser),
                                 })
                                 .show_ui(ui, |ui| {
                                     ui.selectable_value(
                                         &mut config.tool_for_gesture_2,
                                         Tool::Pen,
-                                        s!(&Pen),
+                                        s!(&RadioLabelToolPen),
                                     );
                                     ui.selectable_value(
                                         &mut config.tool_for_gesture_2,
                                         Tool::Eraser,
-                                        s!(&Eraser),
+                                        s!(&RadioLabelToolPan),
                                     );
                                     ui.selectable_value(
                                         &mut config.tool_for_gesture_2,
                                         Tool::Pan,
-                                        s!(&Pan),
+                                        s!(&RadioLabelToolEraser),
                                     );
                                 });
                             ui.end_row();
 
-                            ui.label(s!(&ToolForGesture3));
+                            ui.label(s!(&ConfigLabelToolForGesture3));
                             ComboBox::new("tool for gesture 3", "")
                                 .selected_text(match config.tool_for_gesture_3 {
-                                    Tool::Pen => s!(&Pen), // TODO helper for this?
-                                    Tool::Pan => s!(&Pan),
-                                    Tool::Eraser => s!(&Eraser),
+                                    Tool::Pen => s!(&RadioLabelToolPen), // TODO helper for this?
+                                    Tool::Pan => s!(&RadioLabelToolPan),
+                                    Tool::Eraser => s!(&RadioLabelToolEraser),
                                 })
                                 .show_ui(ui, |ui| {
                                     ui.selectable_value(
                                         &mut config.tool_for_gesture_3,
                                         Tool::Pen,
-                                        s!(&Pen),
+                                        s!(&RadioLabelToolPen),
                                     );
                                     ui.selectable_value(
                                         &mut config.tool_for_gesture_3,
                                         Tool::Eraser,
-                                        s!(&Eraser),
+                                        s!(&RadioLabelToolPan),
                                     );
                                     ui.selectable_value(
                                         &mut config.tool_for_gesture_3,
                                         Tool::Pan,
-                                        s!(&Pan),
+                                        s!(&RadioLabelToolEraser),
                                     );
                                 });
                             ui.end_row();
 
-                            ui.label(s!(&ToolForGesture4));
+                            ui.label(s!(&ConfigLabelToolForGesture4));
                             ComboBox::new("tool for gesture 4", "")
                                 .selected_text(match config.tool_for_gesture_4 {
-                                    Tool::Pen => s!(&Pen), // TODO helper for this?
-                                    Tool::Pan => s!(&Pan),
-                                    Tool::Eraser => s!(&Eraser),
+                                    Tool::Pen => s!(&RadioLabelToolPen), // TODO helper for this?
+                                    Tool::Pan => s!(&RadioLabelToolPan),
+                                    Tool::Eraser => s!(&RadioLabelToolEraser),
                                 })
                                 .show_ui(ui, |ui| {
                                     ui.selectable_value(
                                         &mut config.tool_for_gesture_4,
                                         Tool::Pen,
-                                        s!(&Pen),
+                                        s!(&RadioLabelToolPen),
                                     );
                                     ui.selectable_value(
                                         &mut config.tool_for_gesture_4,
                                         Tool::Eraser,
-                                        s!(&Eraser),
+                                        s!(&RadioLabelToolPan),
                                     );
                                     ui.selectable_value(
                                         &mut config.tool_for_gesture_4,
                                         Tool::Pan,
-                                        s!(&Pan),
+                                        s!(&RadioLabelToolEraser),
                                     );
                                 });
                             ui.end_row();
 
-                            ui.label(s!(&UseMouseForPen));
+                            ui.label(s!(&ConfigLabelUseMouseForPen));
                             ui.checkbox(&mut config.use_mouse_for_pen, "");
                             ui.end_row();
 
-                            ui.label(s!(&StylusMayBeInverted));
+                            ui.label(s!(&ConfigLabelStylusMayBeInverted));
                             ui.checkbox(&mut config.stylus_may_be_inverted, "");
                             ui.end_row();
 
-                            ui.label(s!(&PrimaryMouseButton));
+                            ui.label(s!(&ConfigLabelPrimaryMouseButton));
                             ComboBox::new("primary button", "")
                                 .selected_text(match config.primary_button {
-                                    MouseButton::Left => s!(&LeftMouse), // TODO helper for this?
-                                    MouseButton::Middle => s!(&MiddleMouse),
-                                    MouseButton::Right => s!(&RightMouse),
+                                    MouseButton::Left => s!(&ConfigOptionButtonLeftMouse), // TODO helper for this?
+                                    MouseButton::Middle => s!(&ConfigOptionButtonMiddleMouse),
+                                    MouseButton::Right => s!(&ConfigOptionButtonRightMouse),
                                     _ => s!(&Placeholder),
                                 })
                                 .show_ui(ui, |ui| {
                                     ui.selectable_value(
                                         &mut config.primary_button,
                                         MouseButton::Left,
-                                        s!(&LeftMouse),
+                                        s!(&ConfigOptionButtonLeftMouse),
                                     );
                                     ui.selectable_value(
                                         &mut config.primary_button,
                                         MouseButton::Middle,
-                                        s!(&MiddleMouse),
+                                        s!(&ConfigOptionButtonMiddleMouse),
                                     );
                                     ui.selectable_value(
                                         &mut config.primary_button,
                                         MouseButton::Right,
-                                        s!(&RightMouse),
+                                        s!(&ConfigOptionButtonRightMouse),
                                     );
                                 });
                             ui.end_row();
@@ -267,11 +267,11 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
                         ui.separator();
 
                         Grid::new("visual fx").show(ui, |ui| {
-                            ui.label(s!(&ClearColor));
+                            ui.label(s!(&ConfigLabelBackgroundColor));
                             ui.color_edit_button_rgb(&mut sketch.bg_color);
                             ui.end_row();
 
-                            ui.label(s!(&DarkMode));
+                            ui.label(s!(&ConfigLabelDarkMode));
                             let before = config.dark_mode;
                             ui.checkbox(&mut config.dark_mode, "");
                             if before != config.dark_mode {
@@ -283,7 +283,7 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
                             }
                             ui.end_row();
 
-                            ui.label(s!(&StartMaximized));
+                            ui.label(s!(&ConfigLabelStartMaximized));
                             ui.checkbox(&mut config.window_start_maximized, "");
                         });
 
@@ -294,25 +294,33 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
                 ui.memory().data.insert_temp(settings_id, settings_open);
             }
 
-            ui.menu_button(s!(&EditMenu), |ui| {
-                if ui.button(s!(&EditUndo)).clicked() {
+            ui.menu_button(s!(&MenuLabelEdit), |ui| {
+                if ui.button(s!(&MenuItemEditUndo)).clicked() {
                     widget.undo(sketch);
                 }
 
-                if ui.button(s!(&EditRedo)).clicked() {
+                if ui.button(s!(&MenuItemEditRedo)).clicked() {
                     widget.redo(sketch);
                 }
             });
 
             ui.separator();
 
-            ui.radio_value(&mut widget.active_tool, Tool::Pen, s!(&Pen));
-            ui.radio_value(&mut widget.active_tool, Tool::Eraser, s!(&Eraser));
-            ui.radio_value(&mut widget.active_tool, Tool::Pan, s!(&Pan));
+            ui.radio_value(&mut widget.active_tool, Tool::Pen, s!(&RadioLabelToolPen));
+            ui.radio_value(
+                &mut widget.active_tool,
+                Tool::Eraser,
+                s!(&RadioLabelToolPan),
+            );
+            ui.radio_value(
+                &mut widget.active_tool,
+                Tool::Pan,
+                s!(&RadioLabelToolEraser),
+            );
 
             let brush_size_slider = ui.add(
                 Slider::new(&mut widget.brush_size, crate::MIN_BRUSH..=crate::MAX_BRUSH)
-                    .text(s!(&BrushSize)),
+                    .text(s!(&SliderLabelBrushSize)),
             );
 
             if brush_size_slider.hovered() || brush_size_slider.is_pointer_button_down_on() {
@@ -332,12 +340,12 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
             }
 
             ui.color_edit_button_rgb(&mut sketch.fg_color);
-            ui.label(s!(&StrokeColor));
+            ui.label(s!(&ColorPickerLabelStrokeColor));
 
             ui.separator();
 
-            let slider =
-                Slider::new(&mut sketch.zoom, crate::MIN_ZOOM..=crate::MAX_ZOOM).text(s!(&Zoom));
+            let slider = Slider::new(&mut sketch.zoom, crate::MIN_ZOOM..=crate::MAX_ZOOM)
+                .text(s!(&SliderLabelZoom));
 
             if ui.add(slider).changed() {
                 sketch.update_visible_strokes::<C>(widget.width, widget.height);
@@ -360,8 +368,8 @@ pub fn read_file<S: StrokeBackend, C: CoordinateSystem>(
     // if we are modified
     if widget.modified {
         // ask to save first
-        match ask_to_save_then_save(widget, sketch, s!(&AskToSaveBeforeOpening))
-            .problem(s!(CouldNotSaveFile))
+        match ask_to_save_then_save(widget, sketch, s!(&MboxMessageAskToSaveBeforeOpening))
+            .problem(s!(MboxMessageCouldNotSaveFile))
         {
             Ok(should_continue) => {
                 if !should_continue {
@@ -369,7 +377,7 @@ pub fn read_file<S: StrokeBackend, C: CoordinateSystem>(
                 }
             }
 
-            err => err.problem(s!(CouldNotOpenFile)).display(),
+            err => err.problem(s!(MboxMessageCouldNotOpenFile)).display(),
         }
     }
 
@@ -501,7 +509,7 @@ pub fn ask_to_save_then_save<S: StrokeBackend, C: CoordinateSystem>(
         (rfd::MessageDialogResult::Yes, None) => {
             log::info!("asking where to save");
             // ask where to save it
-            match save_dialog(s!(&SaveUnnamedFile), None) {
+            match save_dialog(s!(&MboxTitleSaveUnnamedFile), None) {
                 Some(new_filename) => {
                     log::info!("writing as {}", new_filename.display());
                     // try write to disk
@@ -537,7 +545,7 @@ fn save_file<C: CoordinateSystem, S: StrokeBackend>(
             }
         }
         widget.modified = false;
-    } else if let Some(path) = save_dialog(s!(&SaveUnnamedFile), None) {
+    } else if let Some(path) = save_dialog(s!(&MboxTitleSaveUnnamedFile), None) {
         let problem = format!("{}", path.display());
         widget.path = Some(path);
         match migrate::write(widget.path.as_ref().unwrap(), sketch) {
@@ -558,14 +566,14 @@ fn new_file<C: CoordinateSystem, S: StrokeBackend>(
     sketch: &mut Sketch<S>,
 ) {
     if widget.modified {
-        match ask_to_save_then_save(widget, sketch, s!(&AskToSaveBeforeOpening)) {
+        match ask_to_save_then_save(widget, sketch, s!(&MboxMessageAskToSaveBeforeOpening)) {
             Ok(should_continue) => {
                 if !should_continue {
                     return;
                 }
             }
 
-            err => err.problem(s!(CouldNotSaveFile)).display(),
+            err => err.problem(s!(MboxMessageCouldNotSaveFile)).display(),
         }
     }
 

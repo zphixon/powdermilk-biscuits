@@ -97,7 +97,7 @@ where
         config_path
     } else if cfg!(feature = "pmb-release") {
         use crate::error::PmbErrorExt;
-        match Config::config_path().problem(s!(CouldNotOpenConfigFile)) {
+        match Config::config_path().problem(s!(MboxMessageCouldNotOpenConfigFile)) {
             Ok(path) => path,
             Err(e) => {
                 e.display();
@@ -111,7 +111,11 @@ where
     let mut config = Config::from_disk(&config_path);
     let mut builder = WindowBuilder::new()
         .with_maximized(config.window_start_maximized)
-        .with_title(s!(&TitleModifiedNoFile));
+        .with_title(format!(
+            "{} ({})",
+            s!(&WindowTitleNoFile),
+            s!(&WindowTitleModifiedSign)
+        ));
 
     if let (Some(x), Some(y)) = config.start_pos() {
         builder = builder.with_position(PhysicalPosition { x, y });
@@ -184,7 +188,7 @@ where
                     if crate::ui::ask_to_save_then_save(
                         &mut widget,
                         &sketch,
-                        s!(&AskToSaveBeforeClosing),
+                        s!(&MboxMessageAskToSaveBeforeClosing),
                     )
                     .unwrap_or(false)
                     {
@@ -360,12 +364,17 @@ where
             WinitEvent::MainEventsCleared => {
                 match (widget.path.as_ref(), widget.modified) {
                     (Some(path), true) => {
-                        let title = format!("{} ({})", path.display(), s!(&Modified));
+                        let title =
+                            format!("{} ({})", path.display(), s!(&WindowTitleModifiedSign));
                         window.set_title(title.as_str());
                     }
                     (Some(path), false) => window.set_title(&path.display().to_string()),
-                    (None, true) => window.set_title(s!(&TitleModifiedNoFile)),
-                    (None, false) => window.set_title(s!(&TitleUnmodifiedNoFile)),
+                    (None, true) => window.set_title(&format!(
+                        "{} ({})",
+                        s!(&WindowTitleNoFile),
+                        s!(&WindowTitleModifiedSign)
+                    )),
+                    (None, false) => window.set_title(s!(&WindowTitleNoFile)),
                 }
 
                 if ctx.egui_ctx().wants_pointer_input() {
