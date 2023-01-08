@@ -340,6 +340,11 @@ impl<C: CoordinateSystem> SketchWidget<C> {
         log::trace!("next {:?} {:?}", self.state, event);
 
         self.state = match (self.state, event) {
+            (state, E::Exit) => {
+                // hmmm
+                state
+            }
+
             (S::Ready, E::IncreaseBrush(change)) => {
                 self.increase_brush(change);
                 S::Ready

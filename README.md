@@ -23,14 +23,16 @@ The build has visited the local mage and is no longer cursed. Just `git clone` a
   - Color palette
     - Customizable per-file
   - All kinds of UI customization
+  - Better keyboard combinations
+    - Configuring them in the settings menu
   - Text input?
 - Good finger gestures
   - Correct handling of multitouch
 - Stroke rendering revamp
-  - Infinite scroll, chunks
-  - Correct handling of color space (wgpu impl)
+  - Infinite zoom, chunks
+  - Correct handling of color space
 - Fully commit to either WGPU or OpenGL for rendering
-- Config system
+- Better config system
   - More sophisticated device configuration
 - Better architecture
-  - Tessellation in another thread
+  - Tessellation/render/dialog boxes on another thread

@@ -26,6 +26,7 @@ macro_rules! messages {
 }
 
 messages!(
+    Placeholder,
     MigrateWarningTitle,
     MigrateWarningMessage,
     ErrorTitle,
@@ -46,6 +47,9 @@ messages!(
     Eraser,
     UseMouseForPen,
     ToolForGesture1,
+    ToolForGesture2,
+    ToolForGesture3,
+    ToolForGesture4,
     Zoom,
     BrushSize,
     Modified,
@@ -61,6 +65,16 @@ messages!(
     EditUndo,
     EditRedo,
     SettingsWindow,
+    DarkMode,
+    StylusMayBeInverted,
+    PrimaryMouseButton,
+    PenPanButton,
+    LeftMouse,
+    RightMouse,
+    MiddleMouse,
+    Quit,
+    QuitModified,
+    StartMaximized
 );
 
 #[macro_export]

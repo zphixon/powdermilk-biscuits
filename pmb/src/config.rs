@@ -66,7 +66,8 @@ config!(
     window_start_y: Option<i32> { None },
     window_start_width: Option<u32> { None },
     window_start_height: Option<u32> { None },
-    window_maximized: bool { false },
+    window_start_maximized: bool { false },
+    dark_mode: bool { true },
 
     debug_toggle_stylus_invertability: Combination { Combination::INACTIVE },
     debug_toggle_use_mouse_for_pen: Combination { Combination::INACTIVE },

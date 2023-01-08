@@ -110,7 +110,7 @@ where
 
     let mut config = Config::from_disk(&config_path);
     let mut builder = WindowBuilder::new()
-        .with_maximized(config.window_maximized)
+        .with_maximized(config.window_start_maximized)
         .with_title(s!(&TitleModifiedNoFile));
 
     if let (Some(x), Some(y)) = config.start_pos() {

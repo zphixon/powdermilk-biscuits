@@ -1,3 +1,5 @@
+use winit::event::MouseButton;
+
 use crate::{
     config::Config,
     error::{ErrorKind, PmbError, PmbErrorExt},
@@ -98,6 +100,20 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
                     settings_open = true;
                     ui.close_menu();
                 }
+
+                ui.separator();
+
+                if ui
+                    .button(if widget.modified {
+                        s!(&QuitModified)
+                    } else {
+                        s!(&Quit)
+                    })
+                    .clicked()
+                {
+                    // ehhh
+                    widget.next(config, sketch, crate::event::Event::Exit);
+                }
             });
 
             if settings_open {
@@ -107,9 +123,9 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
                         // if this were going to spawn a separate window, we would need an event loop
                         // proxy to send configuration changes back to the main thread
 
-                        Grid::new("colors").show(ui, |ui| {
+                        Grid::new("input settings").show(ui, |ui| {
                             ui.label(s!(&ToolForGesture1));
-                            ComboBox::new("tfg1", "")
+                            ComboBox::new("tool for gesture 1", "")
                                 .selected_text(match config.tool_for_gesture_1 {
                                     Tool::Pen => s!(&Pen), // TODO helper for this?
                                     Tool::Pan => s!(&Pan),
@@ -134,15 +150,144 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
                                 });
                             ui.end_row();
 
+                            ui.label(s!(&ToolForGesture2));
+                            ComboBox::new("tool for gesture 2", "")
+                                .selected_text(match config.tool_for_gesture_2 {
+                                    Tool::Pen => s!(&Pen), // TODO helper for this?
+                                    Tool::Pan => s!(&Pan),
+                                    Tool::Eraser => s!(&Eraser),
+                                })
+                                .show_ui(ui, |ui| {
+                                    ui.selectable_value(
+                                        &mut config.tool_for_gesture_2,
+                                        Tool::Pen,
+                                        s!(&Pen),
+                                    );
+                                    ui.selectable_value(
+                                        &mut config.tool_for_gesture_2,
+                                        Tool::Eraser,
+                                        s!(&Eraser),
+                                    );
+                                    ui.selectable_value(
+                                        &mut config.tool_for_gesture_2,
+                                        Tool::Pan,
+                                        s!(&Pan),
+                                    );
+                                });
+                            ui.end_row();
+
+                            ui.label(s!(&ToolForGesture3));
+                            ComboBox::new("tool for gesture 3", "")
+                                .selected_text(match config.tool_for_gesture_3 {
+                                    Tool::Pen => s!(&Pen), // TODO helper for this?
+                                    Tool::Pan => s!(&Pan),
+                                    Tool::Eraser => s!(&Eraser),
+                                })
+                                .show_ui(ui, |ui| {
+                                    ui.selectable_value(
+                                        &mut config.tool_for_gesture_3,
+                                        Tool::Pen,
+                                        s!(&Pen),
+                                    );
+                                    ui.selectable_value(
+                                        &mut config.tool_for_gesture_3,
+                                        Tool::Eraser,
+                                        s!(&Eraser),
+                                    );
+                                    ui.selectable_value(
+                                        &mut config.tool_for_gesture_3,
+                                        Tool::Pan,
+                                        s!(&Pan),
+                                    );
+                                });
+                            ui.end_row();
+
+                            ui.label(s!(&ToolForGesture4));
+                            ComboBox::new("tool for gesture 4", "")
+                                .selected_text(match config.tool_for_gesture_4 {
+                                    Tool::Pen => s!(&Pen), // TODO helper for this?
+                                    Tool::Pan => s!(&Pan),
+                                    Tool::Eraser => s!(&Eraser),
+                                })
+                                .show_ui(ui, |ui| {
+                                    ui.selectable_value(
+                                        &mut config.tool_for_gesture_4,
+                                        Tool::Pen,
+                                        s!(&Pen),
+                                    );
+                                    ui.selectable_value(
+                                        &mut config.tool_for_gesture_4,
+                                        Tool::Eraser,
+                                        s!(&Eraser),
+                                    );
+                                    ui.selectable_value(
+                                        &mut config.tool_for_gesture_4,
+                                        Tool::Pan,
+                                        s!(&Pan),
+                                    );
+                                });
+                            ui.end_row();
+
                             ui.label(s!(&UseMouseForPen));
                             ui.checkbox(&mut config.use_mouse_for_pen, "");
                             ui.end_row();
 
-                            ui.label(s!(&ClearColor));
-                            ui.color_edit_button_rgb(&mut sketch.bg_color);
+                            ui.label(s!(&StylusMayBeInverted));
+                            ui.checkbox(&mut config.stylus_may_be_inverted, "");
+                            ui.end_row();
+
+                            ui.label(s!(&PrimaryMouseButton));
+                            ComboBox::new("primary button", "")
+                                .selected_text(match config.primary_button {
+                                    MouseButton::Left => s!(&LeftMouse), // TODO helper for this?
+                                    MouseButton::Middle => s!(&MiddleMouse),
+                                    MouseButton::Right => s!(&RightMouse),
+                                    _ => s!(&Placeholder),
+                                })
+                                .show_ui(ui, |ui| {
+                                    ui.selectable_value(
+                                        &mut config.primary_button,
+                                        MouseButton::Left,
+                                        s!(&LeftMouse),
+                                    );
+                                    ui.selectable_value(
+                                        &mut config.primary_button,
+                                        MouseButton::Middle,
+                                        s!(&MiddleMouse),
+                                    );
+                                    ui.selectable_value(
+                                        &mut config.primary_button,
+                                        MouseButton::Right,
+                                        s!(&RightMouse),
+                                    );
+                                });
                             ui.end_row();
                         });
 
+                        ui.separator();
+
+                        Grid::new("visual fx").show(ui, |ui| {
+                            ui.label(s!(&ClearColor));
+                            ui.color_edit_button_rgb(&mut sketch.bg_color);
+                            ui.end_row();
+
+                            ui.label(s!(&DarkMode));
+                            let before = config.dark_mode;
+                            ui.checkbox(&mut config.dark_mode, "");
+                            if before != config.dark_mode {
+                                ctx.set_visuals(if config.dark_mode {
+                                    egui::Visuals::dark()
+                                } else {
+                                    egui::Visuals::light()
+                                });
+                            }
+                            ui.end_row();
+
+                            ui.label(s!(&StartMaximized));
+                            ui.checkbox(&mut config.window_start_maximized, "");
+                        });
+
+                        ui.separator();
                         ctx.settings_ui(ui);
                     });
 

@@ -25,6 +25,8 @@ pub enum Event {
     DecreaseBrush(usize),
 
     ScrollZoom(f32),
+
+    Exit,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]

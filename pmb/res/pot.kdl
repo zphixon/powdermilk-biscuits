@@ -1,4 +1,5 @@
 en-US {
+  Placeholder "Label missing"
   MigrateWarningTitle "Migrate version"
   MigrateWarningMessage "Significant internal changes have been made to Powdermilk Biscuits since you last opened this file. Although it has not been marked as significantly incompatible with the current version, you may still experience data loss by attempting to upgrade this file to the most recent version.
 
@@ -23,6 +24,9 @@ Proceed?"
   Eraser "Eraser"
   UseMouseForPen "Use mouse for pen"
   ToolForGesture1 "Tool for one-finger touch"
+  ToolForGesture2 "Two-finger touch"
+  ToolForGesture3 "Three-finger touch"
+  ToolForGesture4 "Four-finger touch"
   Zoom "Zoom"
   BrushSize "Brush size"
   Modified "modified"
@@ -38,9 +42,19 @@ Proceed?"
   EditUndo "Undo"
   EditRedo "Redo"
   SettingsWindow "Powdermilk Biscuits Settings"
+  DarkMode "Dark mode"
+  StylusMayBeInverted "Stylus may be inverted"
+  PrimaryMouseButton "Primary mouse button for drawing"
+  PenPanButton "Button held on pen to pan screen"
+  LeftMouse "Left Mouse"
+  MiddleMouse "Middle Mouse"
+  RightMouse "Right Mouse"
+  Quit "Quit"
+  QuitModified "Quit..."
+  StartMaximized "Start PMB maximized"
 }
 
-es {
+/-es {
   MigrateWarningTitle "(es) Migrate version"
   MigrateWarningMessage "(es) Significant internal changes have been made to Powdermilk Biscuits since you last opened this file. Although it has not been marked as significantly incompatible with the current version, you may still experience data loss by attempting to upgrade this file to the most recent version.
 
@@ -80,4 +94,5 @@ Proceed?"
   EditRedo "(es) Redo"
   FileSettings "(es) Settings..."
   SettingsWindow "(es) Powdermilk Biscuits Settings"
+  DarkMode "(es) Dark mode"
 }
