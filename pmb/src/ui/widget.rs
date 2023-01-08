@@ -337,6 +337,8 @@ impl<C: CoordinateSystem> SketchWidget<C> {
         use Event as E;
         use SketchWidgetState as S;
 
+        log::trace!("next {:?} {:?}", self.state, event);
+
         self.state = match (self.state, event) {
             (S::Ready, E::IncreaseBrush(change)) => {
                 self.increase_brush(change);
@@ -745,12 +747,20 @@ impl<C: CoordinateSystem> SketchWidget<C> {
             sketch.update_zoom::<C>(self.width, self.height, sketch.zoom + 4.25);
         }
 
-        if self.input.just_pressed(config.pen_zoom) && self.prev_device == crate::Device::Pen {
+        if self.input.just_pressed(config.pen_zoom_key) && self.prev_device == crate::Device::Pen {
             self.next(config, sketch, Event::StartZoom);
         }
 
-        if !self.input.is_down(config.pen_zoom) {
+        if self.input.just_pressed(config.pen_zoom_key) && self.prev_device == crate::Device::Pen {
             self.next(config, sketch, Event::EndZoom);
+        }
+
+        if self.input.just_pressed(config.pan_key) {
+            self.next(config, sketch, Event::StartPan);
+        }
+
+        if self.input.just_released(config.pan_key) {
+            self.next(config, sketch, Event::EndPan);
         }
 
         if self.input.combo_just_pressed(&config.toggle_eraser_pen)

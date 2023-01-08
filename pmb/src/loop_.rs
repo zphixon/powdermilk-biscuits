@@ -259,10 +259,10 @@ where
                     (primary, ElementState::Released) if primary == config.primary_button => {
                         widget.next(&config, &mut sketch, Event::MouseUp(button));
                     }
-                    (pan, ElementState::Pressed) if pan == config.pan_button => {
+                    (pan, ElementState::Pressed) if pan == config.pen_pan_button => {
                         widget.next(&config, &mut sketch, Event::StartPan);
                     }
-                    (pan, ElementState::Released) if pan == config.pan_button => {
+                    (pan, ElementState::Released) if pan == config.pen_pan_button => {
                         widget.next(&config, &mut sketch, Event::EndPan);
                     }
                     _ => {}

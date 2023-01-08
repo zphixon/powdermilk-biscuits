@@ -224,14 +224,7 @@ impl<S: StrokeBackend> Sketch<S> {
     }
 
     pub fn update_zoom<C: CoordinateSystem>(&mut self, width: u32, height: u32, next_zoom: f32) {
-        self.zoom = if next_zoom < crate::MIN_ZOOM {
-            crate::MIN_ZOOM
-        } else if next_zoom > crate::MAX_ZOOM {
-            crate::MAX_ZOOM
-        } else {
-            next_zoom
-        };
-
+        self.zoom = next_zoom.clamp(crate::MIN_ZOOM, crate::MAX_ZOOM);
         self.update_visible_strokes::<C>(width, height);
         self.update_stroke_primitive();
     }
