@@ -21,7 +21,7 @@ use crate::{
 
 pub enum PerEvent {
     ConsumedByEgui(bool),
-    JustRedraw,
+    Redraw,
     Nothing,
 }
 
@@ -126,6 +126,7 @@ where
     }
 
     let ev = EventLoop::new();
+    let proxy = ev.create_proxy();
     let window = builder.build(&ev).unwrap();
     ev.set_device_event_filter(DeviceEventFilter::Always);
 
@@ -165,8 +166,9 @@ where
                 return;
             }
 
-            PerEvent::JustRedraw => {
+            PerEvent::Redraw => {
                 window.request_redraw();
+                proxy.send_event(()).unwrap();
             }
 
             _ => {}
@@ -391,6 +393,13 @@ where
                         cursor_visible = next_visible;
                     }
                 }
+
+                window.request_redraw();
+            }
+
+            WinitEvent::UserEvent(()) => {
+                window.request_redraw();
+                flow.set_poll();
             }
 
             WinitEvent::RedrawRequested(_) => match ctx.render(
@@ -403,6 +412,7 @@ where
             ) {
                 RenderResult::Redraw => {
                     window.request_redraw();
+                    proxy.send_event(()).unwrap();
                 }
 
                 RenderResult::Nothing => {}
@@ -410,7 +420,5 @@ where
 
             _ => {}
         }
-
-        log::trace!("{:?}", flow);
     });
 }

@@ -74,7 +74,7 @@ impl LoopContext<GlStrokeBackend, GlCoords> for GlLoop {
         });
 
         if redraw_after.is_zero() {
-            PerEvent::JustRedraw
+            PerEvent::Redraw
         } else {
             PerEvent::Nothing
         }
