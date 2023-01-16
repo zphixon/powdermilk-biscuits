@@ -22,6 +22,12 @@ pub struct Args {
     print_default_config: bool,
 
     #[options(
+        help = "Print the default debugging config. Requires --print-default-config",
+        no_short
+    )]
+    print_default_config_debug: bool,
+
+    #[options(
         help = "Attempt to upgrade the file to the latest version",
         short = "M"
     )]
@@ -52,6 +58,7 @@ fn main() -> Result<()> {
         .fold(0, |acc, b| if b { acc + 1 } else { acc })
         || (!args.migrate && (args.migrate_in_place || args.dry_run))
         || (args.migrate_in_place && args.dry_run)
+        || (args.print_default_config_debug && !args.print_default_config)
     {
         println!("{}", Args::usage());
         return Err(anyhow::anyhow!("Invalid usage"));
@@ -67,7 +74,11 @@ fn main() -> Result<()> {
     }
 
     if args.print_default_config {
-        println!("{}", Config::new().to_ron_string());
+        if args.print_default_config_debug {
+            println!("{}", Config::debug().to_ron_string());
+        } else {
+            println!("{}", Config::new().to_ron_string());
+        }
         return Ok(());
     }
 

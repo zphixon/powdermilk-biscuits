@@ -56,7 +56,6 @@ config!(
     open: Combination { Combination::from(LControl) | O },
     zoom_out: Combination { Combination::from(LControl) | NumpadSubtract },
     zoom_in: Combination { Combination::from(LControl) | NumpadAdd },
-    tool_for_gesture_1: Tool { Tool::Pan },
     tool_for_gesture_2: Tool { Tool::Pan },
     tool_for_gesture_3: Tool { Tool::Pan },
     tool_for_gesture_4: Tool { Tool::Pan },
@@ -76,6 +75,8 @@ config!(
     debug_print_stroke_info: Combination { Combination::INACTIVE },
     debug_print_strokes: Combination { Combination::INACTIVE },
     debug_dirty_all_strokes: Combination { Combination::INACTIVE },
+    debug_toggle_show_info: Combination { Combination::INACTIVE },
+    debug_show_info: bool { false },
 );
 
 impl Default for Config {
@@ -106,6 +107,8 @@ impl Config {
             debug_print_stroke_info: D.into(),
             debug_print_strokes: Combination::from(LShift) | D,
             debug_dirty_all_strokes: Combination::from(LControl) | D,
+            debug_toggle_show_info: Combination::from(LAlt) | D,
+            debug_show_info: true,
             ..Config::new()
         }
     }
@@ -181,13 +184,12 @@ impl Config {
         (self.window_start_width, self.window_start_height)
     }
 
-    pub fn tool_for_gesture(&self, i: u8) -> Tool {
+    pub fn tool_for_gesture(&self, active_tool: Tool, i: u8) -> Tool {
         match i {
-            1 => self.tool_for_gesture_1,
             2 => self.tool_for_gesture_2,
             3 => self.tool_for_gesture_3,
             4 => self.tool_for_gesture_4,
-            _ => Tool::Pan,
+            _ => active_tool,
         }
     }
 

@@ -56,13 +56,132 @@ pub fn open_dialog() -> Option<PathBuf> {
         .pick_file()
 }
 
+fn settings_window<S: StrokeBackend>(
+    ui: &egui::Ui,
+    ctx: &egui::Context,
+    settings_id: egui::Id,
+    config: &mut Config,
+    sketch: &mut Sketch<S>,
+    mut settings_open: bool,
+) {
+    use egui::*;
+
+    Window::new(s!(&WindowTitleConfig))
+        .open(&mut settings_open)
+        .show(ctx, |ui| {
+            // if this were going to spawn a separate window, we would need an event loop
+            // proxy to send configuration changes back to the main thread
+
+            Grid::new("input settings").show(ui, |ui| {
+                macro_rules! tfg {
+                    ($num:literal) => {
+                        paste::paste! {
+                            ui.label(s!(&[<ConfigLabelToolForGesture $num>]));
+                            ComboBox::new(concat!("tool for gesture ", stringify!($num)), "")
+                                .selected_text(match config.[<tool_for_gesture_ $num>] {
+                                    Tool::Pen => s!(&RadioLabelToolPen),
+                                    Tool::Eraser => s!(&RadioLabelToolEraser),
+                                    Tool::Pan => s!(&RadioLabelToolPan),
+                                })
+                                .show_ui(ui, |ui| {
+                                    ui.selectable_value(
+                                        &mut config.[<tool_for_gesture_ $num>],
+                                        Tool::Pen,
+                                        s!(&RadioLabelToolPen),
+                                    );
+                                    ui.selectable_value(
+                                        &mut config.[<tool_for_gesture_ $num>],
+                                        Tool::Eraser,
+                                        s!(&RadioLabelToolEraser),
+                                    );
+                                    ui.selectable_value(
+                                        &mut config.[<tool_for_gesture_ $num>],
+                                        Tool::Pan,
+                                        s!(&RadioLabelToolPan),
+                                    );
+                                });
+                            ui.end_row();
+                        }
+                    };
+                }
+
+                tfg!(2);
+                tfg!(3);
+                tfg!(4);
+
+                ui.label(s!(&ConfigLabelUseMouseForPen));
+                ui.checkbox(&mut config.use_mouse_for_pen, "");
+                ui.end_row();
+
+                ui.label(s!(&ConfigLabelStylusMayBeInverted));
+                ui.checkbox(&mut config.stylus_may_be_inverted, "");
+                ui.end_row();
+
+                ui.label(s!(&ConfigLabelPrimaryMouseButton));
+                ComboBox::new("primary button", "")
+                    .selected_text(match config.primary_button {
+                        MouseButton::Left => s!(&ConfigOptionButtonLeftMouse),
+                        MouseButton::Middle => s!(&ConfigOptionButtonMiddleMouse),
+                        MouseButton::Right => s!(&ConfigOptionButtonRightMouse),
+                        _ => s!(&Placeholder),
+                    })
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(
+                            &mut config.primary_button,
+                            MouseButton::Left,
+                            s!(&ConfigOptionButtonLeftMouse),
+                        );
+                        ui.selectable_value(
+                            &mut config.primary_button,
+                            MouseButton::Middle,
+                            s!(&ConfigOptionButtonMiddleMouse),
+                        );
+                        ui.selectable_value(
+                            &mut config.primary_button,
+                            MouseButton::Right,
+                            s!(&ConfigOptionButtonRightMouse),
+                        );
+                    });
+                ui.end_row();
+            });
+
+            ui.separator();
+
+            Grid::new("visual fx").show(ui, |ui| {
+                ui.label(s!(&ConfigLabelBackgroundColor));
+                ui.color_edit_button_rgb(&mut sketch.bg_color);
+                ui.end_row();
+
+                ui.label(s!(&ConfigLabelDarkMode));
+                let before = config.dark_mode;
+                ui.checkbox(&mut config.dark_mode, "");
+                if before != config.dark_mode {
+                    ctx.set_visuals(if config.dark_mode {
+                        egui::Visuals::dark()
+                    } else {
+                        egui::Visuals::light()
+                    });
+                }
+                ui.end_row();
+
+                ui.label(s!(&ConfigLabelStartMaximized));
+                ui.checkbox(&mut config.window_start_maximized, "");
+            });
+
+            ui.separator();
+            ctx.settings_ui(ui);
+        });
+
+    ui.memory().data.insert_temp(settings_id, settings_open);
+}
+
 pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
     ctx: &egui::Context,
     sketch: &mut Sketch<S>,
     widget: &mut widget::SketchWidget<C>,
     config: &mut Config,
 ) {
-    use egui::{Color32, ComboBox, Grid, Id, Sense, Slider, TopBottomPanel, Window};
+    use egui::*;
 
     TopBottomPanel::top("top").resizable(false).show(ctx, |ui| {
         ui.horizontal(|ui| {
@@ -117,181 +236,7 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
             });
 
             if settings_open {
-                Window::new(s!(&WindowTitleConfig))
-                    .open(&mut settings_open)
-                    .show(ctx, |ui| {
-                        // if this were going to spawn a separate window, we would need an event loop
-                        // proxy to send configuration changes back to the main thread
-
-                        Grid::new("input settings").show(ui, |ui| {
-                            ui.label(s!(&ConfigLabelToolForGesture1));
-                            ComboBox::new("tool for gesture 1", "")
-                                .selected_text(match config.tool_for_gesture_1 {
-                                    Tool::Pen => s!(&RadioLabelToolPen), // TODO helper for this?
-                                    Tool::Pan => s!(&RadioLabelToolPan),
-                                    Tool::Eraser => s!(&RadioLabelToolEraser),
-                                })
-                                .show_ui(ui, |ui| {
-                                    ui.selectable_value(
-                                        &mut config.tool_for_gesture_1,
-                                        Tool::Pen,
-                                        s!(&RadioLabelToolPen),
-                                    );
-                                    ui.selectable_value(
-                                        &mut config.tool_for_gesture_1,
-                                        Tool::Eraser,
-                                        s!(&RadioLabelToolPan),
-                                    );
-                                    ui.selectable_value(
-                                        &mut config.tool_for_gesture_1,
-                                        Tool::Pan,
-                                        s!(&RadioLabelToolEraser),
-                                    );
-                                });
-                            ui.end_row();
-
-                            ui.label(s!(&ConfigLabelToolForGesture2));
-                            ComboBox::new("tool for gesture 2", "")
-                                .selected_text(match config.tool_for_gesture_2 {
-                                    Tool::Pen => s!(&RadioLabelToolPen), // TODO helper for this?
-                                    Tool::Pan => s!(&RadioLabelToolPan),
-                                    Tool::Eraser => s!(&RadioLabelToolEraser),
-                                })
-                                .show_ui(ui, |ui| {
-                                    ui.selectable_value(
-                                        &mut config.tool_for_gesture_2,
-                                        Tool::Pen,
-                                        s!(&RadioLabelToolPen),
-                                    );
-                                    ui.selectable_value(
-                                        &mut config.tool_for_gesture_2,
-                                        Tool::Eraser,
-                                        s!(&RadioLabelToolPan),
-                                    );
-                                    ui.selectable_value(
-                                        &mut config.tool_for_gesture_2,
-                                        Tool::Pan,
-                                        s!(&RadioLabelToolEraser),
-                                    );
-                                });
-                            ui.end_row();
-
-                            ui.label(s!(&ConfigLabelToolForGesture3));
-                            ComboBox::new("tool for gesture 3", "")
-                                .selected_text(match config.tool_for_gesture_3 {
-                                    Tool::Pen => s!(&RadioLabelToolPen), // TODO helper for this?
-                                    Tool::Pan => s!(&RadioLabelToolPan),
-                                    Tool::Eraser => s!(&RadioLabelToolEraser),
-                                })
-                                .show_ui(ui, |ui| {
-                                    ui.selectable_value(
-                                        &mut config.tool_for_gesture_3,
-                                        Tool::Pen,
-                                        s!(&RadioLabelToolPen),
-                                    );
-                                    ui.selectable_value(
-                                        &mut config.tool_for_gesture_3,
-                                        Tool::Eraser,
-                                        s!(&RadioLabelToolPan),
-                                    );
-                                    ui.selectable_value(
-                                        &mut config.tool_for_gesture_3,
-                                        Tool::Pan,
-                                        s!(&RadioLabelToolEraser),
-                                    );
-                                });
-                            ui.end_row();
-
-                            ui.label(s!(&ConfigLabelToolForGesture4));
-                            ComboBox::new("tool for gesture 4", "")
-                                .selected_text(match config.tool_for_gesture_4 {
-                                    Tool::Pen => s!(&RadioLabelToolPen), // TODO helper for this?
-                                    Tool::Pan => s!(&RadioLabelToolPan),
-                                    Tool::Eraser => s!(&RadioLabelToolEraser),
-                                })
-                                .show_ui(ui, |ui| {
-                                    ui.selectable_value(
-                                        &mut config.tool_for_gesture_4,
-                                        Tool::Pen,
-                                        s!(&RadioLabelToolPen),
-                                    );
-                                    ui.selectable_value(
-                                        &mut config.tool_for_gesture_4,
-                                        Tool::Eraser,
-                                        s!(&RadioLabelToolPan),
-                                    );
-                                    ui.selectable_value(
-                                        &mut config.tool_for_gesture_4,
-                                        Tool::Pan,
-                                        s!(&RadioLabelToolEraser),
-                                    );
-                                });
-                            ui.end_row();
-
-                            ui.label(s!(&ConfigLabelUseMouseForPen));
-                            ui.checkbox(&mut config.use_mouse_for_pen, "");
-                            ui.end_row();
-
-                            ui.label(s!(&ConfigLabelStylusMayBeInverted));
-                            ui.checkbox(&mut config.stylus_may_be_inverted, "");
-                            ui.end_row();
-
-                            ui.label(s!(&ConfigLabelPrimaryMouseButton));
-                            ComboBox::new("primary button", "")
-                                .selected_text(match config.primary_button {
-                                    MouseButton::Left => s!(&ConfigOptionButtonLeftMouse), // TODO helper for this?
-                                    MouseButton::Middle => s!(&ConfigOptionButtonMiddleMouse),
-                                    MouseButton::Right => s!(&ConfigOptionButtonRightMouse),
-                                    _ => s!(&Placeholder),
-                                })
-                                .show_ui(ui, |ui| {
-                                    ui.selectable_value(
-                                        &mut config.primary_button,
-                                        MouseButton::Left,
-                                        s!(&ConfigOptionButtonLeftMouse),
-                                    );
-                                    ui.selectable_value(
-                                        &mut config.primary_button,
-                                        MouseButton::Middle,
-                                        s!(&ConfigOptionButtonMiddleMouse),
-                                    );
-                                    ui.selectable_value(
-                                        &mut config.primary_button,
-                                        MouseButton::Right,
-                                        s!(&ConfigOptionButtonRightMouse),
-                                    );
-                                });
-                            ui.end_row();
-                        });
-
-                        ui.separator();
-
-                        Grid::new("visual fx").show(ui, |ui| {
-                            ui.label(s!(&ConfigLabelBackgroundColor));
-                            ui.color_edit_button_rgb(&mut sketch.bg_color);
-                            ui.end_row();
-
-                            ui.label(s!(&ConfigLabelDarkMode));
-                            let before = config.dark_mode;
-                            ui.checkbox(&mut config.dark_mode, "");
-                            if before != config.dark_mode {
-                                ctx.set_visuals(if config.dark_mode {
-                                    egui::Visuals::dark()
-                                } else {
-                                    egui::Visuals::light()
-                                });
-                            }
-                            ui.end_row();
-
-                            ui.label(s!(&ConfigLabelStartMaximized));
-                            ui.checkbox(&mut config.window_start_maximized, "");
-                        });
-
-                        ui.separator();
-                        ctx.settings_ui(ui);
-                    });
-
-                ui.memory().data.insert_temp(settings_id, settings_open);
+                settings_window(ui, ctx, settings_id, config, sketch, settings_open);
             }
 
             ui.menu_button(s!(&MenuLabelEdit), |ui| {
@@ -310,13 +255,9 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
             ui.radio_value(
                 &mut widget.active_tool,
                 Tool::Eraser,
-                s!(&RadioLabelToolPan),
-            );
-            ui.radio_value(
-                &mut widget.active_tool,
-                Tool::Pan,
                 s!(&RadioLabelToolEraser),
             );
+            ui.radio_value(&mut widget.active_tool, Tool::Pan, s!(&RadioLabelToolPan));
 
             let brush_size_slider = ui.add(
                 Slider::new(&mut widget.brush_size, crate::MIN_BRUSH..=crate::MAX_BRUSH)
@@ -353,6 +294,28 @@ pub fn egui<C: CoordinateSystem, S: StrokeBackend>(
             };
         });
     });
+
+    if config.debug_show_info {
+        Window::new("debug info").show(ctx, |ui| {
+            Grid::new("debug info grid").show(ui, |ui| {
+                ui.label("mouse pos");
+                ui.label(format!("{}", widget.input.cursor_pos()));
+                ui.end_row();
+
+                ui.label("stylus pos");
+                ui.label(format!("{}", widget.stylus.pos));
+                ui.end_row();
+
+                ui.label("origin");
+                ui.label(format!("{}", sketch.origin));
+                ui.end_row();
+
+                ui.label("state");
+                ui.label(format!("{:?}", widget.state));
+                ui.end_row();
+            });
+        });
+    }
 }
 
 pub fn read_file<S: StrokeBackend, C: CoordinateSystem>(

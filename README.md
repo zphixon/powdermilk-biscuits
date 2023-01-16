@@ -6,7 +6,7 @@ Heavens, it's tasty.
 
 ## Building:
 
-The build has visited the local mage and is no longer cursed. Just `git clone` and `cargo b --release`! **MSRV 1.64.0**
+The build has visited the local mage and is no longer cursed. Just `git clone` and `cargo b --release`! **MSRV 1.65.0**
 
 ## Features:
 

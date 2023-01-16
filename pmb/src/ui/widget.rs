@@ -2,6 +2,7 @@ use crate::{
     config::Config,
     event::{Event, InputHandler},
     graphics::{PixelPos, StrokePos},
+    loop_::LoopEvent,
     ui::undo::{Action, UndoStack},
     CoordinateSystem, Device, Sketch, Stroke, StrokeBackend, Stylus, StylusPosition, StylusState,
     Tool,
@@ -11,7 +12,10 @@ use lyon::{
     path::{LineCap, LineJoin},
 };
 use std::marker::PhantomData;
-use winit::event::{ElementState, Touch, TouchPhase, VirtualKeyCode as Keycode};
+use winit::{
+    event::{ElementState, Touch, TouchPhase, VirtualKeyCode as Keycode},
+    event_loop::EventLoopProxy,
+};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub enum SketchWidgetState {
@@ -38,6 +42,7 @@ impl SketchWidgetState {
 }
 
 pub struct SketchWidget<C: CoordinateSystem> {
+    pub proxy: EventLoopProxy<LoopEvent>,
     pub state: SketchWidgetState,
     pub modified: bool,
     pub path: Option<std::path::PathBuf>,
@@ -59,8 +64,9 @@ pub struct SketchWidget<C: CoordinateSystem> {
 }
 
 impl<C: CoordinateSystem> SketchWidget<C> {
-    pub fn new(width: u32, height: u32) -> Self {
+    pub fn new(proxy: EventLoopProxy<LoopEvent>, width: u32, height: u32) -> Self {
         Self {
+            proxy,
             state: SketchWidgetState::default(),
             stylus: Stylus::default(),
             prev_device: Device::Mouse,
@@ -337,11 +343,11 @@ impl<C: CoordinateSystem> SketchWidget<C> {
         use Event as E;
         use SketchWidgetState as S;
 
-        log::trace!("next {:?} {:?}", self.state, event);
+        log::trace!("WIDGET STATE {:?} NEXT {:?}", self.state, event);
 
         self.state = match (self.state, event) {
             (state, E::Exit) => {
-                // hmmm
+                self.proxy.send_event(LoopEvent::Quit).unwrap();
                 state
             }
 
@@ -400,6 +406,12 @@ impl<C: CoordinateSystem> SketchWidget<C> {
                 self.update_stylus_from_touch(config, sketch, touch);
                 let next = crate::graphics::xform_point_to_pos(sketch.origin, self.stylus.point);
                 sketch.move_origin::<C>(self.width, self.height, prev, next);
+                S::Pan
+            }
+
+            (S::Pan, E::Touch(touch)) => {
+                self.input.handle_mouse_move(touch.location.into());
+                self.update_stylus_from_touch(config, sketch, touch);
                 S::Pan
             }
 
@@ -500,7 +512,7 @@ impl<C: CoordinateSystem> SketchWidget<C> {
                 self.input.handle_mouse_move(location);
 
                 if config.use_mouse_for_pen {
-                    self.update_stylus_from_mouse(config, sketch, TouchPhase::Ended);
+                    self.update_stylus_from_mouse(config, sketch, TouchPhase::Moved);
                 }
 
                 S::Ready
@@ -536,7 +548,7 @@ impl<C: CoordinateSystem> SketchWidget<C> {
 
             // TODO: touch input, pan & zoom
             (S::Ready, E::Touch(touch)) => {
-                let tool = config.tool_for_gesture(1);
+                let tool = config.tool_for_gesture(self.active_tool, 1);
                 self.active_tool = tool;
                 match self.active_tool {
                     Tool::Pen => {
@@ -554,7 +566,7 @@ impl<C: CoordinateSystem> SketchWidget<C> {
 
             (S::Gesture(i), E::Touch(touch)) => {
                 // TODO dedup, more movement tolerance for gesture state transition
-                let tool = config.tool_for_gesture(i + 1);
+                let tool = config.tool_for_gesture(self.active_tool, i + 1);
                 self.active_tool = tool;
                 match self.active_tool {
                     Tool::Pen => {
@@ -571,7 +583,7 @@ impl<C: CoordinateSystem> SketchWidget<C> {
             }
 
             (S::Gesture(i), E::TouchMove(touch)) => {
-                let tool = config.tool_for_gesture(i);
+                let tool = config.tool_for_gesture(self.active_tool, i);
                 self.active_tool = tool;
 
                 match tool {
@@ -654,6 +666,13 @@ impl<C: CoordinateSystem> SketchWidget<C> {
 
         if self.input.combo_just_pressed(&config.brush_decrease) {
             self.next(config, sketch, Event::DecreaseBrush(crate::BRUSH_DELTA));
+        }
+
+        if dbg!(self
+            .input
+            .combo_just_pressed(&config.debug_toggle_show_info))
+        {
+            config.debug_show_info = !config.debug_show_info;
         }
 
         if self.input.combo_just_pressed(&config.debug_clear_strokes) {
@@ -791,12 +810,7 @@ impl<C: CoordinateSystem> SketchWidget<C> {
             .input
             .combo_just_pressed(&config.debug_toggle_use_finger_for_pen)
         {
-            if config.tool_for_gesture_1 != Tool::Pen {
-                config.tool_for_gesture_1 = Tool::Pen;
-            } else {
-                config.tool_for_gesture_1 = Tool::Pan;
-            }
-            println!("tool for gesture 1: {:?}", config.tool_for_gesture_1);
+            // meh
         }
 
         if self

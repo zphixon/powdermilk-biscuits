@@ -125,19 +125,29 @@ pub fn set_lang(requested: &str) {
 }
 
 pub fn get_str(key: Message) -> &'static str {
-    let lang = LANG.read().unwrap();
-    POT.get(&lang)
-        .unwrap_or_else(|| panic!("missing language {}", lang))
-        .children()
-        .unwrap_or_else(|| panic!("language {} has no messages", lang))
-        .get(key.as_str())
-        .unwrap_or_else(|| panic!("language {} missing messages {:?}", lang, key))
-        .entries()
-        .get(0)
-        .unwrap_or_else(|| panic!("language {} message {:?} missing value", lang, key))
-        .value()
-        .as_string()
-        .unwrap_or_else(|| panic!("language {} message {:?} is not a string", lang, key))
+    let lang_key = LANG.read().unwrap();
+
+    let Some(lang) = POT.get(&lang_key) else {
+        return "missing language"
+    };
+
+    let Some(messages) = lang.children() else {
+        return "no messages"
+    };
+
+    let Some(message) = messages.get(key.as_str()) else {
+        return "missing message"
+    };
+
+    let Some(entry) = message.entries().get(0) else {
+        return "missing value"
+    };
+
+    let Some(value) = entry.value().as_string() else {
+        return "non-string value"
+    };
+
+    value
 }
 
 #[cfg(test)]

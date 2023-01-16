@@ -1,4 +1,7 @@
-use winit::{event_loop::DeviceEventFilter, window::Window};
+use winit::{
+    event_loop::{ControlFlow, DeviceEventFilter, EventLoopBuilder},
+    window::Window,
+};
 
 use crate::{
     config::Config,
@@ -30,12 +33,18 @@ pub enum RenderResult {
     Nothing,
 }
 
+#[derive(Debug)]
+pub enum LoopEvent {
+    Quit,
+    Redraw,
+}
+
 pub trait LoopContext<S: StrokeBackend, C: CoordinateSystem> {
-    fn setup(ev: &EventLoop<()>, window: &Window, sketch: &mut Sketch<S>) -> Self;
+    fn setup(ev: &EventLoop<LoopEvent>, window: &Window, sketch: &mut Sketch<S>) -> Self;
 
     fn per_event(
         &mut self,
-        event: &WinitEvent<()>,
+        event: &WinitEvent<LoopEvent>,
         window: &Window,
         sketch: &mut Sketch<S>,
         widget: &mut SketchWidget<C>,
@@ -125,14 +134,15 @@ where
         builder = builder.with_inner_size(PhysicalSize { width, height });
     }
 
-    let ev = EventLoop::new();
+    let ev = EventLoopBuilder::<LoopEvent>::with_user_event().build();
+    let widget_proxy = ev.create_proxy();
     let proxy = ev.create_proxy();
     let window = builder.build(&ev).unwrap();
     ev.set_device_event_filter(DeviceEventFilter::Always);
 
     let mut widget = {
         let PhysicalSize { width, height } = window.inner_size();
-        SketchWidget::<C>::new(width, height)
+        SketchWidget::<C>::new(widget_proxy, width, height)
     };
     let mut sketch: Sketch<S> = if let Some(filename) = args.file {
         Sketch::with_filename(&mut widget, filename)
@@ -153,7 +163,12 @@ where
     ev.run(move |event, _, flow| {
         flow.set_wait();
 
-        log::trace!("{:?} {:?}", widget.state, event);
+        match &event {
+            WinitEvent::WindowEvent { event, .. } => {
+                log::trace!("WIDGET STATE {:?} GOT EVENT {:?}", widget.state, event);
+            }
+            _ => {}
+        }
 
         let per_event = ctx.per_event(&event, &window, &mut sketch, &mut widget, &mut config);
 
@@ -168,10 +183,34 @@ where
 
             PerEvent::Redraw => {
                 window.request_redraw();
-                proxy.send_event(()).unwrap();
+                proxy.send_event(LoopEvent::Redraw).unwrap();
             }
 
             _ => {}
+        }
+
+        fn maybe_exit<S: StrokeBackend, C: CoordinateSystem>(
+            flow: &mut ControlFlow,
+            sketch: &Sketch<S>,
+            widget: &mut SketchWidget<C>,
+            config: &Config,
+            config_path: &std::path::Path,
+        ) {
+            if widget.modified {
+                if crate::ui::ask_to_save_then_save(
+                    widget,
+                    sketch,
+                    s!(&MboxMessageAskToSaveBeforeClosing),
+                )
+                .unwrap_or(false)
+                {
+                    flow.set_exit();
+                    config.save(config_path);
+                }
+            } else {
+                flow.set_exit();
+                config.save(config_path);
+            }
         }
 
         match event {
@@ -185,23 +224,7 @@ where
             WinitEvent::WindowEvent {
                 event: WindowEvent::CloseRequested,
                 ..
-            } => {
-                if widget.modified {
-                    if crate::ui::ask_to_save_then_save(
-                        &mut widget,
-                        &sketch,
-                        s!(&MboxMessageAskToSaveBeforeClosing),
-                    )
-                    .unwrap_or(false)
-                    {
-                        flow.set_exit();
-                        config.save(&config_path);
-                    }
-                } else {
-                    flow.set_exit();
-                    config.save(&config_path);
-                }
-            }
+            } => maybe_exit(flow, &sketch, &mut widget, &config, &config_path),
 
             #[cfg(not(feature = "pmb-release"))]
             WinitEvent::WindowEvent {
@@ -397,9 +420,13 @@ where
                 window.request_redraw();
             }
 
-            WinitEvent::UserEvent(()) => {
+            WinitEvent::UserEvent(LoopEvent::Redraw) => {
                 window.request_redraw();
                 flow.set_poll();
+            }
+
+            WinitEvent::UserEvent(LoopEvent::Quit) => {
+                maybe_exit(flow, &sketch, &mut widget, &config, &config_path)
             }
 
             WinitEvent::RedrawRequested(_) => match ctx.render(
@@ -412,7 +439,7 @@ where
             ) {
                 RenderResult::Redraw => {
                     window.request_redraw();
-                    proxy.send_event(()).unwrap();
+                    proxy.send_event(LoopEvent::Redraw).unwrap();
                 }
 
                 RenderResult::Nothing => {}

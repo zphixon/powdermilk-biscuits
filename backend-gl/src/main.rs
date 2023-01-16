@@ -6,7 +6,7 @@ use ezgl::Ezgl;
 use powdermilk_biscuits::{
     config::Config,
     egui::Context as EguiContext,
-    loop_::{loop_, LoopContext, PerEvent, RenderResult},
+    loop_::{loop_, LoopContext, LoopEvent, PerEvent, RenderResult},
     ui::widget::SketchWidget,
     winit::{dpi::PhysicalSize, event::Event as WinitEvent, event_loop::EventLoop, window::Window},
     Sketch,
@@ -43,7 +43,7 @@ struct GlLoop {
 }
 
 impl LoopContext<GlStrokeBackend, GlCoords> for GlLoop {
-    fn setup(ev: &EventLoop<()>, window: &Window, _: &mut Sketch<GlStrokeBackend>) -> Self {
+    fn setup(ev: &EventLoop<LoopEvent>, window: &Window, _: &mut Sketch<GlStrokeBackend>) -> Self {
         let gl = no_winit_ezgl(window, window.inner_size());
         let size = window.inner_size();
         GlLoop {
@@ -55,7 +55,7 @@ impl LoopContext<GlStrokeBackend, GlCoords> for GlLoop {
 
     fn per_event(
         &mut self,
-        event: &WinitEvent<()>,
+        event: &WinitEvent<LoopEvent>,
         window: &Window,
         sketch: &mut Sketch<GlStrokeBackend>,
         widget: &mut SketchWidget<GlCoords>,
