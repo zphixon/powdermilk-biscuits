@@ -270,7 +270,7 @@ where
         tessellator: &mut StrokeTessellator,
         stroke_options: &StrokeOptions,
     ) {
-        log::info!("rebuild entire mesh ({} points)", self.points.len());
+        tracing::info!("rebuild entire mesh ({} points)", self.points.len());
         match crate::tess::tessellate(tessellator, stroke_options, self.brush_size, self.points()) {
             Ok(buffer) => self.meshes.push(Mesh {
                 buffer,
@@ -279,7 +279,7 @@ where
             }),
 
             Err(err) if is_tmv(&err) => {
-                log::warn!("have to split stroke (entire mesh)");
+                tracing::warn!("have to split stroke (entire mesh)");
                 self.meshes.clear();
 
                 // start with two segments
@@ -287,7 +287,7 @@ where
                 'with_more_segments: loop {
                     // split the points into num_breaks segments
                     let per_segment = self.points.len() / num_segments;
-                    log::info!(
+                    tracing::info!(
                         "trying {} segments, {} points per segment",
                         num_segments,
                         per_segment,
@@ -311,34 +311,34 @@ where
                         ) {
                             // if it works, hooray
                             Ok(buffer) => {
-                                log::debug!("got segment {}/{}", i, num_segments);
+                                tracing::debug!("got segment {}/{}", i, num_segments);
                                 meshes.push(Mesh { buffer, from, to });
                             }
 
                             // if it's too many, try again with more segments
                             Err(err) if is_tmv(&err) => {
-                                log::debug!("it didn't work ({}/{})", i, num_segments);
+                                tracing::debug!("it didn't work ({}/{})", i, num_segments);
                                 meshes.clear();
                                 num_segments += 1;
                                 continue 'with_more_segments;
                             }
 
                             Err(err) => {
-                                log::error!("{}", err);
+                                tracing::error!("{}", err);
                                 return;
                             }
                         }
                     }
 
                     // all the segments were tessellable (sp.?)
-                    log::info!("tessellated with {} segments", num_segments);
+                    tracing::info!("tessellated with {} segments", num_segments);
                     self.meshes = meshes;
                     break;
                 }
             }
 
             Err(err) => {
-                log::error!("couldn't build mesh: {}", err,);
+                tracing::error!("couldn't build mesh: {}", err,);
             }
         }
 
@@ -370,7 +370,7 @@ where
                     }
 
                     Err(err) => {
-                        log::error!(
+                        tracing::error!(
                             "couldn't tessellate last part {}..{}: {}",
                             subset.to,
                             self.points.len(),
@@ -383,7 +383,7 @@ where
         match self.meshes.last_mut() {
             Some(subset) => {
                 if max_points.is_some() && subset.len() > max_points.unwrap() {
-                    log::warn!(
+                    tracing::warn!(
                         "have to split after {}..{} (max points reached)",
                         subset.from,
                         subset.to
@@ -402,12 +402,12 @@ where
                         }
 
                         Err(err) if is_tmv(&err) => {
-                            log::warn!("have to split after {}..{}", subset.from, subset.to);
+                            tracing::warn!("have to split after {}..{}", subset.from, subset.to);
                             split(tessellator, &mut to_add, subset);
                         }
 
                         Err(err) => {
-                            log::error!(
+                            tracing::error!(
                                 "couldn't tessellate {}..{}: {}",
                                 subset.from,
                                 subset.to,

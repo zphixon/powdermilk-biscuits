@@ -72,7 +72,6 @@ where
     C: CoordinateSystem + 'static,
     L: LoopContext<S, C> + 'static,
 {
-    env_logger::init();
     let args = crate::Args::parse_args_default_or_exit();
 
     if args.version {
@@ -91,12 +90,12 @@ where
             Ok("x11") => {}
             Ok("wayland") => {
                 let msg = "WINIT_UNIX_BACKEND=wayland is not recommended. Due to a bug in winit power consumption will suffer.";
-                log::warn!("{}", msg);
+                tracing::warn!("{}", msg);
                 eprintln!("{}", msg);
             }
             _ => {
                 let msg  = "Environment variable WINIT_UNIX_BACKEND=x11 is not set. If you're using Wayland power consumption may suffer.";
-                log::warn!("{}", msg);
+                tracing::warn!("{}", msg);
                 eprintln!("{}", msg);
             }
         }
@@ -165,7 +164,7 @@ where
 
         match &event {
             WinitEvent::WindowEvent { event, .. } => {
-                log::trace!("WIDGET STATE {:?} GOT EVENT {:?}", widget.state, event);
+                tracing::trace!("WIDGET STATE {:?} GOT EVENT {:?}", widget.state, event);
             }
             _ => {}
         }

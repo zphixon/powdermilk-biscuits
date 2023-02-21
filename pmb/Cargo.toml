@@ -9,8 +9,7 @@ default = []
 pmb-release = []
 
 [dependencies]
-env_logger.workspace = true
-log.workspace = true
+tracing.workspace = true
 bincode.workspace = true
 flate2.workspace = true
 bytemuck.workspace = true

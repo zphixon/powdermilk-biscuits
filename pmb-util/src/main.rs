@@ -50,7 +50,7 @@ pub struct Args {
 }
 
 fn main() -> Result<()> {
-    env_logger::init();
+    tracing_subscriber::fmt::init();
     let args = Args::parse_args_default_or_exit();
 
     if 1 < [args.version, args.print_default_config, args.migrate]

@@ -127,10 +127,10 @@ impl<C: CoordinateSystem> SketchWidget<C> {
                     max_points,
                 );
             } else {
-                log::error!("no stroke for key of last action");
+                tracing::error!("no stroke for key of last action");
             }
         } else {
-            log::error!("last action not draw stroke in continue stroke or empty undo stack");
+            tracing::error!("last action not draw stroke in continue stroke or empty undo stack");
         }
     }
 
@@ -139,10 +139,10 @@ impl<C: CoordinateSystem> SketchWidget<C> {
             if let Some(stroke) = sketch.strokes.get_mut(key) {
                 stroke.finish();
             } else {
-                log::error!("no stroke for key of last action");
+                tracing::error!("no stroke for key of last action");
             }
         } else {
-            log::error!("last action not draw stroke in end stroke or empty undo stack");
+            tracing::error!("last action not draw stroke in end stroke or empty undo stack");
         }
     }
 
@@ -324,14 +324,14 @@ impl<C: CoordinateSystem> SketchWidget<C> {
         self.brush_size += by;
         self.brush_size = self.brush_size.clamp(crate::MIN_BRUSH, crate::MAX_BRUSH);
 
-        log::debug!("increase brush {}", self.brush_size);
+        tracing::debug!("increase brush {}", self.brush_size);
     }
 
     fn decrease_brush(&mut self, by: usize) {
         self.brush_size -= by;
         self.brush_size = self.brush_size.clamp(crate::MIN_BRUSH, crate::MAX_BRUSH);
 
-        log::debug!("decrease brush {}", self.brush_size);
+        tracing::debug!("decrease brush {}", self.brush_size);
     }
 
     pub fn next<S: StrokeBackend>(
@@ -343,7 +343,7 @@ impl<C: CoordinateSystem> SketchWidget<C> {
         use Event as E;
         use SketchWidgetState as S;
 
-        log::trace!("WIDGET STATE {:?} NEXT {:?}", self.state, event);
+        tracing::trace!("WIDGET STATE {:?} NEXT {:?}", self.state, event);
 
         self.state = match (self.state, event) {
             (state, E::Exit) => {
@@ -657,7 +657,7 @@ impl<C: CoordinateSystem> SketchWidget<C> {
         key: Keycode,
         state: ElementState,
     ) {
-        log::debug!("handle key {key:?} {state:?}");
+        tracing::debug!("handle key {key:?} {state:?}");
         self.input.handle_key(key, state);
 
         if self.input.combo_just_pressed(&config.brush_increase) {
@@ -825,7 +825,7 @@ impl<C: CoordinateSystem> SketchWidget<C> {
             .input
             .combo_just_pressed(&config.debug_dirty_all_strokes)
         {
-            log::info!("debug dirty all strokes");
+            tracing::info!("debug dirty all strokes");
             self.force_update(sketch);
         }
 

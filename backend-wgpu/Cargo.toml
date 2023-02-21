@@ -10,8 +10,8 @@ default = []
 pmb-release = ['powdermilk-biscuits/pmb-release']
 
 [dependencies]
-env_logger.workspace = true
-log.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
 glam.workspace = true
 wgpu.workspace = true
 futures.workspace = true

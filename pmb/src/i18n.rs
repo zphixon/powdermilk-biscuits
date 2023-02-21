@@ -117,7 +117,7 @@ pub fn set_lang(requested: &str) {
         // TODO probably split on dashes and compare the first segment
         .find(|lang| requested.starts_with(lang) || lang.starts_with(requested))
     {
-        log::info!("setting language to {} (matches {})", lang, requested,);
+        tracing::info!("setting language to {} (matches {})", lang, requested);
         *LANG.try_write().expect("multithreaded set_lang") = lang.to_string();
     } else {
         panic!("no matching language for {}", requested);

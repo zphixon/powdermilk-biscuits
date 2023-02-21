@@ -45,14 +45,14 @@ impl UndoStack {
 
     pub fn push(&mut self, action: Action) {
         if self.cursor == self.buffer.len() {
-            log::debug!("append");
+            tracing::debug!("append");
             // [a, b, c, d]
             //           ^ c=4
             // [a, b, c, d, e]
             //              ^ c=5
             self.buffer.push(action);
         } else if 1 <= self.cursor && self.cursor < self.buffer.len() {
-            log::debug!("split off");
+            tracing::debug!("split off");
             // [a, b, c, d]
             //        ^ c=3
             // [a, b, e]
@@ -60,7 +60,7 @@ impl UndoStack {
             let _old = self.buffer.split_off(self.cursor);
             self.buffer.push(action);
         } else {
-            log::debug!("replace");
+            tracing::debug!("replace");
             // [a, b, c, d]
             //  ^ c=1
             // [e]

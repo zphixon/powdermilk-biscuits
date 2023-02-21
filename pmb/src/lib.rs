@@ -162,7 +162,7 @@ impl<S: StrokeBackend> Sketch<S> {
         widget: &mut ui::widget::SketchWidget<C>,
         path: impl AsRef<std::path::Path>,
     ) -> Self {
-        log::info!("create State from {}", path.as_ref().display());
+        tracing::info!("create State from {}", path.as_ref().display());
 
         let mut this = Sketch::empty();
         ui::read_file(widget, Some(path), &mut this);
@@ -250,7 +250,7 @@ impl<S: StrokeBackend> Sketch<S> {
         tessellator: &mut StrokeTessellator,
         options: &StrokeOptions,
     ) {
-        log::info!("forcing update");
+        tracing::info!("forcing update");
         self.strokes
             .values_mut()
             .flat_map(|stroke| {

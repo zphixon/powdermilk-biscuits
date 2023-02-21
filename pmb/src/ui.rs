@@ -345,7 +345,7 @@ pub fn read_file<S: StrokeBackend, C: CoordinateSystem>(
     }
 
     // if we were passed a path, use that, otherwise ask for one
-    log::info!("finding where to read from");
+    tracing::info!("finding where to read from");
     let path = match path
         .map(|path| path.as_ref().to_path_buf())
         .or_else(open_dialog)
@@ -360,7 +360,7 @@ pub fn read_file<S: StrokeBackend, C: CoordinateSystem>(
     let file = match std::fs::File::open(&path) {
         Ok(file) => file,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-            log::info!("using a new file");
+            tracing::info!("using a new file");
             // if it doesn't exist don't try to read it
             widget.path = Some(path);
             widget.modified = true;
@@ -380,7 +380,7 @@ pub fn read_file<S: StrokeBackend, C: CoordinateSystem>(
             kind: ErrorKind::VersionMismatch(version),
             ..
         }) => {
-            log::warn!("version mismatch, got {version} want {}", Version::CURRENT);
+            tracing::warn!("version mismatch, got {version} want {}", Version::CURRENT);
 
             match Version::upgrade_type(version) {
                 UpgradeType::Smooth => match migrate::from(version, &path) {
@@ -444,7 +444,7 @@ pub fn read_file<S: StrokeBackend, C: CoordinateSystem>(
     widget.path = Some(path);
     widget.undo_stack.clear();
 
-    log::info!(
+    tracing::info!(
         "success, read from {}",
         widget.path.as_ref().unwrap().display()
     );
@@ -458,11 +458,11 @@ pub fn ask_to_save_then_save<S: StrokeBackend, C: CoordinateSystem>(
 ) -> Result<bool, PmbError> {
     use crate::migrate;
 
-    log::info!("asking to save {why:?}");
+    tracing::info!("asking to save {why:?}");
     match (ask_to_save(why), widget.path.as_ref()) {
         // if they say yes and the file we're editing has a path
         (rfd::MessageDialogResult::Yes, Some(path)) => {
-            log::info!("writing as {}", path.display());
+            tracing::info!("writing as {}", path.display());
             migrate::write(path, sketch).problem(format!("{}", path.display()))?;
             widget.modified = false;
             Ok(true)
@@ -470,11 +470,11 @@ pub fn ask_to_save_then_save<S: StrokeBackend, C: CoordinateSystem>(
 
         // they say yes and the file doesn't have a path yet
         (rfd::MessageDialogResult::Yes, None) => {
-            log::info!("asking where to save");
+            tracing::info!("asking where to save");
             // ask where to save it
             match save_dialog(s!(&MboxTitleSaveUnnamedFile), None) {
                 Some(new_filename) => {
-                    log::info!("writing as {}", new_filename.display());
+                    tracing::info!("writing as {}", new_filename.display());
                     // try write to disk
                     migrate::write(&new_filename, sketch)
                         .problem(format!("{}", new_filename.display()))?;
@@ -521,7 +521,7 @@ fn save_file<C: CoordinateSystem, S: StrokeBackend>(
         widget.modified = false;
     }
 
-    log::info!("saved file as {}", widget.path.as_ref().unwrap().display());
+    tracing::info!("saved file as {}", widget.path.as_ref().unwrap().display());
 }
 
 fn new_file<C: CoordinateSystem, S: StrokeBackend>(

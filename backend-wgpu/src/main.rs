@@ -11,6 +11,7 @@ use powdermilk_biscuits::{
 };
 
 fn main() {
+    tracing_subscriber::fmt::init();
     loop_::<WgpuStrokeBackend, WgpuCoords, WgpuLoop>();
 }
 

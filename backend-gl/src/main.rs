@@ -33,6 +33,7 @@ fn no_winit_ezgl(window: &Window, size: PhysicalSize<u32>) -> Ezgl {
 }
 
 fn main() {
+    tracing_subscriber::fmt::init();
     loop_::<GlStrokeBackend, GlCoords, GlLoop>();
 }
 

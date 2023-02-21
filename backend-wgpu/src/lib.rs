@@ -590,12 +590,12 @@ pub struct Graphics {
 
 impl Graphics {
     pub async fn new(window: &Window) -> Self {
-        log::info!("setting up wgpu");
+        tracing::info!("setting up wgpu");
         let size = window.inner_size();
         let instance = Instance::new(Backends::all());
         let surface = unsafe { instance.create_surface(window) };
 
-        log::debug!("requesting adapter");
+        tracing::debug!("requesting adapter");
         let adapter = instance
             .request_adapter(&RequestAdapterOptions {
                 power_preference: PowerPreference::LowPower,
@@ -610,7 +610,7 @@ impl Graphics {
             ..Default::default()
         };
 
-        log::debug!("requesting device");
+        tracing::debug!("requesting device");
         let (device, queue) = adapter
             .request_device(
                 &DeviceDescriptor {
@@ -623,7 +623,7 @@ impl Graphics {
             .await
             .unwrap();
 
-        log::debug!("setting up pipeline stuff");
+        tracing::debug!("setting up pipeline stuff");
         let formats = surface.get_supported_formats(&adapter);
 
         let surface_format = if formats.contains(&TextureFormat::Rgba8UnormSrgb) {
@@ -652,7 +652,7 @@ impl Graphics {
 
         surface.configure(&device, &config);
 
-        log::debug!("creating smaa target");
+        tracing::debug!("creating smaa target");
         let smaa_target = smaa::SmaaTarget::new(
             &device,
             &queue,
@@ -662,7 +662,7 @@ impl Graphics {
             smaa::SmaaMode::Smaa1X,
         );
 
-        log::info!("done!");
+        tracing::info!("done!");
         Graphics {
             stroke_renderer: StrokeRenderer::new(&device, surface_format),
             cursor_renderer: CursorRenderer::new(&device, surface_format),

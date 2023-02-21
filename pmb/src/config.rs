@@ -127,7 +127,7 @@ impl Config {
 
     // TODO registry/gsettings or something, this is dumb
     pub fn from_disk(path: &Path) -> Config {
-        log::info!("load config from {}", path.display());
+        tracing::info!("load config from {}", path.display());
         let file = match std::fs::read_to_string(path) {
             Ok(contents) => contents,
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
@@ -149,11 +149,11 @@ impl Config {
     }
 
     pub fn save(&self, path: &Path) {
-        log::info!("save config to {}", path.display());
+        tracing::info!("save config to {}", path.display());
 
         if self.had_error_parsing {
             // don't overwrite broken configs
-            log::error!("had error");
+            tracing::error!("had error");
             return;
         }
 

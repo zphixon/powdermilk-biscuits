@@ -175,7 +175,7 @@ pub fn tessellator() -> Tessellator {
 
                         // ...,
                         Err(err) => {
-                            log::error!("{}", err);
+                            tracing::error!("{}", err);
                             result.write().unwrap().add(TessResult::Error);
                         }
                     }

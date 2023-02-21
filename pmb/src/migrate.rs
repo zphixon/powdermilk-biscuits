@@ -42,12 +42,12 @@ pub fn read<S: StrokeBackend>(mut reader: impl Read) -> Result<Sketch<S>, PmbErr
     reader.read_exact(&mut version_bytes)?;
     let version = Version(u64::from_le_bytes(version_bytes));
 
-    log::debug!("got version {}", version);
+    tracing::debug!("got version {}", version);
     if version != Version::CURRENT {
         return Err(PmbError::new(ErrorKind::VersionMismatch(version)));
     }
 
-    log::debug!("inflating");
+    tracing::debug!("inflating");
     let mut deflate_reader = flate2::read::DeflateDecoder::new(reader);
     Ok(bincode::decode_from_std_read(
         &mut deflate_reader,
@@ -59,7 +59,7 @@ pub fn write<S: StrokeBackend>(
     path: impl AsRef<std::path::Path>,
     state: &Sketch<S>,
 ) -> Result<(), PmbError> {
-    log::debug!("truncating {} and deflating", path.as_ref().display());
+    tracing::debug!("truncating {} and deflating", path.as_ref().display());
 
     let mut file = std::fs::File::create(&path)?;
     file.write_all(&crate::PMB_MAGIC)?;
@@ -121,7 +121,7 @@ pub fn from<S>(version: Version, path: impl AsRef<Path>) -> Result<Sketch<S>, Pm
 where
     S: StrokeBackend,
 {
-    log::info!(
+    tracing::info!(
         "upgrading from {} to {} is {:?}",
         version,
         Version::CURRENT,
@@ -485,7 +485,7 @@ pub mod v8 {
         reader.read_exact(&mut version_bytes)?;
         let version = Version(u64::from_le_bytes(version_bytes));
 
-        log::debug!("got version {}", version);
+        tracing::debug!("got version {}", version);
         if version != Version(8) {
             unreachable!(
                 "called v8::read when you should have called v{}::read",
@@ -493,7 +493,7 @@ pub mod v8 {
             );
         }
 
-        log::debug!("inflating");
+        tracing::debug!("inflating");
         let mut deflate_reader = flate2::read::DeflateDecoder::new(reader);
         Ok(bincode::decode_from_std_read(
             &mut deflate_reader,
@@ -546,7 +546,7 @@ pub mod v7 {
         reader.read_exact(&mut version_bytes)?;
         let version = Version(u64::from_le_bytes(version_bytes));
 
-        log::debug!("got version {}", version);
+        tracing::debug!("got version {}", version);
         if version != Version(7) {
             unreachable!(
                 "called v7::read when you should have called v{}::read",
@@ -554,7 +554,7 @@ pub mod v7 {
             );
         }
 
-        log::debug!("inflating");
+        tracing::debug!("inflating");
         let mut deflate_reader = flate2::read::DeflateDecoder::new(reader);
         Ok(bincode::decode_from_std_read(
             &mut deflate_reader,
@@ -606,7 +606,7 @@ pub mod v6 {
         reader.read_exact(&mut version_bytes)?;
         let version = Version(u64::from_le_bytes(version_bytes));
 
-        log::debug!("got version {}", version);
+        tracing::debug!("got version {}", version);
         if version != Version(6) {
             unreachable!(
                 "called v6::read when you should have called v{}::read",
@@ -614,7 +614,7 @@ pub mod v6 {
             );
         }
 
-        log::debug!("inflating");
+        tracing::debug!("inflating");
         let mut deflate_reader = flate2::read::DeflateDecoder::new(reader);
         Ok(bincode::decode_from_std_read(
             &mut deflate_reader,
@@ -666,7 +666,7 @@ pub mod v5 {
         reader.read_exact(&mut version_bytes)?;
         let version = Version(u64::from_le_bytes(version_bytes));
 
-        log::debug!("got version {}", version);
+        tracing::debug!("got version {}", version);
         if version != Version(5) {
             unreachable!(
                 "called v5::read when you should have called v{}::read",
@@ -674,7 +674,7 @@ pub mod v5 {
             );
         }
 
-        log::debug!("inflating");
+        tracing::debug!("inflating");
         let mut deflate_reader = flate2::read::DeflateDecoder::new(reader);
         Ok(bincode::decode_from_std_read(
             &mut deflate_reader,

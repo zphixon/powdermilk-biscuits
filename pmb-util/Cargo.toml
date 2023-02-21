@@ -5,8 +5,8 @@ rust-version = '1.64.0'
 edition = '2021'
 
 [dependencies]
+tracing-subscriber.workspace = true
 gumdrop.workspace = true
-env_logger.workspace = true
 anyhow.workspace = true
 paste.workspace = true
 powdermilk-biscuits.workspace = true
